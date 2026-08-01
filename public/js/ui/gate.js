@@ -6,7 +6,7 @@
 // clipboard or into a file.
 import {
   h, toast, svg, ICON,
-  isStandalone, isIOS, canPromptInstall, promptInstall, onInstallStateChange,
+  isStandalone, isIOS, IOS_STORAGE_WARNING, canPromptInstall, promptInstall, onInstallStateChange,
 } from "./dom.js";
 import { generateToken, validToken, canonToken, copyText } from "../io/crypto.js";
 
@@ -194,9 +194,14 @@ function installOffer() {
        gets nothing at all here: a card whose only content is "look in your menu" is noise on
        the screen someone is deciding whether to use this app at all. Settings still has it. */
     if (isIOS()) {
-      box.append(h("div.gate-install-text", {
-        text: "Add nextly to your Home Screen: tap Share, then Add to Home Screen.",
-      }));
+      box.append(
+        h("div.gate-install-text", {
+          text: "Add nextly to your Home Screen: tap Share, then Add to Home Screen.",
+        }),
+        // The reason, not just the steps. On this platform it is the difference between the
+        // app still being signed in next month and not, and nobody guesses that unprompted.
+        h("div.warn", { style: { flexBasis: "100%" }, text: IOS_STORAGE_WARNING }),
+      );
     }
   };
 

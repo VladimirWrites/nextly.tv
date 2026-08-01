@@ -308,6 +308,27 @@ export function watchTitlebar() {
   wco.addEventListener("geometrychange", sync);
 }
 
+/* Said in both places someone can install from, so it is written once.
+
+   Safari caps script-writable storage at seven days without a visit, and a Home Screen web app
+   is exempt. Everywhere else installing is a convenience; here it decides whether the account
+   number is still on the device next month. Stated without alarm, because the vault itself is
+   untouched by this and the number was saved before the app let anyone in: the cost is signing
+   in again, not losing anything. */
+export const IOS_STORAGE_WARNING =
+  "Safari clears a site's stored data after seven days without a visit, and your account "
+  + "number is part of that. Your watch history is safe on the server either way, but you "
+  + "would need the number to sign in again. Adding nextly to your Home Screen keeps it.";
+
+/* Firefox on a computer is the one browser with no install of any kind: no beforeinstallprompt,
+   and no menu item that produces a standalone window with its own icon. Telling someone to look
+   in a menu they will find nothing in is worse than telling them there is nothing to find, so
+   it gets its own wording. Firefox on Android does install, hence the second test. */
+export const isFirefoxDesktop = () => {
+  const ua = navigator.userAgent || "";
+  return /firefox|fxios/i.test(ua) && !/android|mobile|tablet/i.test(ua);
+};
+
 export const isIOS = () =>
   /iphone|ipad|ipod/i.test(navigator.userAgent || "") ||
   (navigator.platform === "MacIntel" && (navigator.maxTouchPoints || 0) > 1);

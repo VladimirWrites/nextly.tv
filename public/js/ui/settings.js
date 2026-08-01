@@ -3,7 +3,7 @@
 // This screen is also where the app makes its promise checkable: the export is a plain JSON
 // file with show names spelled out, so you can read your own history without this app, this
 // server, or any catalogue.
-import { h, mount, toast, confirmWord, isStandalone, isIOS, canPromptInstall, promptInstall } from "./dom.js";
+import { h, mount, toast, confirmWord, isStandalone, isIOS, isFirefoxDesktop, IOS_STORAGE_WARNING, canPromptInstall, promptInstall } from "./dom.js";
 import { confirmDialog } from "./overlay.js";
 import { state } from "../domain/store.js";
 import { VERSION } from "../version.js";
@@ -289,6 +289,20 @@ function tmdbKeyRow(s, repaint) {
   );
 }
 
+/* What to say when the browser gives us no dialog to open. Three answers, because there are
+   three situations and only one of them is "look in your menu". */
+function manualSteps() {
+  if (isIOS()) return "In Safari, tap the Share button, then choose Add to Home Screen.";
+  if (isFirefoxDesktop()) {
+    return "Firefox on a computer cannot install web apps: there is no menu item for it, and "
+      + "Add to taskbar makes a shortcut to a tab rather than an app in its own window. "
+      + "Bookmark it, or install from Chrome, Edge or Safari. Nothing about nextly needs "
+      + "installing to work here.";
+  }
+  return "In your browser menu, look for Install app or Add to Home screen. In Chrome on a "
+    + "computer there is also an install icon at the right of the address bar.";
+}
+
 // Install. Hidden once the app is running standalone, because then there is nothing to do.
 function installRow(repaint) {
   if (isStandalone()) return null;
@@ -303,10 +317,7 @@ function installRow(repaint) {
       const result = await promptInstall();
       if (result === "installed") return toast("Installed");
       if (result === "dismissed") return;
-      // No programmatic prompt: iOS never offers one, and Firefox and Brave do not either.
-      show(isIOS()
-        ? "In Safari, tap the Share button, then choose Add to Home Screen."
-        : "In your browser menu, look for Install app or Add to Home screen. In Chrome on a computer there is also an install icon at the right of the address bar.");
+      show(manualSteps());
     },
   });
 
@@ -325,6 +336,10 @@ function installRow(repaint) {
         ]),
         button,
       ]),
+      /* Everywhere else installing is a convenience. On iOS it is the difference between the
+         app still being signed in next month and not, so it is stated where someone will meet
+         it rather than left for them to discover. */
+      isIOS() ? h("div.set-row", [h("div.warn", { text: IOS_STORAGE_WARNING })]) : null,
     ]),
   ]);
 }
