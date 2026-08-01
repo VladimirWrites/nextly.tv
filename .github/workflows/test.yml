@@ -1,0 +1,48 @@
+# The whole suite runs on Node's own test runner with no dependencies, so this needs nothing
+# beyond a Node and a checkout. `npm ci` is here for wrangler, which the Worker tests import
+# nothing from — but package-lock.json is committed and installing from it keeps the job
+# honest about what a fresh clone gets.
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 20 is the oldest with the test runner and the web crypto this code assumes; 22 is
+        # what most people will have. A break on one and not the other names its own cause.
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+      # The service worker's cache name, the version module, the precache list and the CSP's
+      # inline-script hashes are all generated. If a commit edits an inline script or adds a
+      # module without re-running the script, the app ships a policy that blocks its own
+      # bootstrap or a precache that is missing a file — neither of which any test would
+      # catch, and both of which only show up in production.
+      - name: generated files are in step with the source
+        run: |
+          node scripts/sync-version.mjs
+          if ! git diff --quiet; then
+            echo "::error::Generated files are stale. Run 'npm run sync-version' and commit the result."
+            git diff --stat
+            exit 1
+          fi

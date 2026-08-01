@@ -1,0 +1,37 @@
+[
+  {
+    "src": "/assets/screenshots/up-next.png",
+    "sizes": "824x1830",
+    "type": "image/png",
+    "form_factor": "narrow",
+    "label": "What to watch tonight"
+  },
+  {
+    "src": "/assets/screenshots/library.png",
+    "sizes": "824x1830",
+    "type": "image/png",
+    "form_factor": "narrow",
+    "label": "Your whole library, with progress you can read at a glance"
+  },
+  {
+    "src": "/assets/screenshots/stats.png",
+    "sizes": "824x1830",
+    "type": "image/png",
+    "form_factor": "narrow",
+    "label": "What your year actually looked like"
+  },
+  {
+    "src": "/assets/screenshots/library-wide.png",
+    "sizes": "1280x800",
+    "type": "image/png",
+    "form_factor": "wide",
+    "label": "Your library"
+  },
+  {
+    "src": "/assets/screenshots/up-next-wide.png",
+    "sizes": "1280x800",
+    "type": "image/png",
+    "form_factor": "wide",
+    "label": "What to watch tonight"
+  }
+]

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Privacy — nextly</title>
+<meta name="description" content="What nextly stores, what it can't read, and what rights you have over it.">
+<link rel="canonical" href="https://nextly.tv/privacy">
+<meta name="theme-color" content="#12141b">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap site-head-in">
+    <a class="brand" href="/"><i class="brand-lamp"></i>nextly</a>
+    <nav class="site-nav">
+      <a class="nav-link" href="/">Home</a>
+      <a class="btn btn-sm btn-primary" href="https://app.nextly.tv">Open the app</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <article class="legal">
+    <h1 class="t-display">Privacy</h1>
+    <p class="legal-date">Last updated 29 July 2026</p>
+
+    <p>
+      The short version: nextly stores an encrypted blob it cannot read, and a hash that
+      identifies which blob is yours. It has no idea who you are, and no way to find out.
+    </p>
+
+    <h2>What is stored on the server</h2>
+    <ul>
+      <li>
+        <strong>An account hash.</strong> A SHA-256 hash derived from your account number.
+        It's the row key. It cannot be reversed into your account number, and it cannot
+        decrypt anything.
+      </li>
+      <li>
+        <strong>An encrypted blob.</strong> Your library — shows, watch marks, settings —
+        encrypted in your browser with AES-GCM before it is sent. The key is derived from
+        your account number and never leaves your device. Nobody operating this service can
+        read the contents, and neither can anyone who obtains a copy of the database.
+      </li>
+      <li>
+        <strong>A timestamp</strong> of the last write, used to reconcile edits made on
+        two devices.
+      </li>
+      <li>
+        <strong>Your IP address, briefly.</strong> When a new account is created, the IP
+        address is written to a short-lived log used only to rate-limit account creation.
+        Entries older than 24 hours are deleted automatically, and they are not linked to
+        any account.
+      </li>
+    </ul>
+
+    <h2>What is not stored</h2>
+    <p>
+      No email address, no name, no password, no phone number, no payment details. There is
+      no field in nextly to type any of them into. There are no cookies, no analytics, no
+      advertising or tracking scripts, no third-party embeds, and no profiling. That is why
+      you were not asked to dismiss a consent banner.
+    </p>
+
+    <h2>What stays on your device</h2>
+    <p>
+      Your account number, a local copy of your library, and a cache of episode data are
+      stored in your browser's own storage. Clearing your browser data removes them. They
+      are never transmitted in readable form.
+    </p>
+
+    <h2>Show data comes from elsewhere</h2>
+    <p>
+      Episode lists, artwork and air dates come from
+      <a href="https://www.tvmaze.com" rel="noreferrer noopener">TVmaze</a>, or from
+      <a href="https://www.themoviedb.org" rel="noreferrer noopener">TMDB</a> if you supply
+      your own API key. Your browser contacts them directly, so those requests never pass
+      through nextly's server — which means nextly does not know which shows you look up.
+      It also means those services see your IP address and the titles you request, under
+      their own privacy policies.
+    </p>
+
+    <h2>Hosting</h2>
+    <p>
+      nextly runs on Cloudflare Workers with a Cloudflare D1 database. As the hosting
+      provider, Cloudflare processes connection data such as IP addresses in order to serve
+      requests and mitigate attacks, under its own terms. Cloudflare cannot read the blob
+      either.
+    </p>
+    <p>
+      That connection data does not say what you were looking at. The pages that name
+      something specific — a show, a person, a season, an episode — carry that name in the
+      part of the address after the <code>#</code>, which browsers never send to a server. So
+      a request for a show page arrives here as a request for <code>/show</code>, and there is
+      no record anywhere, ours or Cloudflare's, connecting an address to a programme.
+    </p>
+
+    <h2>Legal basis and retention</h2>
+    <p>
+      nextly is operated from Berlin, Germany, so the GDPR applies. Storing your encrypted
+      blob is necessary to provide the service you asked for (Art. 6(1)(b) GDPR). The short-lived IP log exists for security and abuse prevention
+      (Art. 6(1)(f) GDPR) and is deleted within 24 hours. Your blob is kept until you delete
+      it.
+    </p>
+
+    <h2>Your rights, and their limits</h2>
+    <p>
+      Under the GDPR you have rights of access, rectification, erasure, restriction,
+      portability and objection. In practice:
+    </p>
+    <ul>
+      <li>
+        <strong>Access and portability</strong> are built in — the export button in Settings
+        produces your complete data as readable JSON, immediately, without asking anyone.
+      </li>
+      <li>
+        <strong>Erasure</strong> is built in — "Delete everything" in Settings removes the
+        stored blob permanently.
+      </li>
+      <li>
+        <strong>We cannot help you with any of these on request</strong>, because we cannot
+        identify which row is yours without your account number, and could not read it if we
+        could. This is a deliberate limitation, not an evasion.
+      </li>
+    </ul>
+
+    <h2>If you lose your account number</h2>
+    <p>
+      Your data becomes permanently unreadable, by you and by everyone else. There is no
+      recovery process, because a recovery process would require us to be able to decrypt
+      your data. Export a copy while you still can.
+    </p>
+
+    <h2>Changes</h2>
+    <p>
+      If this policy changes, the date at the top changes with it. The
+      <a href="https://github.com/VladimirWrites" rel="noreferrer noopener">source
+      repository</a> keeps the full history of what changed and when.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      Questions about this policy, or about data held under an account number you control:
+      <a href="mailto:write@vladimirj.dev">write@vladimirj.dev</a>.
+    </p>
+  </article>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <span>© 2026 nextly</span>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+      <a href="https://github.com/VladimirWrites" rel="noreferrer noopener">Source</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,32 @@
+# Must match the Workers Builds project name, or CI overrides it and warns on every deploy.
+name = "nextly-tv"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+# Both hostnames hit the same Worker; src/index.js decides which document to serve from the
+# hostname. Declared here rather than clicked in the dashboard so a deploy re-creates them,
+# and so it is obvious that "app." is a separate name needing its own DNS record — attaching
+# the apex does not create the subdomain.
+[[routes]]
+pattern = "nextly.tv"
+custom_domain = true
+
+[[routes]]
+pattern = "app.nextly.tv"
+custom_domain = true
+
+# Static site in ./public served via the assets binding. The Worker runs first so it can
+# handle /api/* and route every other path to the right document.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "none"
+
+# The id is an account-scoped identifier, not a secret, so it belongs in the repo.
+# Re-create with `npm run db:create` if this database is ever deleted, then apply
+# schema.sql with `npm run db:init`.
+[[d1_databases]]
+binding = "DB"
+database_name = "nextly-db"
+database_id = "826b65bb-93df-4811-a83a-fbaafcd52885"

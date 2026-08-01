@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" translate="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>nextly</title>
+<meta name="description" content="Your TV library, encrypted in this browser.">
+<!-- Both schemes, for the first paint: applyTheme() replaces these with a single value once
+     the app has read the setting, but until it runs a lone dark value painted a dark status bar
+     over a light app. The hexes are --ink in each scheme. -->
+<meta name="theme-color" content="#f1f2f6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12141b" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="dark light">
+<!-- The app is a locked door: there is nothing here for a crawler to read, and what's behind
+     it is the account holder's business alone. The site at nextly.tv is the page to index. -->
+<meta name="robots" content="noindex, nofollow">
+
+<link rel="manifest" href="/site.webmanifest">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="nextly">
+
+<link rel="preload" href="/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/app.css">
+
+<!-- Applied before first paint so a reload never flashes the wrong theme. The value is a
+     mirror of settings.theme, kept in localStorage purely so it can be read synchronously. -->
+<script>
+  try {
+    var t = localStorage.getItem("nx_theme");
+    if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+</head>
+<body>
+<div id="app"></div>
+<noscript>
+  <p class="noscript-note">nextly runs entirely in the browser — it needs JavaScript to decrypt your vault, because the server can't. <a href="https://nextly.tv">What is nextly?</a></p>
+</noscript>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

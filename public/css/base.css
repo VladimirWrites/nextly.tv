@@ -1,0 +1,511 @@
+/* tvtracker — tokens, reset, typography.
+ *
+ * Direction: "On Air". The visual language of broadcast instruments rather than of a
+ * streaming storefront. A storefront is selling you something; this is a logbook, so it's
+ * dense, warm, and legible at a glance instead of glossy.
+ *
+ * Two accents, each with exactly one job:
+ *   signal   — tungsten amber, the on-air lamp. Your progress, and anything you can act on.
+ *   phosphor — test-card cyan. Marks the single next episode, nothing else. Its scarcity is
+ *              what makes it findable.
+ * Everything else is neutral, so those two always win the eye.
+ */
+
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 400 800;
+  font-stretch: 62% 125%;
+  font-display: swap;
+  src: url("/fonts/archivo-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 400 800;
+  font-stretch: 62% 125%;
+  font-display: swap;
+  src: url("/fonts/archivo-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+    U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  color-scheme: dark light;
+
+  --ink: #12141b;
+  --panel: #191c26;
+  --panel-2: #202432;
+  --line: #2b3040;
+  --line-soft: #22263250;
+  --text: #e9ebf2;
+  --dim: #939aae;
+  --dimmer: #666d80;
+
+  --signal: #ffb020;
+  --signal-ink: #1a1200;
+  --signal-soft: #ffb0201f;
+  --phosphor: #3fd3e6;
+  --phosphor-soft: #3fd3e61f;
+  --phosphor-ink: #06232a;   /* text on a phosphor fill — flips with the theme */
+  --danger: #ff6b6b;
+
+  --tick: #3a4054;
+  --tick-faint: #262b39;
+
+  --r-sm: 6px;
+  --r: 10px;
+  --r-lg: 16px;
+
+  --shadow: 0 1px 2px #0006, 0 8px 24px -12px #0009;
+
+  /* Drawn here rather than three times over: any control that has to replace a platform
+     widget's own arrow uses this one. */
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23939aae' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  --rail: 232px;
+  --wrap: 1120px;
+
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --sans: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+:root[data-theme="light"],
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+  }
+}
+
+/* Light values are declared once and applied by either signal: the OS preference, or an
+ * explicit choice stamped on <html>. The explicit one is listed second so it always wins. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --ink: #f1f2f6;
+    --panel: #ffffff;
+    --panel-2: #f7f8fb;
+    --line: #dde0e9;
+    --line-soft: #dde0e980;
+    --text: #171a22;
+    --dim: #5b6274;
+    --dimmer: #838a9c;
+
+    --signal: #9a5b00;
+    --signal-ink: #fff8ec;
+    --signal-soft: #9a5b0014;
+    --phosphor: #00707f;
+    --phosphor-soft: #00707f14;
+    --phosphor-ink: #ffffff;
+    --danger: #c02626;
+
+    --tick: #c3c8d6;
+    --tick-faint: #e4e7ee;
+
+    --shadow: 0 1px 2px #0f172a12, 0 10px 28px -16px #0f172a30;
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b6274' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  }
+}
+
+:root[data-theme="light"] {
+  --ink: #f1f2f6;
+  --panel: #ffffff;
+  --panel-2: #f7f8fb;
+  --line: #dde0e9;
+  --line-soft: #dde0e980;
+  --text: #171a22;
+  --dim: #5b6274;
+  --dimmer: #838a9c;
+
+  --signal: #9a5b00;
+  --signal-ink: #fff8ec;
+  --signal-soft: #9a5b0014;
+  --phosphor: #00707f;
+  --phosphor-soft: #00707f14;
+  --phosphor-ink: #ffffff;
+  --danger: #c02626;
+
+  --tick: #c3c8d6;
+  --tick-faint: #e4e7ee;
+
+  --shadow: 0 1px 2px #0f172a12, 0 10px 28px -16px #0f172a30;
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b6274' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Behave like an app rather than a page: no double-tap zoom, no grey flash on tap, no
+ * rubber-band scroll revealing the browser chrome behind the layout. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+  /* The scrollbar's room is kept whether or not there is a scrollbar in it. Where scrollbars
+   * take space — Windows, and a Mac told to show them always — a page that grew long enough to
+   * need one took fifteen pixels off the viewport, and everything measured against it moved:
+   * the toolbar narrowed, and the search field, being the part that stretches, absorbed all of
+   * it. Searching something with ten results resized the box you were typing in.
+   *
+   * Costs nothing where scrollbars float over the page, which is every phone and a Mac by
+   * default. */
+  scrollbar-gutter: stable;
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--sans);
+  font-variation-settings: "wdth" 100;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-wrap: break-word;
+}
+
+h1,
+h2,
+h3,
+p,
+figure {
+  margin: 0;
+}
+
+/* Display voice: Archivo pushed wide and heavy. The width axis is what gives titles their
+ * broadcast-title-card weight without reaching for a novelty face. */
+.t-display {
+  font-variation-settings: "wdth" 112;
+  font-weight: 800;
+  letter-spacing: -0.021em;
+  line-height: 1.06;
+}
+
+.t-title {
+  font-variation-settings: "wdth" 106;
+  font-weight: 700;
+  letter-spacing: -0.014em;
+  line-height: 1.16;
+}
+
+/* Section labels: small, wide-tracked, uppercase. They name a region of the page, so they
+ * read as signage rather than as headings competing with the content. */
+.t-label {
+  font-variation-settings: "wdth" 88;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+/* Mono is reserved for fixed-width identifiers — episode codes, counts, the account number.
+ * They're data, not prose, and monospacing makes a column of them scannable. */
+.t-mono {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.t-dim {
+  color: var(--dim);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Chrome should not be selectable — dragging a finger across a row to scroll must not start
+ * a text selection. Actual content stays selectable. */
+.nav,
+.topbar,
+.btn,
+.chip,
+.seg,
+.season-head,
+.ep,
+.nav-item {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Installed, the whole interface stops being selectable — dragging a finger across a list of
+ * shows should scroll it, not highlight it. In a tab this stays off: selecting text is how the
+ * web works and an app that forbids it feels like it is hiding something.
+ *
+ * Prose is exempt, because a summary is the one thing here worth quoting, and so is anything
+ * being typed. */
+body.is-installed {
+  -webkit-user-select: none;
+  user-select: none;
+  /* Panning, and nothing else. `manipulation` — what a tab gets — drops double-tap zoom but
+   * keeps pinch; naming the two axes drops both. An installed app that zooms leaves the
+   * interface stranded at 2x with no address bar to reset it from. */
+  touch-action: pan-x pan-y;
+}
+
+body.is-installed :is(p, .show-overview, .person-bio, .ep-name, .set-hint, .gate-lede,
+  .warn, .board-note, .stat-note, .token-out, input, textarea, [contenteditable="true"]) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+:focus-visible {
+  outline: 2px solid var(--phosphor);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+::selection {
+  background: var(--signal);
+  color: var(--signal-ink);
+}
+
+/* Scoped scrollbar styling — the horizontal rails inside show pages, not the whole page. */
+.scroll-x {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+
+/* ---------- shared primitives ----------
+ * Used by both documents — the app and the public site — so they sit in the shared layer
+ * rather than in either one's stylesheet. */
+
+/* The wordmark: the dot is the on-air lamp, and it's the only place the brand asserts
+ * itself. It pulses only while a sync is actually in flight. */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-variation-settings: "wdth" 118;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-size: 19px;
+}
+
+.brand-lamp {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--signal);
+  box-shadow: 0 0 0 3px var(--signal-soft);
+  flex: none;
+}
+
+.brand-lamp.is-sync {
+  animation: lamp 1.1s ease-in-out infinite;
+}
+.brand-lamp.is-off {
+  background: var(--dimmer);
+  box-shadow: none;
+}
+
+@keyframes lamp {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* ---------- controls ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel-2);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, transform 0.06s ease;
+}
+
+.btn:hover {
+  border-color: var(--dimmer);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--signal);
+  border-color: var(--signal);
+  color: var(--signal-ink);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.07);
+  border-color: var(--signal);
+}
+
+.btn-ghost {
+  background: transparent;
+}
+
+.btn-danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--line));
+}
+
+/* The filled form, for when the destructive action is the one being confirmed rather than
+ * merely offered. */
+.btn-solid-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-solid-danger:hover {
+  background: color-mix(in srgb, var(--danger) 86%, #000);
+}
+
+.btn-sm {
+  padding: 6px 11px;
+  min-height: 34px;
+  font-size: 13px;
+}
+
+.btn-icon {
+  width: 17px;
+  height: 17px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+.field {
+  width: 100%;
+  padding: 11px 14px;
+  min-height: 44px;
+  /* iOS zooms the whole page when a focused field is under 16px, and never zooms back out —
+   * which leaves the app permanently scaled up after the very first tap on the sign-in
+   * field. 16px is the threshold, not a preference. */
+  font-size: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  color: var(--text);
+}
+
+/* A native select draws its arrow at the padding edge, so padding-right moves the text but
+ * never the arrow — it stays jammed against the border. Replacing the control with our own
+ * chevron is the only way to give it room. */
+.select {
+  width: auto;
+  min-height: 38px;
+  padding: 6px 34px 6px 12px;
+  font-size: 16px;          /* same iOS focus-zoom threshold as .field */
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: var(--chevron);
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 15px;
+}
+
+/* A date field draws its own picker button hard against the border, with no way to give it
+ * room — the same fault a native select has, and the same answer: hide the platform's control,
+ * draw the chevron where it belongs, and let the whole field open the picker rather than only
+ * the six pixels the platform chose. */
+.field-date {
+  position: relative;
+  padding-right: 40px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: var(--chevron);
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+  background-size: 15px;
+}
+
+.field-date::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.field::placeholder {
+  color: var(--dimmer);
+}
+
+.field:focus {
+  outline: none;
+  border-color: var(--signal);
+  box-shadow: 0 0 0 3px var(--signal-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

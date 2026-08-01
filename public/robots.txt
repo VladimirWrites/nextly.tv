@@ -1,0 +1,16 @@
+# nextly
+
+# The public site is meant to be read.
+User-agent: *
+Allow: /
+
+# The app is a locked door. There is nothing behind it a crawler can reach, and the
+# in-app routes all serve the same empty shell.
+Disallow: /app
+Disallow: /library
+Disallow: /search
+Disallow: /you
+Disallow: /show/
+Disallow: /api/
+
+Sitemap: https://nextly.tv/sitemap.xml

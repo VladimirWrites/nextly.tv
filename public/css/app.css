@@ -1,0 +1,3689 @@
+/* tvtracker — components.
+ * Every rule here is a single class. Nothing is styled by element name, so a later rule
+ * can't accidentally cancel an earlier one through specificity. */
+
+/* ---------- shell ---------- */
+
+.shell {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+/* Grid and flex children default to min-width:auto, so they refuse to shrink below their
+ * content's intrinsic width. One long episode title was enough to push the whole column
+ * past the viewport, which reads as the app being zoomed in. */
+.shell > * {
+  min-width: 0;
+}
+
+/* The content column composites as one layer, so nothing inside it can paint above the
+ * navigation however it is stacked. Without this, any z-index in the page — a sticky bar, a
+ * backdrop-filter, a layer the compositor promotes on its own during a fast scroll — is
+ * measured against the same scale as the rail and can cover it.
+ *
+ * isolation, not contain or transform: those would make this a containing block for fixed
+ * descendants and the A-Z index would stop being fixed to the window. */
+.shell-main {
+  isolation: isolate;
+}
+
+/* ---- the edges of the screen ----
+ *
+ * Every document asks for viewport-fit=cover, so the page is laid out under the status bar,
+ * the home indicator and whatever the hardware has taken out of the corners. That is what
+ * makes the artwork reach the top of a phone; it also means nothing can be placed against a
+ * physical edge without checking what is there.
+ *
+ * The bottom was handled from the start. The top and the sides were not, so on a notched
+ * phone the toolbar's contents sat under the status bar, and in landscape the content column
+ * ran under the notch.
+ *
+ * `max()` rather than adding: the gutter is already 16px, and a 44px landscape inset should
+ * replace it rather than sit on top of it and inset the page by sixty. */
+:root {
+  --edge-t: env(safe-area-inset-top, 0px);
+  --edge-b: env(safe-area-inset-bottom, 0px);
+  --edge-l: max(16px, env(safe-area-inset-left, 0px));
+  --edge-r: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* ---- the desktop title bar ----
+ *
+ * Installed on a desktop with window-controls-overlay granted, the platform keeps only its
+ * close and resize buttons and hands the rest of the title bar to the page. This is what fills
+ * it: the wordmark, and a drag region so the window moves by its own name.
+ *
+ * The same tinted blur the toolbar uses. Content scrolls underneath, so the strip needs
+ * something; a solid panel and a rule drew a band across the top belonging to neither the app
+ * nor the system, and full transparency let posters slide past behind the wordmark.
+ *
+ * There is a known cost, chosen rather than missed. Where this meets the toolbar you can see a
+ * faint line while the page is scrolling, and it is not a border: a backdrop-filter blurs only
+ * what lies behind its own box, and a blur kernel has to sample past its edges. At the boundary
+ * there is nothing further to sample, so it clamps and repeats the last row it has. Two blurred
+ * boxes flush together are blurring different truncated slices of the same backdrop with
+ * neither able to see into the other's region, so the row where they meet does not agree.
+ *
+ * Merging them into one surface would remove it, and does not work here: three different bars
+ * can occupy this corner depending on route — the toolbar, the show page's own bar whose blur
+ * fades in with the scroll, and on Up next and You nothing at all. The strip would end up glass
+ * on some tabs and solid on others, which is more noticeable than the seam.
+ *
+ * Every measurement comes from env(titlebar-area-*) rather than being assumed, because the
+ * controls sit at the right on Windows and at the left on macOS: the strip is whatever is left
+ * over, and which end that is is not ours to guess. The values are read once into custom
+ * properties so the rest refers to them, which is also what makes the whole thing checkable.
+ *
+ * Drawn only when the overlay is actually granted — it can be switched off while the app is
+ * running, so the flag is kept in step by a geometrychange listener rather than read at boot. */
+:root {
+  --wco-x: env(titlebar-area-x, 0px);
+  --wco-y: env(titlebar-area-y, 0px);
+  --wco-h: env(titlebar-area-height, 0px);
+  --wco-w: env(titlebar-area-width, 100%);
+  --wco-off: calc(var(--wco-y) + var(--wco-h));
+}
+
+.titlebar {
+  display: none;
+}
+
+:root[data-wco] .titlebar {
+  display: flex;
+  align-items: center;
+  position: fixed;
+  top: var(--wco-y);
+  left: var(--wco-x);
+  width: var(--wco-w);
+  height: var(--wco-h);
+  padding: 0 14px;
+  z-index: 40;
+  background: color-mix(in srgb, var(--ink) 88%, transparent);
+  backdrop-filter: blur(12px);
+  /* The whole strip drags. Anything interactive put here would have to opt back out with
+     app-region: no-drag, which is a good reason to keep it to the wordmark. */
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+/* The brand is up in the strip now, so the rail must not print it twice. */
+:root[data-wco] .nav-brand {
+  display: none;
+}
+
+/* Everything else starts below the strip. */
+:root[data-wco] .shell-main {
+  padding-top: var(--wco-off);
+}
+
+:root[data-wco] .topbar {
+  top: var(--wco-off);
+}
+
+/* Scoped to the desktop layout deliberately: the overlay is a desktop-window feature, but a
+   desktop window can be dragged narrow, and down there the nav is a bar welded to the bottom
+   edge. Giving that a `top` as well would stretch it up the side of the window. */
+@media (min-width: 900px) {
+  :root[data-wco] .nav {
+    top: var(--wco-off);
+    height: calc(100dvh - var(--wco-off));
+  }
+}
+
+.main {
+  --gutter: 16px;
+  /* The show page's floating bar stands as tall as the topbar on every other screen: 12px
+     above and below a 44px control, and the hairline under it. Moving between a list and a
+     show should not move the app's top edge.
+     The status bar is part of that height, since everything measuring against this is asking
+     how far down the page actually begins. */
+  --bar-h: calc(69px + var(--edge-t));
+  padding: 16px var(--edge-r) calc(84px + var(--edge-b)) var(--edge-l);
+  max-width: var(--wrap);
+  width: 100%;
+  min-width: 0;
+  margin: 0 auto;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  /* The bar's own background runs up behind the status bar — that is the point of covering —
+     and its contents start below it. */
+  padding: calc(12px + var(--edge-t)) 0 12px;
+  background: color-mix(in srgb, var(--ink) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+
+/* Held to the same width as .main, so what sits in the bar lines up with what sits below it.
+ *
+ * The row stands as tall as a control whether or not this screen has any, so the bar is the
+ * same height everywhere. Otherwise the one screen with buttons in it has a taller bar than
+ * the rest and the app appears to shift as you move between them. */
+.topbar-inner {
+  --bar-control: 44px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--bar-control);
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 0 var(--edge-r) 0 var(--edge-l);
+}
+
+.topbar-title {
+  font-size: 17px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Beside the name, not under it. */
+.topbar-count {
+  flex: 1;
+  min-width: 0;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* A route's own controls. Empty and gone for the screens that don't have any. */
+.topbar-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.topbar-actions:empty {
+  display: none;
+}
+
+/* Where you came from, on the screens the nav cannot reach. The lamp stands down when it is
+ * filled: two marks at the start of the bar, one of which is not a control, reads as clutter. */
+.topbar-lead:empty {
+  display: none;
+}
+
+.topbar-lead:not(:empty) + .brand {
+  display: none;
+}
+
+.topbar-back {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  margin-left: -8px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--r);
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.topbar-back:hover {
+  background: var(--panel-2);
+}
+
+/* Searching hands the whole bar to the field. */
+.topbar.is-searching .brand,
+.topbar.is-searching .topbar-title,
+.topbar.is-searching .topbar-count {
+  display: none;
+}
+
+.topbar.is-searching .topbar-actions {
+  flex: 1 1 auto;
+  margin-left: 0;
+}
+
+/* ---------- navigation ----------
+ * Phone: a bottom bar within thumb reach. Desktop: the same four destinations as a left
+ * rail. Same markup, same order, so the app doesn't relearn itself across sizes. */
+
+.nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  padding: 6px max(6px, env(safe-area-inset-right, 0px)) calc(6px + var(--edge-b)) max(6px, env(safe-area-inset-left, 0px));
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
+}
+
+/* Tapped into, not navigated to: the tab bar comes off, and the room it was holding goes
+ * back to the page. Phones only — the desktop rail is not in anyone's way. */
+@media (max-width: 899px) {
+  body.no-nav .nav {
+    display: none;
+  }
+
+  body.no-nav .main {
+    padding-bottom: calc(24px + var(--edge-b));
+  }
+
+  /* Toasts sit above the bar that is no longer there. */
+  body.no-nav .toast {
+    bottom: calc(24px + var(--edge-b));
+  }
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 4px;
+  border: 0;
+  background: none;
+  border-radius: var(--r);
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 10.5px;
+  font-variation-settings: "wdth" 92;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  transition: color 0.14s ease, background 0.14s ease;
+}
+
+.nav-item:hover {
+  color: var(--text);
+}
+
+.nav-item.is-on {
+  color: var(--signal);
+  background: var(--signal-soft);
+}
+
+.nav-icon {
+  width: 21px;
+  height: 21px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav-count {
+  position: absolute;
+  transform: translate(14px, -10px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--phosphor);
+  color: var(--phosphor-ink);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+@media (min-width: 900px) {
+  .shell {
+    grid-template-columns: var(--rail) 1fr;
+  }
+
+  /* Fixed, not sticky. A sticky rail exactly one viewport tall exhausts its own range at
+   * maximum scroll: it is pinned for the whole page and then, in the last fraction of a
+   * pixel, is not. On Windows that showed as the icons jittering as the scroll hit the end;
+   * in the installed macOS app, rubber-band overscroll carried it further and pulled Up next
+   * up out of reach. Fixed positioning doesn't participate in the scroll at all.
+   *
+   * The grid column is a fixed length, so it keeps its width with nothing in it. */
+  /* The rail is out of flow, so the content has to be told which column it belongs to —
+   * otherwise it is auto-placed into the first one and squeezed into the rail's width.
+   * Only inside this query: on a one-column grid, asking for column 2 would invent one. */
+  .shell-main {
+    grid-column: 2;
+  }
+
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: auto;
+    width: var(--rail);
+    height: 100dvh;
+    grid-template-columns: 1fr;
+    grid-auto-rows: max-content;
+    gap: 4px;
+    padding: 20px 14px;
+    border-top: 0;
+    border-right: 1px solid var(--line);
+    background: var(--panel);
+    backdrop-filter: none;
+    align-content: start;
+  }
+
+  /* Tapped into, not navigated to: the tab bar comes off, and the room it was holding goes
+ * back to the page. Phones only — the desktop rail is not in anyone's way. */
+@media (max-width: 899px) {
+  body.no-nav .nav {
+    display: none;
+  }
+
+  body.no-nav .main {
+    padding-bottom: calc(24px + var(--edge-b));
+  }
+
+  /* Toasts sit above the bar that is no longer there. */
+  body.no-nav .toast {
+    bottom: calc(24px + var(--edge-b));
+  }
+}
+
+.nav-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 11px 13px;
+    font-size: 14px;
+    font-variation-settings: "wdth" 100;
+  }
+
+  .nav-brand {
+    padding: 4px 13px 22px;
+  }
+
+  .main {
+    --gutter: 32px;
+    padding: 24px 32px 64px;
+  }
+
+  /* Hidden on desktop, where the rail carries the brand — unless a route has put something
+   * in it, which is then the only place that thing exists.
+   *
+   * Controls, or a way back. A person, a season and an episode are not on the rail and cannot
+   * be: they are places you tapped into. The arrow in this bar is how you leave them, and with
+   * the bar hidden there was nothing on the screen that went back at all. */
+  .topbar {
+    display: none;
+  }
+
+  .topbar.has-actions,
+  .topbar:has(.topbar-lead:not(:empty)) {
+    display: block;
+  }
+
+  .topbar-inner {
+    padding: 0 32px;
+  }
+
+  .nav-count {
+    position: static;
+    transform: none;
+    margin-left: auto;
+  }
+
+}
+
+@media (max-width: 899px) {
+  .nav-brand {
+    display: none;
+  }
+}
+
+/* A chip that plays something. The triangle carries the meaning, so the chip itself stays as
+ * quiet as the others rather than becoming a second primary button on the page. */
+.chip.is-play {
+  padding-left: 8px;
+}
+
+.chip-icon {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+  stroke: none;
+  flex: none;
+}
+
+/* An empty links row takes no space: most shows have no trailer to add to it. */
+.show-links:empty {
+  display: none;
+}
+
+/* Two dates, stacked on a phone and side by side where there is room. */
+.date-fields {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+@media (min-width: 520px) {
+  .date-fields:has(.date-field + .date-field) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.date-field {
+  display: grid;
+  gap: 6px;
+}
+
+/* ---------- your year ----------
+ * A page of numbers, so the numbers are the design: mono, large, and given room. Everything
+ * else on it stays as quiet as the rest of the app. */
+
+.stat-hero {
+  padding: 8px 0 4px;
+}
+
+.stat-hero-n {
+  font-size: clamp(30px, 8vw, 52px);
+  line-height: 1.05;
+  color: var(--signal);
+}
+
+.stat-hero-l {
+  margin-top: 6px;
+  color: var(--dim);
+  font-size: 15px;
+}
+
+/* ---- the strip of days ---- */
+
+/* The panel holds still; the strip inside it is what moves. */
+.hm-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  position: relative;
+}
+
+/* One column a week, sharing the width equally — with a floor, so the strip still scrolls on a
+ * phone rather than shrinking a day to three pixels. */
+.hm-strip {
+  min-width: min-content;
+}
+
+.hm-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--weeks), minmax(10px, 1fr));
+  gap: 3px;
+}
+
+/* Labels are positioned over the strip rather than laid out beside each other: a week is
+ * eleven pixels wide and a month's name is not. */
+.hm-months {
+  position: relative;
+  height: 12px;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.hm-month {
+  position: absolute;
+  top: 0;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--dimmer);
+  white-space: nowrap;
+}
+
+.hm-week {
+  display: grid;
+  grid-template-rows: repeat(7, auto);
+  gap: 3px;
+}
+
+/* Four weights, not a gradient: an eye can read some/more/most and cannot read seven from
+ * eight. */
+/* Square, at whatever width the column turned out to be. */
+.hm-cell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: var(--tick-faint);
+}
+
+.hm-cell.is-1 { background: color-mix(in srgb, var(--signal) 35%, var(--tick-faint)); }
+.hm-cell.is-2 { background: color-mix(in srgb, var(--signal) 65%, var(--tick-faint)); }
+.hm-cell.is-3 { background: var(--signal); }
+.hm-cell.is-void { background: none; }
+
+.hm-key {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  font-size: 11px;
+}
+
+.hm-key .t-dim {
+  color: var(--dimmer);
+  font-size: 10px;
+}
+
+/* The key's own swatches keep the old fixed size: they are a legend, not part of the picture,
+ * and stretching them with the strip would make them the biggest thing in it. */
+.hm-key .hm-cell {
+  width: 11px;
+  height: 11px;
+  aspect-ratio: auto;
+  flex: none;
+}
+
+/* ---- when you watch ---- */
+
+.stat-period {
+  margin-bottom: 18px;
+}
+
+.pc-panel {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 10px;
+}
+
+.pc-grid {
+  display: grid;
+  gap: 3px;
+  min-width: 300px;
+}
+
+.pc-row {
+  display: grid;
+  grid-template-columns: 30px repeat(24, 1fr);
+  gap: 3px;
+  align-items: center;
+}
+
+.pc-day {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dimmer);
+}
+
+.pc-day.is-peak {
+  color: var(--signal);
+}
+
+/* Every hour of every day gets a cell, so the grid reads as a week whether or not anything
+ * happened in it. An empty one is a faint tick rather than a hole. */
+.pc-cell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: var(--tick-faint);
+}
+
+/* Scaled by area — a count four times another looks four times as big, which scaling the
+ * radius would have made sixteen. */
+.pc-cell.is-on {
+  background: color-mix(in srgb, var(--signal) calc(var(--fill) * 100%), var(--tick-faint));
+  transform: scale(calc(0.55 + var(--fill) * 0.45));
+}
+
+.pc-cell.is-peak {
+  background: var(--phosphor);
+}
+
+/* The clock along the bottom, positioned rather than laid out: four labels over twenty-four
+ * columns line up with nothing otherwise. The offset clears the day names. */
+.pc-hours {
+  position: relative;
+  height: 12px;
+  margin: 8px 0 0 33px;
+}
+
+.pc-hour {
+  position: absolute;
+  top: 0;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--dimmer);
+  transform: translateX(-50%);
+}
+
+/* ---- bars ---- */
+
+/* Proportions rather than content widths, so every row in a panel divides at the same two
+ * places. Sized from the row — which is the same for all of them — where `auto` measured each
+ * row's own figure and left the tracks starting and ending wherever that landed. */
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(0, 34%) 1fr 72px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+div.bar-row {
+  cursor: default;
+}
+
+.bar-name {
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--tick-faint);
+  overflow: hidden;
+}
+
+.bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--signal);
+}
+
+.bar-fill.is-cool {
+  background: var(--phosphor);
+}
+
+.bar-val {
+  font-size: 11.5px;
+  color: var(--dim);
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* ---- records ---- */
+
+.rec-grid {
+  display: grid;
+  gap: 18px;
+}
+
+@media (min-width: 620px) {
+  .rec-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.rec-v {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--signal);
+}
+
+.rec-k {
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+.rec-note {
+  margin-top: 2px;
+  color: var(--dimmer);
+  font-size: 12px;
+}
+
+/* ---- the leaderboard nobody can read ---- */
+
+.board {
+  display: grid;
+  gap: 8px;
+}
+
+.board-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  border-radius: var(--r);
+  background: var(--panel-2);
+  color: var(--dimmer);
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+.board-row.is-you {
+  background: var(--signal-soft);
+  color: var(--text);
+  letter-spacing: normal;
+}
+
+.board-note {
+  margin-top: 14px;
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.stat-note {
+  margin-top: 18px;
+  color: var(--dimmer);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+/* A line of text that has not arrived. Sized by the box it sits in, so it inherits whatever
+ * room that box reserves. */
+.skeleton-line {
+  display: block;
+  width: 85%;
+  height: 100%;
+  min-height: 12px;
+  border-radius: 5px;
+}
+
+/* A picture on its way in. The class is only ever put on one that was not already decoded, so a
+ * row coming back from cache does not fade for the sake of fading. */
+.img-fade {
+  transition: opacity 0.22s ease;
+}
+
+.img-fade.is-coming {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .img-fade {
+    transition: none;
+  }
+
+  .img-fade.is-coming {
+    opacity: 1;
+  }
+}
+
+/* ---------- pressed ----------
+ * What a native list does under a finger: the thing you are touching moves, slightly, for as
+ * long as you hold it. Without it a tap is answered only by the next screen arriving, which on
+ * a slow load is no answer at all.
+ *
+ * Transform rather than colour, because these sit on artwork as often as on panels, and 0.98
+ * rather than anything more: this is feedback, not a bounce. */
+@media (hover: none) {
+  .card:active,
+  .shelf-card:active,
+  .result:active,
+  .detail-line:active,
+  .ep:active,
+  .season-head:active {
+    transform: scale(0.98);
+  }
+}
+
+.card,
+.shelf-card,
+.result,
+.detail-line,
+.ep,
+.season-head {
+  transition: transform 0.09s ease;
+}
+
+/* Buttons press rather than shrink: they are small enough that scaling reads as a wobble. */
+.btn:active,
+.chip:active,
+.lib-btn:active,
+.sheet-opt:active {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .shelf-card,
+  .result,
+  .detail-line,
+  .ep,
+  .season-head {
+    transition: none;
+  }
+
+  .card:active,
+  .shelf-card:active,
+  .result:active,
+  .detail-line:active,
+  .ep:active,
+  .season-head:active,
+  .btn:active,
+  .chip:active,
+  .lib-btn:active,
+  .sheet-opt:active {
+    transform: none;
+  }
+}
+
+/* ---------- controls ----------
+ * .btn, .field and the wordmark live in base.css: the public site needs them too. */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--dim);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chip.is-on {
+  border-color: var(--signal);
+  background: var(--signal-soft);
+  color: var(--signal);
+}
+
+.row-gap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* The pass a show is on. Only rendered above the first, so it never states the obvious. */
+.pass-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--signal) 45%, transparent);
+  border-radius: 999px;
+  background: var(--signal-soft);
+  color: var(--signal);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.card-pass {
+  position: absolute;
+  left: 7px;
+  top: 7px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--signal) 92%, transparent);
+  color: var(--signal-ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Where a show is in its own life. Sits along the bottom of the poster, out of the way of
+ * the waiting count and the rewatch tag which both claim the top corners. */
+.card-life {
+  position: absolute;
+  left: 7px;
+  bottom: 7px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 82%, transparent);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Finished is an achievement, not a status, so it reads as one. */
+.card-life.is-done {
+  border-color: color-mix(in srgb, var(--phosphor) 55%, transparent);
+  color: var(--phosphor);
+}
+
+/* ---------- library tools ---------- */
+
+/* One height for everything in the bar, so swapping a button for the search field doesn't
+ * change how tall the bar is. .btn stops at 42 and .field works out to 48, which is where the
+ * jump came from. */
+.lib-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: var(--bar-control);
+  height: var(--bar-control);
+  min-height: 0;
+  padding: 0 12px;
+}
+
+/* Marked when it holds something other than the default — which is also when it carries a
+ * word rather than the icon alone. */
+.lib-btn-icon {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The order's name, wherever the bar has room for it. Hidden rather than conditional, so the
+ * button says the same thing at a given size whatever is picked. */
+.lib-btn-label {
+  display: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 700px) {
+  .lib-btn-label {
+    display: block;
+  }
+}
+
+.lib-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--bar-control);
+  min-height: 0;
+  padding: 0 14px;
+}
+
+/* Clear of the filter chips above. The row of controls used to carry this space and then
+ * moved into the toolbar, which left the posters sitting directly against the chips.
+ *
+ * The index is pinned to the device, so its width is reserved here rather than being sat
+ * beside — and reserved whether or not the index is currently showing. The grid is auto-fill,
+ * so 24px back would sometimes fit another column and every card would shrink the moment the
+ * index stepped aside for the search. */
+.lib-results {
+  margin-top: 18px;
+  padding-right: 24px;
+}
+
+/* ---------- A to Z index ----------
+ * Only under the alphabetical sort, where a letter means a position. Narrow enough to sit in
+ * the gutter beside the grid, and it scrubs under a dragging thumb. */
+/* Fixed to the device, not to the page: an index that scrolls away is a list of letters,
+ * and the point of it is to be somewhere your thumb can always find. It spans the height
+ * between the topbar and the tab bar, with the letters centred in that run.
+ *
+ * Not sticky. A sticky strip a full viewport tall runs out of range at the end of the scroll
+ * and starts drifting, which is the same fault the nav rail had. */
+.az {
+  position: fixed;
+  /* Below the toolbar, measured rather than guessed. This was a flat 60px from before the bar
+     was standardised at 69px everywhere, so the first letter sat five pixels underneath it —
+     which reads as A being clipped, because it is: by the bar, not by the strip.
+
+     --bar-h carries the status bar, and --wco-off the desktop title bar, so the strip follows
+     the toolbar under both. It is fixed to the window rather than laid out with the page, so
+     nothing moves it on its own: without --wco-off it kept its place while everything around
+     it dropped by the height of the title bar, which reads as the letters moving up into the
+     toolbar — and they got no more room for it, because the box never changed. */
+  top: calc(var(--wco-off) + var(--bar-h) + 6px);
+  bottom: calc(78px + var(--edge-b));
+  right: 2px;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* `safe` matters here rather than being a nicety. Centred flex content that overflows is
+   * clipped at BOTH ends and the overflowing start cannot be scrolled to at all — so in
+   * landscape, where the strip is a couple of hundred pixels tall, the first letters were
+   * unreachable however hard you scrolled. `safe` gives up the centring exactly when there is
+   * too much to centre, and packs to the start instead. */
+  justify-content: safe center;
+  gap: 1px;
+  padding: 4px 2px;
+  touch-action: none;
+  user-select: none;
+  /* A short window — a phone in landscape, mostly — leaves less height than a library in
+   * several scripts needs. It scrolls, and watchIndex keeps the current letter inside it. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.az::-webkit-scrollbar {
+  display: none;
+}
+
+/* Each key owns a fixed box and only the glyph inside it changes size. Letting the type
+ * resize the row would shift every letter below it as you scrolled, which is the sort of
+ * movement the eye follows instead of the content. */
+.az-key {
+  border: 0;
+  background: none;
+  padding: 0;
+  width: 20px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.12s ease, font-size 0.12s ease;
+}
+
+.az-key:hover {
+  color: var(--text);
+}
+
+/* Where you are, not merely where you could go — readable at a glance from across the
+ * screen, which is the point of an index you scrub with a thumb. */
+.az-key.is-here {
+  color: var(--signal);
+  font-size: 17px;
+}
+
+/* Twenty-seven keys is a tall strip. On a short window it would run off the bottom and take
+ * the end of the alphabet with it, so the keys tighten rather than the list truncating. */
+@media (max-height: 700px) {
+  .az-key {
+    height: 16px;
+    font-size: 11px;
+  }
+
+  .az-key.is-here {
+    font-size: 15px;
+  }
+}
+
+/* Placed after the base rules rather than in the shell's desktop block near the top of this
+ * file: same specificity means source order decides, and up there it lost every time. */
+@media (min-width: 900px) {
+  /* No tab bar up here, so it runs the full height — down to the title bar where there is one.
+   * The strip is drawn over the window rather than laid out in the page, and this is fixed to
+   * the window too, so without the offset the letters simply carried on underneath it: they
+   * looked like they had moved up into the bar, and gained no room by it, because the box had
+   * not changed at all.
+   *
+   * Held level with the right edge of the content rather than the window, which on a wide
+   * screen is somewhere else entirely. */
+  .az {
+    top: var(--wco-off);
+    bottom: 0;
+    right: max(6px, calc((100vw - var(--rail) - var(--wrap)) / 2));
+    gap: 2px;
+  }
+
+  .az-key {
+    width: 24px;
+    height: 22px;
+    font-size: 13.5px;
+  }
+
+  .az-key.is-here {
+    font-size: 20px;
+  }
+}
+
+/* ---------- section headers ---------- */
+
+.sect {
+  margin: 30px 0 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+/* Only the first section on a screen sits tight to the top. Left unscoped this matched any
+ * section that happened to be the first child of a wrapper — which is why "Coming up", the
+ * first thing inside its own div, lost its spacing and collided with the list above it. */
+.main > .sect:first-child,
+.stack > .sect:first-child {
+  margin-top: 4px;
+}
+
+.sect-count {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--dimmer);
+  margin-left: auto;
+}
+
+/* ---------- the barcode ----------
+ * The signature element. One tick per episode, grouped by season, so an entire show's
+ * history is legible in the space a percentage would occupy — where you stopped, what you
+ * skipped, how much is left, and which single episode comes next. */
+
+.bc {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.bc-season {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+}
+
+.bc-tick {
+  width: 3px;
+  height: 12px;
+  border-radius: 1px;
+  background: var(--tick);
+  flex: none;
+}
+
+.bc-tick.is-w {
+  background: var(--signal);
+}
+
+.bc-tick.is-x {
+  background: var(--tick-faint);
+  height: 7px;
+}
+
+/* Seen on an earlier pass, not yet on this one: same amber, half the bar. Reads as the
+ * previous run showing through under the current one. */
+.bc-tick.is-s {
+  background: var(--signal);
+  opacity: 0.42;
+  height: 6px;
+}
+
+/* A whole season in one mark, for the seasons that have nothing to say bar by bar. Wider
+ * than a tick so it reads as a run rather than an episode. */
+.bc-lump {
+  width: 14px;
+  height: 12px;
+  flex: none;
+  border-radius: 2px;
+  background: var(--tick);
+}
+
+.bc-lump.is-w {
+  background: var(--signal);
+}
+
+.bc-lump.is-s {
+  background: var(--signal);
+  opacity: 0.42;
+  height: 6px;
+}
+
+.bc-lump.is-x {
+  background: var(--tick-faint);
+  height: 7px;
+}
+
+/* Exactly one tick per show is cyan: the episode you'd play next. That scarcity is what
+ * makes it findable across a whole grid of shows. */
+.bc-tick.is-next {
+  background: var(--phosphor);
+  box-shadow: 0 0 0 1.5px var(--phosphor-soft);
+}
+
+/* A page of a long season at a time. */
+.season-more {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: none;
+  color: var(--signal);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.season-more:hover {
+  background: var(--panel-2);
+}
+
+/* Full-size barcode on the show page: taller, interactive, seasons labelled. */
+.bc-full {
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.bc-full .bc-season {
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bc-ticks {
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+}
+
+.bc-full .bc-tick {
+  width: 9px;
+  height: 30px;
+  border-radius: 2px;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+  transition: transform 0.1s ease, filter 0.1s ease;
+}
+
+.bc-full .bc-tick:hover {
+  transform: scaleY(1.14);
+  filter: brightness(1.2);
+}
+
+.bc-full .bc-tick.is-x {
+  height: 18px;
+  cursor: default;
+}
+
+.bc-full .bc-tick.is-s {
+  height: 15px;
+}
+
+.bc-num {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dimmer);
+  text-align: center;
+}
+
+.bc-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 11.5px;
+  color: var(--dim);
+}
+
+.bc-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bc-swatch {
+  width: 3px;
+  height: 11px;
+  border-radius: 1px;
+  background: var(--tick);
+  flex: none;
+}
+
+.bc-swatch.is-w {
+  background: var(--signal);
+}
+
+.bc-swatch.is-next {
+  background: var(--phosphor);
+}
+
+.bc-swatch.is-x {
+  background: var(--tick-faint);
+  height: 7px;
+}
+
+.bc-swatch.is-s {
+  background: var(--signal);
+  opacity: 0.42;
+  height: 6px;
+}
+
+/* ---------- up next ---------- */
+
+/* A column, not a dashboard. Capping it keeps the hero a composed card instead of a band
+ * stretched across a wide window, and holds the blurb to a readable measure. */
+.stack {
+  max-width: 880px;
+}
+
+/* The hero: one show, one episode, one action. This is the question the app exists to
+ * answer, so it gets the whole top of the screen rather than a slot in a grid. */
+.hero {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center 22%;
+  opacity: 0.34;
+}
+
+/* A poster standing in for a missing backdrop. Blurred and overscaled so it reads as
+ * atmosphere rather than as a stretched image. */
+.hero-bg.is-poster {
+  background-position: center 30%;
+  filter: blur(26px) saturate(1.25);
+  transform: scale(1.18);
+  opacity: 0.42;
+}
+
+/* Button that has to look like the heading it replaces. */
+.hero-show {
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.hero-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, var(--panel) 26%, color-mix(in srgb, var(--panel) 72%, transparent) 62%, color-mix(in srgb, var(--panel) 30%, transparent));
+}
+
+.hero-body {
+  position: relative;
+  display: flex;
+  gap: 18px;
+  padding: 18px;
+  min-width: 0;
+}
+
+.hero-poster {
+  width: 92px;
+  flex: none;
+  align-self: flex-start;
+  border-radius: var(--r);
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  background: var(--panel-2);
+  box-shadow: var(--shadow);
+}
+
+.hero-text {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.hero-show {
+  font-size: clamp(21px, 5.4vw, 34px);
+}
+
+.hero-ep {
+  font-size: 15px;
+  color: var(--text);
+}
+
+.hero-code {
+  color: var(--phosphor);
+  font-weight: 700;
+}
+
+.hero-meta {
+  font-size: 12.5px;
+  color: var(--dim);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.hero-blurb {
+  font-size: 13.5px;
+  color: var(--dim);
+  max-width: 64ch;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+/* The barcode closes the hero: the show's whole history sits under the single episode the
+ * card is offering, so the answer never arrives without its context. */
+.hero-strip {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  padding: 13px 18px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+}
+
+.hero-strip .bc-tick {
+  width: 5px;
+  height: 17px;
+  border-radius: 1.5px;
+}
+
+.hero-strip .bc-tick.is-x {
+  height: 10px;
+}
+
+.hero-strip .bc-tick.is-s {
+  height: 9px;
+}
+
+.hero-strip .bc-season {
+  gap: 3px;
+}
+
+.hero-strip .bc {
+  gap: 10px;
+}
+
+.hero-strip-n {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--dim);
+  flex: none;
+}
+
+@media (min-width: 700px) {
+  .hero-strip {
+    padding: 15px 26px;
+  }
+}
+
+@media (max-width: 559px) {
+  .hero-poster {
+    width: 78px;
+  }
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (min-width: 700px) {
+  .hero-body {
+    padding: 26px;
+    gap: 24px;
+  }
+  .hero-poster {
+    width: 132px;
+  }
+}
+
+/* Queue rows: everything else waiting. Compact, uniform, scannable — the opposite of the
+ * hero on purpose, because ranking only reads if the ranks look different. */
+.queue {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qrow {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 13px;
+  padding: 9px 12px 9px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+}
+
+.qrow:hover {
+  border-color: var(--dimmer);
+}
+
+.qrow-poster {
+  width: 42px;
+  flex: none;
+  align-self: flex-start;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--r-sm);
+  object-fit: cover;
+  background: var(--panel-2);
+}
+
+.qrow-text {
+  min-width: 0;
+  flex: 1;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.qrow-name {
+  font-size: 14.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qrow-sub {
+  font-size: 12.5px;
+  color: var(--dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qrow-mark {
+  flex: none;
+}
+
+/* ---------- coming up ----------
+ * A schedule, so it's grouped by day and the day is the heading. Reuses the queue row: a
+ * future episode and a waiting one are the same object, just on different sides of today. */
+
+.sched-day + .sched-day {
+  margin-top: 18px;
+}
+
+.sched-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 0 2px 8px;
+}
+
+.sched-date {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.sched-when {
+  font-size: 12px;
+  color: var(--dimmer);
+  margin-left: auto;
+}
+
+.premiere-tag {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--phosphor) 45%, transparent);
+  background: var(--phosphor-soft);
+  color: var(--phosphor);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+/* ---------- library ---------- */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 14px;
+}
+
+@media (min-width: 700px) {
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+    gap: 20px;
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card-art {
+  position: relative;
+  border-radius: var(--r);
+  overflow: hidden;
+  aspect-ratio: 2 / 3;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  transition: border-color 0.14s ease;
+}
+
+.card:hover .card-art {
+  border-color: var(--signal);
+}
+
+.card-poster {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Artwork stand-in. A title has no size at which it fits a 52px poster slot, so this shows
+ * initials instead; the full name is always on the row beside it. */
+.card-fallback {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: var(--panel-2);
+  color: var(--dimmer);
+}
+
+.card-initials {
+  font-variation-settings: "wdth" 112;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.card-fallback.is-sm .card-initials { font-size: 15px; }
+.card-fallback.is-md .card-initials { font-size: 30px; }
+.card-fallback.is-lg .card-initials { font-size: 40px; }
+
+/* Count of aired-but-unwatched episodes. Cyan, like the next-up tick — same meaning, so
+ * the same colour. */
+.card-badge {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--phosphor);
+  color: var(--phosphor-ink);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
+}
+
+.card-title {
+  font-size: 13.5px;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--dimmer);
+}
+
+/* ---------- show detail ---------- */
+
+/* Always on screen so there is a way back and a sense of place; the name only joins it once
+ * the real title has scrolled away, so the two are never both on screen. */
+/* ---- a page that caps its own children ----
+ * Everywhere else .main is capped at --wrap and centred. Here the bar and the cover have to
+ * reach both edges of the column however wide the window gets — a backdrop that stops at
+ * 1120px and leaves bands either side reads as a bug, and it got worse the wider the window
+ * went. So this page is uncapped and each child caps itself instead. */
+.main.is-show {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Everything below the cover is one capped column. Grouped rather than capped child by
+ * child: a .panel draws its own border, and padding it individually would put that border
+ * against the screen edge instead of inset from it. */
+.show-rest {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.show-bar {
+  /* 0 while the real title is still on screen, 1 once it has gone under. Set from the scroll
+   * position rather than switched by a class, so the bar arrives with the scroll instead of
+   * appearing between one frame and the next. */
+  --t: 0;
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  /* The negative bottom margin pulls the artwork up underneath, so the bar floats over the
+   * cover from the first frame instead of sitting on a band above it. */
+  margin: -16px 0 calc(-1 * var(--bar-h));
+  height: var(--bar-h);
+  /* --bar-h already carries the status bar, and box-sizing is border-box, so this pushes the
+     row down into the visible part rather than making the bar taller. The artwork keeps
+     running the whole way up behind it. */
+  padding-top: var(--edge-t);
+}
+
+/* The row inside, held to the same width as the rest of the page so the back arrow sits
+ * above the poster rather than out at the window's edge. */
+.show-bar-inner {
+  max-width: var(--wrap);
+  height: 100%;
+  margin: 0 auto;
+  /* Same insets and the same gap as .topbar-inner, so the arrow and the name land where the
+     other screens put theirs rather than 4px off. */
+  padding: 0 var(--edge-r) 0 var(--edge-l);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Two layers, cross-fading. Keeping them apart is what lets the bar be genuinely absent at
+ * the top: a single background with a transparent border still drew an edge against the
+ * artwork. Both sit behind the bar's own content, inside the stacking context it already
+ * establishes. */
+.show-bar::before,
+.show-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Legibility only: enough shadow under the back arrow to survive a bright poster, and gone
+ * by the time the solid bar has taken over. */
+.show-bar::before {
+  background: linear-gradient(to bottom,
+    color-mix(in srgb, var(--ink) 55%, transparent), transparent);
+  opacity: calc(1 - var(--t));
+}
+
+.show-bar::after {
+  background: color-mix(in srgb, var(--ink) 92%, transparent);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+  opacity: var(--t);
+}
+
+.show-bar-back {
+  flex: none;
+  /* Pulled out into the inset, as on the topbar: the arrow's own padding is what lines its
+     glyph up with the text below it. */
+  margin-left: -8px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--r);
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.show-bar-back:hover {
+  background: var(--panel-2);
+}
+
+/* Rises with the same factor, so the name arrives as the bar does. Squared, so it stays out
+ * of the way until the bar behind it is solid enough to read against. */
+.show-bar-title {
+  font-size: 17px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: calc(var(--t) * var(--t));
+  transform: translateY(calc(3px * (1 - var(--t))));
+}
+
+.show-hero {
+  position: relative;
+  margin: 0;
+  /* Clears the bar floating above it. The artwork fills this box edge to edge; only the
+   * contents are held to the readable width. */
+  padding: calc(var(--bar-h) + 12px) 0 16px;
+  overflow: hidden;
+}
+
+@media (min-width: 900px) {
+  .show-rest {
+    padding: 0 32px;
+  }
+
+  .show-bar {
+    margin: -24px 0 calc(-1 * var(--bar-h));
+  }
+
+  .show-bar-inner {
+    padding: 0 32px;
+  }
+
+  .show-hero {
+    padding: calc(var(--bar-h) + 16px) 0 28px;
+    border-radius: 0;
+  }
+}
+
+.show-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center 20%;
+  opacity: 0.3;
+}
+
+.show-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--ink) 55%, transparent), var(--ink));
+}
+
+/* The hero's contents, held to the same width as the page below so the poster and title
+ * line up with it however wide the window is. */
+.show-body {
+  position: relative;
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 44px 16px 0;
+  display: flex;
+  gap: 16px;
+}
+
+@media (min-width: 900px) {
+  .show-body {
+    padding: 44px 32px 0;
+  }
+}
+
+/* The artwork and what hangs under it. As wide as the poster and no wider, so a chip beneath
+ * lines up with its edges rather than with the text column. */
+/* Empty until the trailer answers, and grown to fit when it does — see grow() in
+   ui/show-parts.js. The height is animated rather than taken in one frame, because this
+   column is a column and everything below the hero moves down with it. */
+.show-links {
+  overflow: hidden;
+  transition: height 0.28s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.show-art-col {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  /* The poster's own width, which is the same at every size. */
+  width: 104px;
+}
+
+.show-poster {
+  width: 104px;
+  flex: none;
+  align-self: flex-start;
+  border-radius: var(--r);
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  background: var(--panel-2);
+  box-shadow: var(--shadow);
+}
+
+.show-name {
+  font-size: clamp(23px, 6vw, 40px);
+}
+
+.show-facts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--dim);
+}
+
+.dot-sep::before {
+  content: "·";
+  margin-right: 8px;
+  color: var(--dimmer);
+}
+
+/* Rows that wrap use trailing separators instead, so a wrapped line never opens with a
+ * stray dot. */
+.sep-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+}
+
+.sep-row > .sep-item:not(:last-child)::after {
+  content: "·";
+  margin-left: 8px;
+  color: var(--dimmer);
+}
+
+/* Three lines, whatever the catalogue wrote. A summary runs from one line to fifteen depending
+ * on who typed it, and the hero was as tall as whatever turned up — which is also what made the
+ * record landing feel like a jolt: the skeleton reserved three lines and the text took nine. */
+.show-overview {
+  margin-top: 14px;
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 62ch;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.show-overview.is-open {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+/* The loading shape is a stack of bars rather than text, and has no lines to clamp. */
+.show-overview.pending {
+  display: grid;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  padding: 16px;
+}
+
+.stat-row {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.panel-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.stat-n {
+  font-family: var(--mono);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.stat-n.is-next {
+  color: var(--phosphor);
+}
+
+.stat-l {
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---------- scores ----------
+ * The number is the headline, the source sits under it. A score without a source is
+ * folklore, so the attribution is part of the component rather than a tooltip. */
+
+.score-row {
+  display: flex;
+  gap: 26px;
+  flex-wrap: wrap;
+}
+
+.score {
+  display: block;
+  min-width: 0;
+}
+
+.score-n {
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--signal);
+  font-variant-numeric: tabular-nums;
+}
+
+.score-src {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-top: 2px;
+}
+
+.score-votes {
+  font-size: 11.5px;
+  color: var(--dimmer);
+  margin-top: 1px;
+}
+
+a.score:hover .score-n {
+  filter: brightness(1.12);
+}
+
+a.score:hover .score-src {
+  color: var(--text);
+}
+
+.result-score {
+  margin-top: 3px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--dim);
+}
+
+/* ---------- season / episode list ---------- */
+
+.season {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.season + .season {
+  margin-top: 10px;
+}
+
+.season-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 15px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.season-head:hover {
+  background: var(--panel-2);
+}
+
+.season-name {
+  font-size: 15px;
+  flex: 1;
+  min-width: 0;
+}
+
+.season-prog {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.season-caret {
+  width: 16px;
+  height: 16px;
+  stroke: var(--dim);
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.16s ease;
+  flex: none;
+}
+
+.season.is-open .season-caret {
+  transform: rotate(90deg);
+}
+
+.season-list {
+  display: none;
+  border-top: 1px solid var(--line);
+}
+
+.season.is-open .season-list {
+  display: block;
+}
+
+.ep-row {
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid var(--line-soft);
+}
+
+.ep-row:first-child {
+  border-top: 0;
+}
+
+.ep {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  padding: 10px 15px;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ep-row:hover {
+  background: var(--panel-2);
+}
+
+/* Catch up to this episode. Quiet until the row is hovered, because it only appears on rows
+ * ahead of where you are and shouldn't compete with the episode itself. */
+.ep-catchup {
+  flex: none;
+  width: 46px;
+  border: 0;
+  background: none;
+  color: var(--dim);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  opacity: 0.4;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+/* Visible at rest, not just on hover — an action nobody can find is an action that does not
+ * exist, and half the devices this runs on have no hover at all. */
+.ep-row:hover .ep-catchup,
+/* The held-open column on rows with nothing to catch up to. Present for its width alone. */
+.ep-catchup.is-empty {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The way through to everything the row hasn't room for. Quiet at rest — it is on every row,
+ * so it must not read as an alert — and in the same place on all of them. */
+.ep-info {
+  flex: none;
+  width: 40px;
+  border: 0;
+  background: none;
+  color: var(--dimmer);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.ep-info svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+}
+
+.ep-info:hover,
+.ep-info:focus-visible {
+  color: var(--text);
+}
+
+/* Beside the season's name, not out at the edge: it opens the season, and the name is what it
+ * is about. */
+.season-info {
+  flex: none;
+}
+
+.ep-catchup:focus-visible {
+  opacity: 1;
+}
+
+.ep-catchup:hover {
+  color: var(--signal);
+}
+
+.ep.is-unaired {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.ep-box {
+  width: 19px;
+  height: 19px;
+  border-radius: 5px;
+  border: 1.5px solid var(--tick);
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+
+.ep.is-w .ep-box {
+  background: var(--signal);
+  border-color: var(--signal);
+}
+
+.ep.is-seen .ep-box {
+  border-color: color-mix(in srgb, var(--signal) 60%, transparent);
+  background: var(--signal-soft);
+}
+
+.ep.is-next .ep-box {
+  border-color: var(--phosphor);
+  box-shadow: 0 0 0 3px var(--phosphor-soft);
+}
+
+/* How many times this episode has been watched. Only shown past the first. */
+.ep-times {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--signal);
+  flex: none;
+}
+
+.ep-check {
+  width: 12px;
+  height: 12px;
+  stroke: var(--signal-ink);
+  fill: none;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+}
+
+.ep.is-w .ep-check {
+  opacity: 1;
+}
+
+.ep-code {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--dim);
+  flex: none;
+  width: 54px;
+}
+
+.ep-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ep-air {
+  font-size: 11.5px;
+  color: var(--dimmer);
+  flex: none;
+  font-family: var(--mono);
+}
+
+/* ---------- a season, and one episode ----------
+ * Both pages read the record the show page already had, so they are laid out for reading:
+ * one column, generous, nothing competing for width. This is where the numbers that made the
+ * show page unreadable actually fit. */
+
+.detail-name {
+  font-size: clamp(22px, 5.5vw, 30px);
+  line-height: 1.15;
+}
+
+/* The episode's number, above its name. A label rather than part of the heading: the name is
+ * what you are looking for, and "S03E01" is how you confirm you found it. */
+.detail-code {
+  margin-bottom: 8px;
+  color: var(--dim);
+}
+
+/* The catalogue's own frame from the episode. 16:9 because that is what both of them supply,
+ * and the box is held at that ratio so the page doesn't jump when the picture decodes. */
+.detail-still {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--r);
+  background: var(--panel-2);
+  margin-bottom: 18px;
+  display: block;
+}
+
+/* The same box the show page gives a season, so a list of episodes looks like a list of
+ * episodes wherever it is. */
+.detail-list {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.detail-line {
+  width: 100%;
+  border-top: 1px solid var(--line-soft);
+}
+
+.detail-line:first-child {
+  border-top: 0;
+}
+
+.detail-line:hover {
+  background: var(--panel-2);
+}
+
+/* Not out yet. Dimmed the same amount as an unaired row on the show page, so the two lists
+ * agree about what "still to come" looks like — and the row stays a link, because the page
+ * behind it has the date and the summary. */
+.detail-line.is-unaired {
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+/* Fixed columns, because the score was being pushed about by the length of the date beside
+ * it: "5 May 2023" and "27 Nov 2024" are 8px apart, and a column of scores that wanders is
+ * harder to read than no column at all. Sized for the longest date either catalogue prints. */
+.detail-line .ep-score {
+  /* Wide enough for "10.0" — four mono glyphs at 11.5px, which the old 26px box broke across
+   * two lines with the nought on its own. */
+  width: 32px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.detail-line .ep-air {
+  width: 76px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Points the way the tap goes. Rotated from the season caret, which points down when open. */
+.detail-caret {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  stroke: var(--dimmer);
+  fill: none;
+  stroke-width: 2;
+}
+
+/* What people made of one episode. On these pages there is room for it. */
+.ep-score {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--dim);
+}
+
+.detail-score {
+  color: var(--signal);
+}
+
+/* The best episode is a link to itself, so its box is a button and has to stop looking like
+ * one. */
+button.score {
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+/* The season's scores, drawn. Colour stays as scarce here as everywhere else: one amber line
+ * with a faint body under it, everything else structural. */
+.chart-box {
+  width: 100%;
+  min-height: 132px;
+}
+
+.chart {
+  display: block;
+  overflow: visible;
+}
+
+.chart-rule {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.chart-axis,
+.chart-foot {
+  font-family: var(--mono);
+  font-size: 10px;
+  fill: var(--dimmer);
+}
+
+/* Dashed, so the average reads as a reference and not as another episode. */
+.chart-avg {
+  stroke: var(--dim);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--signal);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart-area {
+  fill: color-mix(in srgb, var(--signal) 13%, transparent);
+  stroke: none;
+}
+
+.chart-dot {
+  fill: var(--panel);
+  stroke: var(--signal);
+  stroke-width: 2;
+}
+
+/* The tap target: the whole column above and below the point, invisible until it is used. */
+.chart-hit {
+  fill: transparent;
+}
+
+.chart-spot {
+  cursor: pointer;
+}
+
+.chart-spot:hover .chart-hit,
+.chart-spot:focus-visible .chart-hit {
+  fill: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.chart-spot:focus-visible {
+  outline: none;
+}
+
+.chart-spot:hover .chart-dot,
+.chart-spot:focus-visible .chart-dot {
+  r: 4;
+}
+
+/* The season's best episode, marked the way next-up is marked on the barcode: one tick of a
+ * second colour, and only one. */
+.chart-spot.is-best .chart-dot {
+  fill: var(--phosphor);
+  stroke: var(--phosphor);
+}
+
+/* Snapping suits a thumb, which throws a row and wants it to settle somewhere sensible. A wheel
+ * or a trackpad asks for a few pixels at a time and gets dragged to the next card instead, which
+ * is why scrolling one of these on a desktop moved in lurches. So it is offered only where there
+ * is no pointer. */
+@media (hover: none) {
+  .shelf {
+    scroll-snap-type: x proximity;
+  }
+
+  .shelf-card {
+    scroll-snap-align: start;
+  }
+}
+
+/* ---------- discovery shelves ----------
+ * A horizontal strip of posters. Scrolls rather than wraps: a shelf that reflows into a grid
+ * stops reading as "a few suggestions" and starts reading as "a catalogue to get through". */
+
+.shelf {
+  display: flex;
+  /* Cards size to their own content and hang from a shared top line. Stretching them to a
+   * common height lets a two-line title drag its poster out of alignment with the rest,
+   * because a button centres its content vertically. */
+  align-items: flex-start;
+  gap: 14px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 6px;
+  scrollbar-width: none;
+
+  /* Escape the page margin so the strip runs to the screen edge, then put the margin back as
+   * padding so the first card still lines up with everything above it. */
+  margin-inline: calc(-1 * var(--gutter));
+  padding-inline: var(--gutter);
+  scroll-padding-inline: var(--gutter);
+
+  /* Faded only at an end that has more past it, so it reads as "keep going" and never
+   * softens the true end of the list. */
+  --fade-l: 0px;
+  --fade-r: 0px;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--fade-l),
+    #000 calc(100% - var(--fade-r)), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 var(--fade-l),
+    #000 calc(100% - var(--fade-r)), transparent 100%);
+}
+
+.shelf::-webkit-scrollbar {
+  display: none;
+}
+
+/* Says the row can be pulled, which is otherwise invisible with a mouse. */
+.shelf,
+.bc-full {
+  cursor: grab;
+}
+
+.shelf.is-dragging,
+.bc-full.is-dragging {
+  cursor: grabbing;
+  /* Nothing is selected while dragging a row of posters across. */
+  user-select: none;
+}
+
+.shelf.has-start { --fade-l: 9px; }
+.shelf.has-end { --fade-r: 12px; }
+
+.shelf-card {
+  flex: none;
+  width: 128px;
+  /* Explicit column flow rather than a button's default centring, so the poster always sits
+   * at the top and the title grows downwards. */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.shelf-art {
+  flex: none;
+}
+
+.shelf-art {
+  border-radius: var(--r);
+  overflow: hidden;
+  aspect-ratio: 2 / 3;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  transition: border-color 0.14s ease;
+}
+
+.shelf-card:hover .shelf-art {
+  border-color: var(--signal);
+}
+
+.shelf-poster {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Two lines' worth of room whether or not the title needs two, so a card is the same height
+ * as the one beside it and a row is the same height as the placeholder it replaced. Without
+ * it, a row of posters grew by however much its longest title happened to wrap, and everything
+ * below it moved. */
+.shelf-name {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.25;
+  min-height: calc(2 * 1.25 * 13px);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.shelf-cap {
+  font-size: 11.5px;
+  line-height: 1.25;
+  min-height: calc(1.25 * 11.5px);
+  color: var(--dimmer);
+  margin-top: 2px;
+}
+
+/* The gap above a shelf heading separates it from the shelf before it. The first one has no
+ * shelf before it — only the toolbar — so it doesn't need one. */
+.discover > div:first-child > .shelf-head {
+  margin-top: 0;
+}
+
+.shelf-head {
+  margin: 30px 0 12px;
+}
+
+.sect-lede-sm {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--dimmer);
+}
+
+@media (min-width: 700px) {
+  .shelf-card {
+    width: 146px;
+  }
+}
+
+/* ---------- search ---------- */
+
+.search-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.result {
+  display: flex;
+  gap: 13px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  align-items: flex-start;
+}
+
+.result + .result {
+  margin-top: 8px;
+}
+
+.result-poster {
+  width: 52px;
+  flex: none;
+  align-self: flex-start;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--r-sm);
+  object-fit: cover;
+  background: var(--panel-2);
+}
+
+.result-text {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.result-name {
+  font-size: 15px;
+}
+
+.result-overview {
+  max-width: 78ch;
+  font-size: 12.5px;
+  color: var(--dim);
+  margin-top: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------- gate (sign in) ---------- */
+
+.gate {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: calc(24px + var(--edge-t)) max(20px, env(safe-area-inset-right, 0px)) calc(24px + var(--edge-b)) max(20px, env(safe-area-inset-left, 0px));
+}
+
+.gate-card {
+  width: 100%;
+  max-width: 440px;
+}
+
+.gate-lede {
+  color: var(--dim);
+  margin-top: 12px;
+  font-size: 14.5px;
+  max-width: 40ch;
+}
+
+.gate-form {
+  margin-top: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* The install offer, under the two buttons the screen exists for and quieter than both.
+   Empty on most loads — already installed, or a browser with nothing to offer — and it must
+   take no room at all when it is, or the card would carry a gap explaining nothing. */
+.gate-install {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.gate-install:not(:empty) {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.gate-install-text {
+  flex: 1 1 12ch;
+  color: var(--dim);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+/* A credential field with its show/hide control sitting inside the box. */
+.reveal-wrap {
+  position: relative;
+  display: flex;
+}
+
+.reveal-wrap .field {
+  padding-right: 46px;
+}
+
+.reveal {
+  position: absolute;
+  right: 4px;
+  top: 0;
+  bottom: 0;
+  width: 42px;
+  border: 0;
+  background: none;
+  color: var(--dim);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r);
+}
+
+.reveal:hover {
+  color: var(--text);
+}
+
+.token {
+  font-family: var(--mono);
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.token-out {
+  padding: 15px;
+  border: 1px dashed var(--signal);
+  border-radius: var(--r);
+  background: var(--signal-soft);
+  font-family: var(--mono);
+  font-size: clamp(13px, 4.1vw, 16px);
+  letter-spacing: 0.07em;
+  text-align: center;
+  font-weight: 700;
+  width: 100%;
+}
+
+.warn {
+  border-left: 3px solid var(--signal);
+  padding: 10px 0 10px 13px;
+  color: var(--dim);
+  font-size: 13.5px;
+}
+
+/* ---------- settings ---------- */
+
+.set-group {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.set-group + .set-group {
+  margin-top: 14px;
+}
+
+.set-row {
+  padding: 15px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.set-row:first-child {
+  border-top: 0;
+}
+
+.set-text {
+  flex: 1;
+  min-width: 190px;
+}
+
+.set-name {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.set-hint {
+  font-size: 12.5px;
+  color: var(--dim);
+  margin-top: 3px;
+}
+
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+.seg-btn {
+  padding: 8px 14px;
+  border: 0;
+  background: var(--panel-2);
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.seg-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.seg-btn.is-on {
+  background: var(--signal);
+  color: var(--signal-ink);
+}
+
+/* Whether a stored credential actually works. Stated rather than implied — the colour is
+ * support for the sentence, not a substitute for it. */
+.key-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  font-size: 13px;
+  color: var(--dim);
+}
+
+.key-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dimmer);
+  flex: none;
+}
+
+.key-status.is-good .key-dot {
+  background: var(--signal);
+  box-shadow: 0 0 0 3px var(--signal-soft);
+}
+
+.key-status.is-bad {
+  color: var(--danger);
+}
+
+.key-status.is-bad .key-dot {
+  background: var(--danger);
+}
+
+/* ---------- moving between screens ----------
+ * The crossfade the View Transitions API gives for free, kept short: this is a hint that the
+ * place changed, not an animation to watch. The bars stay put while the page beneath them
+ * changes, which is what makes it read as one app rather than a slideshow. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.18s;
+  }
+
+  /* ---- marking an episode on Up next ----
+   *
+   * Marking rearranges this screen: an episode is struck off, the card that was on offer may
+   * be finished with and drop out, and whatever was waiting underneath moves up. Animating
+   * only the hero left every one of those other moves as a jump, which reads worse than no
+   * animation at all — the eye follows the one thing that glides and then finds the rest of
+   * the page has silently teleported around it.
+   *
+   * So the top card is named, each waiting row is named after its show, and the two headings
+   * that move are named too. The top card swaps in place: one fades out, the next fades in,
+   * in the same slot. The rows are all the same size as each other, so a row leaving fades
+   * where it stood and the ones below glide up into the gap instead of jumping.
+   *
+   * The rows are named per show and the top card is not, which is the point. Sharing one
+   * namespace meant a promoted show kept its name, and the browser obligingly flew the card
+   * itself from the row to the top — a strip growing to twenty times its height while
+   * crossing the screen over everything else. The slot is the stable thing here, not the show.
+   *
+   * No keyframes of our own: position, size and cross-fade are exactly what the default
+   * pairing does, and hand-writing them would only be worse.
+   *
+   * Set by advance() in ui/actions.js, and read from a --vt custom property so the names can
+   * carry a show id that only exists at runtime. */
+  :root.is-advancing .vt {
+    view-transition-name: var(--vt);
+  }
+
+  /* The rest of the page is deliberately not captured. A repaint after a mark has to be
+     instant everywhere else, or the app feels like it is lagging behind the tap; dropping the
+     root's own name means the unnamed part of the screen is never lifted into the transition
+     at all and simply swaps underneath the cards that are moving over it. */
+  :root.is-advancing {
+    view-transition-name: none;
+  }
+
+  :root.is-advancing::view-transition-group(*) {
+    animation-duration: 0.26s;
+  }
+
+  /* The tab bar is fixed over the content but is built before it, and the transition layer is
+     stacked in document order — so a tall block like Coming up would be drawn on top of it for
+     the length of the animation. It goes back in front by hand. */
+  :root.is-advancing::view-transition-group(nav) {
+    z-index: 2;
+  }
+
+  /* The toast is the reason the mark can be taken back, so it is the last thing that should
+     disappear behind the animation of the thing it is offering to undo. Same problem as the
+     tab bar and the same fix — it lives in the page, and the page is underneath.
+
+     Its own fade is switched off for the duration. The snapshot the browser keeps is taken
+     one frame after the toast is shown, which is the frame that fade has not started on yet,
+     so the transition would hold a picture of an invisible toast for a quarter of a second
+     and then produce it fully formed. Appearing at once is both simpler and what you want
+     from a control that is only on screen for five seconds. */
+  :root.is-advancing .toast {
+    view-transition-name: toast;
+    transition: none;
+  }
+
+  :root.is-advancing::view-transition-group(toast) {
+    z-index: 3;
+  }
+
+  /* Everything except the top card only ever moves: a row leaves the list and the rows and
+     headings below it close the gap, carrying the same content to a new place. Cross-fading
+     that draws it twice, half-strength, in two positions at once — the block reads as
+     doubling and dimming rather than sliding. Holding the outgoing copy at nothing and letting
+     the incoming one ride the group's own transform is a plain move, which is all that
+     happened. A row that has genuinely gone has no incoming copy to pair with, so it simply
+     stops being drawn while the rest slide up into where it was. */
+  :root.is-advancing::view-transition-old(*) {
+    animation: none;
+    opacity: 0;
+  }
+
+  :root.is-advancing::view-transition-new(*) {
+    animation: none;
+    opacity: 1;
+  }
+
+  /* The top card is the exception, because there the content is the event: one show is
+     finished with and the next takes the slot. It stays put and swaps.
+
+     Matched durations and linear ramps, which looks like an odd thing to insist on until you
+     know the pair is composited with plus-lighter: the two opacities are added, so they only
+     hold a constant brightness while they sum to one. Staggering them, or easing them
+     separately, makes the sum sag in the middle and the card visibly dips through the page
+     colour on its way across. */
+  :root.is-advancing::view-transition-old(up-hero) {
+    animation: card-out 0.26s linear both;
+  }
+
+  :root.is-advancing::view-transition-new(up-hero) {
+    animation: card-in 0.26s linear both;
+  }
+
+  /* Both ends are written out. The implied end would be taken from the rule above, which
+     holds the outgoing card at zero, and the fade would run from nothing to nothing. */
+  @keyframes card-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  @keyframes card-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+/* The way back from a mark, for the seconds anyone would notice they made the wrong one. */
+.toast.has-undo {
+  display: flex;
+  /* Stretch, not centre. The ring around the button is only even while the button is as tall
+     as everything beside it, and this strip is narrow enough that an ordinary message wraps to
+     two lines — which makes the strip taller, grows the gaps above and below, and leaves a
+     button pinned to its own height with more room around it than beside it. That is the same
+     crammed look arriving from the other direction, and no fixed padding can chase it: the
+     outer cap's radius is half the strip's height, so the space the button needs on the right
+     changes with the text.
+
+     Stretched, the button is always the height of the content box, so its cap and the strip's
+     cap share a centre whatever the message does. */
+  align-items: stretch;
+  gap: 13px;
+  padding: 10px 10px 10px 20px;
+}
+
+/* The message keeps its own alignment: it is the one thing here that is not full height. */
+.toast.has-undo > :first-child {
+  align-self: center;
+  text-align: left;
+}
+
+.toast-undo {
+  border: 0;
+  background: var(--signal-soft);
+  color: var(--signal);
+  font: inherit;
+  font-weight: 700;
+  /* The padding sets how short the button may be; stretching decides how tall it is, and the
+     label stays centred in whatever it gets. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  flex: none;
+}
+
+.toast-undo:hover {
+  background: color-mix(in srgb, var(--signal) 22%, transparent);
+}
+
+.topbar,
+.nav {
+  view-transition-name: none;
+}
+
+/* ---------- modal layers ----------
+ * A sheet from the bottom edge on a phone, a centred panel on a desktop. Above everything
+ * including the nav, because while one of these is up it is the only thing to answer. */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: color-mix(in srgb, var(--ink) 62%, transparent);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  transition: opacity 0.16s ease;
+  /* Only a scrim that has actually faded in swallows clicks. Transparency is not the same
+   * as absence: a layer waiting on a frame that never came — a backgrounded tab, a dropped
+   * animation — would otherwise sit invisibly over the page and eat every tap on it. */
+  pointer-events: none;
+}
+
+.scrim.is-on {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* On a phone this is a sheet: it comes up from the edge it is attached to and goes back down
+ * the same way. Off-screen rather than nudged, because a panel that fades in place while sitting
+ * on the bottom edge reads as a mistake — the edge is the whole idea.
+ *
+ * Out faster than in, and on a different curve: arriving should settle, leaving should get out
+ * of the way. */
+.sheet,
+.dialog {
+  width: 100%;
+  max-width: 460px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 18px 18px 0 0;
+  padding: 10px 14px calc(18px + var(--edge-b));
+  box-shadow: var(--shadow);
+  transform: translateY(100%);
+  transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+.scrim:not(.is-on) .sheet,
+.scrim:not(.is-on) .dialog {
+  transition: transform 0.19s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.scrim.is-on .sheet,
+.scrim.is-on .dialog {
+  transform: none;
+}
+
+/* Nothing travels for anyone who has asked for less of it; the scrim's fade still says a layer
+ * arrived. */
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .dialog,
+  .scrim:not(.is-on) .sheet,
+  .scrim:not(.is-on) .dialog {
+    transform: none;
+    transition: none;
+  }
+}
+
+/* The handle says which edge it came from and which way it goes back. */
+.sheet-grip {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  margin: 2px auto 12px;
+}
+
+.sheet-title {
+  padding: 0 8px 8px;
+}
+
+.sheet-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.sheet-opt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 12px;
+  border: 0;
+  border-radius: var(--r);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sheet-opt:hover {
+  background: var(--panel-2);
+}
+
+.sheet-opt.is-on {
+  color: var(--signal);
+  font-weight: 600;
+}
+
+.sheet-opt-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.sheet-opt-check {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dialog {
+  padding: 20px 18px calc(18px + var(--edge-b));
+}
+
+.dialog-title {
+  font-size: 17px;
+}
+
+.dialog-body {
+  margin-top: 8px;
+  color: var(--dim);
+  font-size: 14px;
+}
+
+.dialog-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+@media (min-width: 700px) {
+  /* Centred once there is a pointer rather than a thumb, and no longer welded to an edge. */
+  .scrim {
+    align-items: center;
+    padding: 24px;
+  }
+
+  /* Centred, so there is no edge to come from: it arrives where it will stand, and only
+   * settles the last few pixels. */
+  .sheet,
+  .dialog {
+    border-bottom: 1px solid var(--line);
+    border-radius: 16px;
+    padding-bottom: 14px;
+    transform: translateY(14px);
+    transition: transform 0.18s ease;
+  }
+
+  .scrim:not(.is-on) .sheet,
+  .scrim:not(.is-on) .dialog {
+    transition: transform 0.18s ease;
+  }
+
+  .dialog {
+    padding-bottom: 18px;
+  }
+
+  .sheet-grip {
+    display: none;
+  }
+}
+
+/* Confirmation that the browser took the number, so saving it there is visibly enough. */
+.gate-saved {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 0;
+  color: var(--ok, var(--phosphor));
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.gate-saved-tick {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---------- a person ----------
+ * A face is not a poster: square-ish and round, so a cast row never reads as a row of shows. */
+.shelf-card.is-face .shelf-art {
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.shelf-card.is-face .shelf-name {
+  text-align: center;
+}
+
+.shelf-card.is-face .shelf-cap {
+  text-align: center;
+}
+
+.person {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.person-face {
+  width: 104px;
+  flex: none;
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  object-fit: cover;
+  background: var(--panel-2);
+  box-shadow: var(--shadow);
+}
+
+.person-name {
+  font-size: clamp(22px, 5.5vw, 30px);
+  line-height: 1.1;
+}
+
+/* What the catalogue says about them. One block with the paragraph breaks kept, clamped to a
+ * few lines: the reason for the page is the shows below, and a full TMDB biography would put
+ * them off the bottom of a phone. */
+.person-about {
+  margin-top: 18px;
+}
+
+.person-bio {
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+}
+
+.person-bio.is-open {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+/* A word, not a button: it reveals text that is already on the page rather than doing
+ * anything, and dressing it as a control would give it more weight than the words it uncovers.
+ * Shared by the summary on a show and the biography on a person. */
+.more-link {
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--phosphor);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Under the summary, inside the hero's text column. */
+.show-more {
+  margin-top: 6px;
+}
+
+.more-link:hover {
+  text-decoration: underline;
+}
+
+/* ---------- finishing something ----------
+ * Above everything, including the modal layer, and never in the way: there is nothing here to
+ * answer, so it takes no clicks except the one that dismisses it early. */
+
+/* The width and height are not optional. A canvas is a replaced element, so `width: auto`
+ * takes its intrinsic size — the bitmap, which is sized in device pixels — and `inset: 0`
+ * does not stretch it. On a 2x screen that drew the whole burst at double scale: the
+ * right-hand half started beyond the edge of the window and the left-hand one appeared to
+ * start in the middle of it. */
+.confetti {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 95;
+  pointer-events: none;
+}
+
+.party {
+  position: fixed;
+  left: 50%;
+  top: 38%;
+  z-index: 96;
+  transform: translate(-50%, -50%) scale(0.94);
+  max-width: min(90vw, 460px);
+  padding: 22px 26px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--signal) 40%, var(--line));
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow);
+  text-align: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.party.is-on {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.party-title {
+  font-size: clamp(20px, 5vw, 25px);
+  line-height: 1.15;
+  /* Evens out the wrap so a long show name doesn't leave one word on the last line. */
+  text-wrap: balance;
+}
+
+/* Finishing a whole show is the bigger of the two, and says so in type. */
+.party.is-big .party-title {
+  font-size: clamp(23px, 5.6vw, 30px);
+  color: var(--signal);
+}
+
+.party-line {
+  margin-top: 8px;
+  color: var(--dim);
+  font-size: 14px;
+}
+
+/* ---------- feedback ---------- */
+
+.toast {
+  position: fixed;
+  /* Centred by margin rather than by shifting it half its width off a left edge at 50%. With
+     only a left offset the box the toast is laid out in starts at the middle of the screen and
+     ends at the right of it, so half the viewport was all it could ever have — the max-width
+     below was unreachable, and a message as short as "Marked S03E02" wrapped to two lines on a
+     phone. Anchored to both edges, it is as wide as it needs to be up to the cap. */
+  left: 0;
+  right: 0;
+  width: fit-content;
+  margin-inline: auto;
+  bottom: calc(84px + var(--edge-b));
+  transform: translateY(14px);
+  z-index: 60;
+  padding: 11px 17px;
+  border-radius: 999px;
+  /* In the theme rather than inverted against it. A toast painted in the text colour is a
+     white slab in the dark and a black one in the light — the brightest thing on the screen
+     either way, for a message that is usually a confirmation nobody needs to read. It sits on
+     a panel like every other raised surface, and the shadow and border are what lift it. */
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  max-width: min(92vw, 460px);
+  text-align: center;
+}
+
+.toast.is-on {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (min-width: 900px) {
+  .toast {
+    bottom: 28px;
+  }
+}
+
+.empty {
+  text-align: center;
+  padding: 52px 20px;
+  color: var(--dim);
+  max-width: 42ch;
+  margin: 0 auto;
+}
+
+.empty-title {
+  font-size: 18px;
+  color: var(--text);
+  margin-bottom: 7px;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--panel-2), var(--line), var(--panel-2));
+  background-size: 200% 100%;
+  animation: shimmer 1.8s linear infinite;
+  border-radius: var(--r);
+}
+
+@keyframes shimmer {
+  to { background-position: -200% 0; }
+}
+
+/* ---- filling in ----
+   Two rules that stop a page arriving in pieces.
+
+   A placeholder waits before it appears. Most answers come back inside a couple of hundred
+   milliseconds, and a skeleton that flashes for that long is worse than a moment of nothing:
+   the eye reads it as a fault. Held back by a delay with `both`, so it is invisible until
+   the wait is long enough to be worth explaining. */
+.pending {
+  animation: pending-in 0.2s ease 0.22s both;
+}
+
+@keyframes pending-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* And what replaces a placeholder fades rather than cuts. Only on the parts that were
+   waiting — anything already correct, the poster above all, is left alone. */
+.arrive {
+  animation: arrive 0.22s ease both;
+}
+
+/* The trailer is the one thing on this page that cannot be drawn with the rest of it: for a
+   show numbered by another catalogue it is a request of its own, so it lands seconds after
+   everything around it has settled. Appearing from nothing in a row that was empty is the
+   most abrupt arrival on the page, and the one most likely to be looked straight at. It rises
+   the small distance it would have travelled if it had always been there. */
+.arrive-chip {
+  animation: arrive-chip 0.26s cubic-bezier(0, 0, 0.2, 1) both;
+}
+
+@keyframes arrive-chip {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrive-chip { animation: arrive 0.22s ease both; }
+}
+
+@keyframes arrive {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Update progress. Two pixels at the very top of the viewport — enough to say "working",
+ * not enough to be in the way. Sits above everything, including the sticky bars. */
+.progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 80;
+  height: 2px;
+  width: 0;
+  background: var(--signal);
+  opacity: 0;
+  transition: width 0.25s ease, opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.progress.is-on {
+  opacity: 1;
+}
+
+/* Shown for the moment between a new build taking over and the reload. */
+.updating {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  background: var(--ink);
+}
+
+.updating-text {
+  font-size: 14px;
+  color: var(--dim);
+}
+
+/* ---- the update strip ----
+ * The barcode, doing the one thing a barcode is for. Thirty-two ticks on the same 7px pitch
+ * the library and the front page use, filling one at a time with the cyan next-tick riding
+ * the leading edge — so a download looks like a show being watched rather than like a
+ * spinner borrowed from somewhere else.
+ *
+ * Stepped rather than smooth, and that is the whole idea: a tick is an episode, and episodes
+ * do not arrive by halves. It is also honest about what it does not know — nothing here can
+ * say how far along the download is, so this repeats rather than pretending to measure. */
+.updating-bar {
+  --pitch: 7px;
+  --tick-w: 4px;
+  --ticks: 32;
+  position: relative;
+  width: calc(var(--ticks) * var(--pitch));
+  height: 15px;
+  background: repeating-linear-gradient(90deg,
+    var(--tick) 0 var(--tick-w), transparent var(--tick-w) var(--pitch));
+}
+
+/* Watched: the same grid in amber, clipped to how far it has got. */
+.updating-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 0;
+  background: repeating-linear-gradient(90deg,
+    var(--signal) 0 var(--tick-w), transparent var(--tick-w) var(--pitch));
+  animation: updating-fill 2.6s steps(var(--ticks)) infinite;
+}
+
+/* And the one tick you would play next, in the slot the fill has just reached. */
+.updating-bar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--tick-w);
+  background: var(--phosphor);
+  animation: updating-next 2.6s steps(var(--ticks)) infinite;
+}
+
+@keyframes updating-fill {
+  to { width: calc(var(--ticks) * var(--pitch)); }
+}
+
+@keyframes updating-next {
+  to { left: calc(var(--ticks) * var(--pitch)); }
+}
+
+/* Asked for less motion: the strip stands still, half filled, and the words carry it. */
+@media (prefers-reduced-motion: reduce) {
+  .updating-bar::before {
+    animation: none;
+    width: calc(var(--ticks) / 2 * var(--pitch));
+  }
+
+  .updating-bar::after {
+    animation: none;
+    left: calc(var(--ticks) / 2 * var(--pitch));
+  }
+}
+
+.spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex: none;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* The one thing a reader sees when scripts are off. Styled here rather than on the element
+   itself so the document carries no inline styles and the CSP can forbid them. */
+.noscript-note {
+  padding: 24px;
+  max-width: 60ch;
+}
+
+.noscript-note a {
+  text-decoration: underline;
+}

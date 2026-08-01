@@ -1,0 +1,442 @@
+/* nextly — the public site.
+ *
+ * Shares base.css with the app, so the page a stranger reads and the app they end up using
+ * are visibly the same object. Everything here is static: no JavaScript runs on this page,
+ * which is the point — it has to be readable by a crawler and by someone with scripts off.
+ *
+ * The barcode is used as the page's structural motif. It's the app's signature element, so
+ * repeating it as a divider makes the site look like the product rather than like an advert
+ * for it. */
+
+/* Side insets, because every page here asks for viewport-fit=cover: in landscape on a
+ * notched phone the column would otherwise run under the hardware. max() rather than adding,
+ * so a 44px inset replaces the 22px gutter instead of sitting on top of it. */
+.wrap {
+  width: 100%;
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 0 max(22px, env(safe-area-inset-right, 0px)) 0 max(22px, env(safe-area-inset-left, 0px));
+}
+
+/* ---------- site header ---------- */
+
+.site-head {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: color-mix(in srgb, var(--ink) 86%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+
+.site-head-in {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  /* Vertical longhands only. The shorthand here reset the 22px that .wrap sets on both sides,
+   * so the brand and the nav sat flat against the edges of a phone while everything below
+   * them stayed inset.
+   * The bar's background runs up behind the status bar; its contents start below it. */
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
+  padding-bottom: 14px;
+}
+
+.site-nav {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 14px;
+}
+
+/* Styled by class, not by element. `.site-nav a` would be one notch more specific than
+ * `.btn-primary` and would quietly override the button's text colour — which is exactly how
+ * the CTA ended up amber-on-amber. */
+.nav-link {
+  color: var(--dim);
+}
+
+.nav-link:hover {
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .site-nav .hide-sm {
+    display: none;
+  }
+}
+
+/* ---------- hero ---------- */
+
+.hero-site {
+  padding: 72px 0 56px;
+}
+
+.hero-h1 {
+  font-size: clamp(38px, 8.4vw, 76px);
+  max-width: 15ch;
+}
+
+.hero-sub {
+  margin-top: 22px;
+  font-size: clamp(16px, 2.4vw, 19px);
+  color: var(--dim);
+  max-width: 54ch;
+  line-height: 1.55;
+}
+
+.hero-cta {
+  margin-top: 32px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.btn-lg {
+  min-height: 52px;
+  padding: 14px 26px;
+  font-size: 16px;
+}
+
+.cta-note {
+  font-size: 13px;
+  color: var(--dimmer);
+}
+
+/* ---------- the barcode as a rule ----------
+ * Not decoration: the same states the app draws, so the page carries the product's own
+ * vocabulary. Built from repeating gradients rather than a few hundred elements — one pitch
+ * shared by every layer means the ticks line up on a single grid, and it spans any width.
+ *
+ * The run is set as a number of episodes rather than a width, so it always ends exactly on a
+ * tick boundary and the cyan "next" tick lands in the following slot. Written as classes
+ * rather than a style attribute on each bar: the page carries no inline styles at all, which
+ * is what lets the Content-Security-Policy forbid them outright. */
+
+.rule {
+  position: relative;
+  height: 15px;
+  margin: 60px 0;
+  --pitch: 7px;
+  --tick-w: 4px;
+  --seen: 24;
+  --watched: calc(var(--seen) * var(--pitch));
+  background: repeating-linear-gradient(90deg,
+    var(--tick) 0 var(--tick-w), transparent var(--tick-w) var(--pitch));
+}
+
+/* How far along each bar on the page is. Arbitrary, and meant to be: they are decoration that
+   happens to be honest about the shape of a half-watched show. */
+.rule.seen-9 { --seen: 9; }
+.rule.seen-15 { --seen: 15; }
+.rule.seen-24 { --seen: 24; }
+.rule.seen-32 { --seen: 32; }
+.rule.seen-41 { --seen: 41; }
+
+/* Watched: the same grid, painted amber, clipped to the run length. */
+.rule::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: var(--watched);
+  background: repeating-linear-gradient(90deg,
+    var(--signal) 0 var(--tick-w), transparent var(--tick-w) var(--pitch));
+}
+
+/* Next up: exactly one tick, in the slot right after the watched run. */
+.rule::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--watched);
+  width: var(--tick-w);
+  background: var(--phosphor);
+}
+
+@media (max-width: 640px) {
+  .rule {
+    margin: 44px 0;
+  }
+}
+
+/* ---------- sections ---------- */
+
+.sec {
+  padding: 8px 0;
+}
+
+.sec-h2 {
+  font-size: clamp(26px, 4.6vw, 38px);
+  max-width: 20ch;
+}
+
+/* The closing line is short enough to want the whole measure rather than a reading column. */
+.sec-h2.is-wide {
+  max-width: none;
+}
+
+/* The lead paragraph of a page that opens with a heading and nothing else. */
+.legal-lede {
+  margin-top: 18px;
+}
+
+.sec-lede {
+  margin-top: 16px;
+  color: var(--dim);
+  font-size: 16.5px;
+  max-width: 62ch;
+  line-height: 1.6;
+}
+
+.sec-lede + .sec-lede {
+  margin-top: 14px;
+}
+
+/* ---------- feature grid ---------- */
+
+.grid-2 {
+  display: grid;
+  gap: 18px;
+  margin-top: 34px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 700px) {
+  .grid-2 {
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+  }
+}
+
+.feat {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  padding: 22px;
+}
+
+.feat-h {
+  font-size: 17px;
+  margin-bottom: 8px;
+}
+
+.feat-p {
+  color: var(--dim);
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+
+/* ---------- numbered steps ----------
+ * Numbered because these genuinely are a sequence — you cannot track a show before you have
+ * an account number. */
+
+.steps {
+  counter-reset: step;
+  margin-top: 34px;
+  display: grid;
+  gap: 4px;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 16px;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+}
+
+.step::before {
+  counter-increment: step;
+  content: counter(step, decimal-leading-zero);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--signal);
+  padding-top: 3px;
+}
+
+.step-h {
+  font-size: 17px;
+  margin-bottom: 6px;
+}
+
+.step-p {
+  color: var(--dim);
+  font-size: 14.5px;
+  line-height: 1.55;
+  max-width: 56ch;
+}
+
+/* ---------- faq ---------- */
+
+.faq {
+  margin-top: 30px;
+  border-top: 1px solid var(--line);
+}
+
+.faq details {
+  border-bottom: 1px solid var(--line);
+}
+
+.faq summary {
+  padding: 17px 0;
+  cursor: pointer;
+  font-size: 16px;
+  font-variation-settings: "wdth" 104;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq summary::after {
+  content: "+";
+  margin-left: auto;
+  color: var(--signal);
+  font-family: var(--mono);
+  font-size: 18px;
+  flex: none;
+}
+
+.faq details[open] summary::after {
+  content: "–";
+}
+
+.faq-a {
+  padding: 0 0 20px;
+  color: var(--dim);
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 64ch;
+}
+
+.faq-a a {
+  color: var(--signal);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ---------- closing call ---------- */
+
+.closing {
+  text-align: center;
+  padding: 64px 0 24px;
+}
+
+.closing .hero-cta {
+  justify-content: center;
+}
+
+/* ---------- footer ---------- */
+
+.site-foot {
+  margin-top: 56px;
+  border-top: 1px solid var(--line);
+  padding: 28px 0 44px;
+  font-size: 13.5px;
+  color: var(--dimmer);
+}
+
+.foot-row {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.site-foot a {
+  color: var(--dim);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.site-foot a:hover {
+  color: var(--text);
+}
+
+.foot-note {
+  margin-top: 16px;
+  max-width: 70ch;
+  line-height: 1.55;
+}
+
+/* ---------- legal pages ---------- */
+
+.legal {
+  padding: 44px 0 20px;
+  max-width: 70ch;
+}
+
+.legal h1 {
+  font-size: clamp(30px, 6vw, 44px);
+}
+
+.legal h2 {
+  font-size: 20px;
+  margin: 38px 0 12px;
+  font-variation-settings: "wdth" 106;
+  font-weight: 700;
+  letter-spacing: -0.014em;
+}
+
+.legal p,
+.legal li {
+  color: var(--dim);
+  font-size: 15.5px;
+  line-height: 1.65;
+  margin-bottom: 12px;
+}
+
+.legal ul {
+  padding-left: 20px;
+}
+
+.legal strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* Prose links, and only prose links.
+ *
+ * `.legal a` is one notch more specific than `.btn-primary`, so without the exclusion it wins
+ * — and it sets the text to the same amber the primary button is filled with, which is how
+ * the 404 page ended up with an invisible button. Measured: colour and background both
+ * rgb(154, 91, 0).
+ *
+ * This is the second time this exact bug has happened here; the note above `.nav-link` is
+ * about the first. The rule is that anything inside a text block styled by element will
+ * outrank a button styled by class, so every such rule has to say it means prose. */
+.legal a:not(.btn) {
+  color: var(--signal);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.legal-date {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--dimmer);
+  margin-top: 10px;
+}
+
+.callout {
+  border-left: 3px solid var(--signal);
+  background: var(--signal-soft);
+  padding: 14px 16px;
+  border-radius: 0 var(--r) var(--r) 0;
+  margin: 20px 0;
+}
+
+.callout p {
+  margin: 0;
+  color: var(--text);
+  font-size: 14.5px;
+}

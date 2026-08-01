@@ -1,0 +1,13 @@
+# dependencies and build state
+node_modules/
+.wrangler/
+
+# local secrets
+.dev.vars
+
+# editor and tooling
+.idea/
+.claude/
+.vscode/
+.DS_Store
+*.log

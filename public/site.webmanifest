@@ -1,0 +1,130 @@
+{
+  "name": "nextly",
+  "short_name": "nextly",
+  "description": "A private TV show tracker. Encrypted in your browser; no email, no password, no tracking.",
+  "id": "/",
+  "scope": "/",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "background_color": "#12141b",
+  "theme_color": "#12141b",
+  "categories": [
+    "entertainment",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/assets/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Up next",
+      "url": "/",
+      "description": "What to watch tonight",
+      "icons": [
+        {
+          "src": "/assets/shortcut-next.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Library",
+      "url": "/library",
+      "description": "Everything you track",
+      "icons": [
+        {
+          "src": "/assets/shortcut-library.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Search",
+      "url": "/search",
+      "description": "Add a show",
+      "icons": [
+        {
+          "src": "/assets/shortcut-search.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/assets/screenshots/up-next.png",
+      "sizes": "824x1830",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "What to watch tonight"
+    },
+    {
+      "src": "/assets/screenshots/library.png",
+      "sizes": "824x1830",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Your whole library, with progress you can read at a glance"
+    },
+    {
+      "src": "/assets/screenshots/stats.png",
+      "sizes": "824x1830",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "What your year actually looked like"
+    },
+    {
+      "src": "/assets/screenshots/library-wide.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Your library"
+    },
+    {
+      "src": "/assets/screenshots/up-next-wide.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "What to watch tonight"
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  }
+}
