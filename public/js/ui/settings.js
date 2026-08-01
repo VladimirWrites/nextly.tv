@@ -144,6 +144,29 @@ export function renderSettings(root, { go, repaint }) {
         } })),
     ]),
 
+    /* The whole promise of this app is that the server cannot read your data, and there is no
+       way to check that from the outside: the code that holds your key is served by the same
+       people making the claim. Reading it, or running your own copy, is the only thing that
+       turns it from a promise into something you can verify. That belongs in the app, not only
+       on the page trying to persuade you. */
+    h("div.sect", [h("h2.t-label", { text: "The code" })]),
+    h("div.set-group", [
+      h("div.set-row", [
+        h("div.set-text", [
+          h("div.set-name", { text: "Source on GitHub" }),
+          h("div.set-hint", { text: "Everything that runs here, including the encryption and "
+            + "what gets sent to the server. Host it yourself if you would rather not take "
+            + "anyone's word for it." }),
+        ]),
+        h("a.btn.btn-sm", {
+          href: "https://github.com/VladimirWrites/nextly.tv",
+          target: "_blank",
+          rel: "noreferrer noopener",
+          text: "Read the code",
+        }),
+      ]),
+    ]),
+
     /* There is nothing to sell here — no tier, no account, nothing withheld — so the only
        honest way to ask is to say what it costs to run and leave it at that. Last thing on
        the last screen, phrased as an offer rather than a prompt, and it never appears twice
