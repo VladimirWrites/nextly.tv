@@ -27,7 +27,7 @@ import { showKey } from "./domain/constants.js";
 import { parseShared } from "./domain/share.js";
 import { parseRoute, pathFor } from "./domain/routes.js";
 import { deriveKeys, keysReady } from "./io/crypto.js";
-import { bootVault, loadServer, flushSync, rememberedToken, rememberToken, setSyncReporter, setDataListener, askToPersist } from "./io/storage.js";
+import { bootVault, loadServer, flushSync, rememberedToken, rememberToken, setSyncReporter, setDataListener, askToPersist, readTheme } from "./io/storage.js";
 import * as cache from "./io/cache.js";
 import * as meta from "./io/meta.js";
 
@@ -314,7 +314,7 @@ async function signIn(token) {
   await deriveKeys(token);
   await cache.loadAll();
   await bootVault();
-  applyTheme(state.settings.theme);
+  applyTheme(readTheme());
   // There is a vault now, so its local copy is worth asking the browser to keep.
   askToPersist();
   route = parseRoute(location.pathname, location.hash);
@@ -407,7 +407,7 @@ addEventListener("pagehide", () => { if (keysReady()) flushSync(); });
 
 // Follow the system theme live while the setting is on "auto".
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-  if (!state.settings || state.settings.theme === "auto") applyTheme("auto");
+  if (readTheme() === "auto") applyTheme("auto");
 });
 
 /* ---- updates ----

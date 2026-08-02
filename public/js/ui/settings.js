@@ -10,7 +10,7 @@ import { VERSION } from "../version.js";
 import { totalWatched, totalEpisodes } from "../domain/model.js";
 import { relTime } from "../domain/dates.js";
 import { canonToken, copyText } from "../io/crypto.js";
-import { exportJSON, importJSON, syncedAt, rememberedToken, forgetToken, deleteVault, scheduleSync, flushSync, storageUse } from "../io/storage.js";
+import { exportJSON, importJSON, syncedAt, rememberedToken, forgetToken, deleteVault, scheduleSync, flushSync, storageUse, readTheme, writeTheme } from "../io/storage.js";
 import { clearAll as clearMetaCache } from "../io/cache.js";
 import { refreshLibrary, retimeLibrary } from "./actions.js";
 import * as meta from "../io/meta.js";
@@ -86,11 +86,11 @@ export function renderSettings(root, { go, repaint }) {
 
     h("div.sect", [h("h2.t-label", { text: "Appearance" })]),
     h("div.set-group", [
-      row("Theme", "Follows your system unless you pick one.",
-        segmented([["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]], s.theme, (v) => {
-          s.theme = v;
+      // This device only, so no sync: the phone by the bed and the desktop by the window are
+      // allowed to disagree, and neither is a fact about what anyone watched.
+      row("Theme", "Follows your system unless you pick one. Set per device.",
+        segmented([["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]], readTheme(), (v) => {
           applyTheme(v);
-          scheduleSync();
           repaint();
         })),
     ]),
@@ -376,12 +376,10 @@ export function applyTheme(pref) {
   const root = document.documentElement;
   if (pref === "light" || pref === "dark") root.setAttribute("data-theme", pref);
   else root.removeAttribute("data-theme");
-  // Mirrored into localStorage purely so the inline script in index.html can apply it before
-  // first paint — a reload must never flash the wrong theme.
-  try {
-    if (pref === "light" || pref === "dark") localStorage.setItem("nx_theme", pref);
-    else localStorage.removeItem("nx_theme");
-  } catch (e) {}
+  // Written to this device's own storage, which is both where the preference lives and what
+  // the inline script in app.html reads before first paint so a reload never flashes the
+  // wrong colours.
+  writeTheme(pref);
   // Keep the browser chrome in step with the page, in both directions.
   const dark = pref === "dark" || (pref !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
   document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.remove());

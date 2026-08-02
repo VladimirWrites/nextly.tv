@@ -114,10 +114,12 @@ test("a show added on one device survives the merge", () => {
 test("the newest settings win as a unit", () => {
   const a = emptyState();
   const b = emptyState();
-  a.settings = { ...a.settings, theme: "dark", m: T.t1 };
-  b.settings = { ...b.settings, theme: "light", tmdbKey: "abc", m: T.t3 };
+  // Fields that genuinely sync. Theme used to be the example here and no longer belongs to
+  // the vault at all, so testing the merge with it would prove nothing about anything real.
+  a.settings = { ...a.settings, provider: "tvmaze", m: T.t1 };
+  b.settings = { ...b.settings, provider: "tmdb", tmdbKey: "abc", m: T.t3 };
   const merged = mergeStates(a, b);
-  assert.equal(merged.settings.theme, "light");
+  assert.equal(merged.settings.provider, "tmdb");
   assert.equal(merged.settings.tmdbKey, "abc");
 });
 

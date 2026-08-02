@@ -18,6 +18,7 @@ const LS_TOKEN = "nx_token";
 const LS_SYNCED = "nx_synced_at";
 const LS_SEEN = "nx_seen_at";     // server updated_at this client last reconciled with
 const LS_VIEW = "nx_view";        // how this device likes to look at the library
+const LS_THEME = "nx_theme";      // light | dark; absent means follow the system
 
 const LS = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -62,6 +63,29 @@ export async function storageUse() {
    property of the screen you're looking at, not of your watch history — a phone and a
    desktop can reasonably disagree, and it isn't worth a sync round trip or a byte of
    ciphertext. Never contains anything about what you watch. */
+/* Theme, for the same reason as the view preferences below and with one extra: app.html reads
+   this key in an inline script before the first paint, so a reload never flashes the wrong
+   colours. Absent means auto, which is why choosing auto removes it rather than storing it. */
+export const readTheme = () => LS.get(LS_THEME) || "auto";
+
+export function writeTheme(pref) {
+  if (pref === "light" || pref === "dark") LS.set(LS_THEME, pref);
+  else LS.rem(LS_THEME);
+}
+
+/* A vault written before the theme moved to the device still carries one. It is taken over
+   here, once, and only when this device has no preference of its own — a device that has
+   already been set has the better answer, and an incoming sync must not overwrite it.
+   migrate() drops the field immediately after, so it stops travelling and stops appearing in
+   the export. */
+function adoptLegacyTheme(parsed) {
+  const old = parsed && parsed.settings && parsed.settings.theme;
+  if (old && old !== "auto" && !LS.get(LS_THEME)) writeTheme(old);
+  return parsed;
+}
+
+const hydrate = (parsed) => migrate(adoptLegacyTheme(parsed));
+
 export function readView() {
   try { return JSON.parse(LS.get(LS_VIEW)) || {}; } catch (e) { return {}; }
 }
@@ -104,7 +128,7 @@ function saveLocal() {
 
 function loadLocal() {
   const r = LS.get(LS_STATE);
-  try { return r ? migrate(JSON.parse(r)) : null; } catch (e) { return null; }
+  try { return r ? hydrate(JSON.parse(r)) : null; } catch (e) { return null; }
 }
 
 /* ---- server sync ---- */
@@ -182,7 +206,7 @@ export async function pushServer(manual = false, keepalive = false, retry = 0) {
 
 // Pull the server's copy and merge it into the live state.
 async function mergeRemote(blob, updatedAt) {
-  const remote = migrate(await decS(blob));
+  const remote = hydrate(await decS(blob));
   const before = fingerprint(state);
   const merged = migrate(mergeStates(state, remote));
   const changed = fingerprint(merged) !== before;
@@ -253,7 +277,7 @@ export function exportJSON() {
 export function importJSON(text) {
   const parsed = JSON.parse(text);
   if (!parsed || !Array.isArray(parsed.shows)) throw new Error("Not a nextly export — no shows in this file.");
-  const incoming = migrate(parsed);
+  const incoming = hydrate(parsed);
   const merged = migrate(mergeStates(state, incoming));
   setState(merged);
   scheduleSync();

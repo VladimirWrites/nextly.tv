@@ -13,7 +13,6 @@ export function defSettings() {
   return {
     provider: "tvmaze",  // which catalogue new searches use
     tmdbKey: "",         // the user's own TMDB key; travels in the encrypted blob, never to our server
-    theme: "auto",       // auto | light | dark
     specials: false,     // count specials towards progress and up-next
     m: 0,                // mtime, so two devices changing settings resolve newest-wins
   };
@@ -112,6 +111,12 @@ export function migrate(s) {
   if (!s || typeof s !== "object") return emptyState();
   if (!s.v) s.v = SCHEMA_VERSION;
   s.settings = Object.assign(defSettings(), s.settings || {});
+  /* Theme is a property of the screen in front of you, not of your watch history. It used to
+     live here and therefore synced, which meant a phone set to dark dragged a desktop in a lit
+     room after it — and put a device preference in the export, where it has no business being.
+     It belongs to the device now; io/storage.js keeps it and adopts any old vault value once
+     before this line removes it. */
+  delete s.settings.theme;
   s.updatedAt = +s.updatedAt || 0;
   s.shows = Array.isArray(s.shows) ? s.shows.map(normShow).filter(Boolean) : [];
   mergeDuplicates(s);

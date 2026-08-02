@@ -71,10 +71,20 @@ test("migrate accepts an unknown object without throwing", () => {
 });
 
 test("migrate keeps unknown settings while restoring the defaults", () => {
-  const s = migrate({ settings: { theme: "dark", future: 1 } });
-  assert.equal(s.settings.theme, "dark");
+  const s = migrate({ settings: { future: 1 } });
   assert.equal(s.settings.provider, defSettings().provider);
   assert.equal(s.settings.future, 1);
+});
+
+/* Theme is the one setting that is deliberately forgotten. It belongs to the device, and a
+   vault that still carries one is from before that was true — io/storage.js takes the value
+   over for this device first, and this drop is what stops it syncing to every other one and
+   what keeps it out of the export. */
+test("migrate drops a theme left in an old vault", () => {
+  const s = migrate({ settings: { theme: "dark", future: 1 } });
+  assert.equal(s.settings.theme, undefined);
+  assert.equal(s.settings.future, 1, "and takes nothing else with it");
+  assert.ok(!("theme" in JSON.parse(JSON.stringify(s.settings))), "gone from the serialised form too");
 });
 
 test("ensureDel is idempotent and keeps existing tombstones", () => {
