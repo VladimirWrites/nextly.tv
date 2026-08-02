@@ -86,11 +86,24 @@ export function renderSettings(root, { go, repaint }) {
 
     h("div.sect", [h("h2.t-label", { text: "Appearance" })]),
     h("div.set-group", [
-      // This device only, so no sync: the phone by the bed and the desktop by the window are
-      // allowed to disagree, and neither is a fact about what anyone watched.
-      row("Theme", "Follows your system unless you pick one. Set per device.",
+      row("Theme", "Follows your system unless you pick one.",
         segmented([["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]], readTheme(), (v) => {
           applyTheme(v);
+          // Only when it is being shared does the choice belong in the vault as well.
+          if (s.themeSync) { s.theme = v; scheduleSync(); }
+          repaint();
+        })),
+
+      /* Off by default, because the phone by the bed and the desktop by the window are allowed
+         to disagree and neither is a fact about what anyone watched. On, and the vault carries
+         the theme like any other setting — which also puts it in the export, where it is only
+         welcome because someone asked for it. */
+      row("Use on all devices", "Off, each device keeps its own theme. On, they follow this one.",
+        toggle(!!s.themeSync, (on) => {
+          s.themeSync = on;
+          if (on) s.theme = readTheme();
+          else delete s.theme;
+          scheduleSync();
           repaint();
         })),
     ]),

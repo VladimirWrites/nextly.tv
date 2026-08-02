@@ -14,6 +14,7 @@ export function defSettings() {
     provider: "tvmaze",  // which catalogue new searches use
     tmdbKey: "",         // the user's own TMDB key; travels in the encrypted blob, never to our server
     specials: false,     // count specials towards progress and up-next
+    themeSync: false,    // whether the theme below is shared with your other devices
     m: 0,                // mtime, so two devices changing settings resolve newest-wins
   };
 }
@@ -111,12 +112,16 @@ export function migrate(s) {
   if (!s || typeof s !== "object") return emptyState();
   if (!s.v) s.v = SCHEMA_VERSION;
   s.settings = Object.assign(defSettings(), s.settings || {});
-  /* Theme is a property of the screen in front of you, not of your watch history. It used to
-     live here and therefore synced, which meant a phone set to dark dragged a desktop in a lit
-     room after it — and put a device preference in the export, where it has no business being.
-     It belongs to the device now; io/storage.js keeps it and adopts any old vault value once
-     before this line removes it. */
-  delete s.settings.theme;
+  /* Theme is a property of the screen in front of you, not of your watch history, so by
+     default it lives on the device and never comes in here — a phone set to dark should not
+     drag a desktop in a lit room after it, and a colour preference has no business in an
+     export of what you watched.
+
+     It is allowed in only when themeSync says so, which is off unless someone asks for it. A
+     vault written before any of this carries a theme and no themeSync, so it lands in the
+     false branch: io/storage.js takes the value over for this device first, then this drops
+     it. */
+  if (!s.settings.themeSync) delete s.settings.theme;
   s.updatedAt = +s.updatedAt || 0;
   s.shows = Array.isArray(s.shows) ? s.shows.map(normShow).filter(Boolean) : [];
   mergeDuplicates(s);

@@ -79,8 +79,13 @@ export function writeTheme(pref) {
    migrate() drops the field immediately after, so it stops travelling and stops appearing in
    the export. */
 function adoptLegacyTheme(parsed) {
-  const old = parsed && parsed.settings && parsed.settings.theme;
-  if (old && old !== "auto" && !LS.get(LS_THEME)) writeTheme(old);
+  const set = parsed && parsed.settings;
+  if (!set || !set.theme) return parsed;
+  // Shared on purpose: the vault is the authority and every device follows it.
+  if (set.themeSync) writeTheme(set.theme);
+  // Otherwise it is a leftover from when theme always synced. Taken over once, and only where
+  // this device has no answer of its own — one already set knows better than an old vault.
+  else if (set.theme !== "auto" && !LS.get(LS_THEME)) writeTheme(set.theme);
   return parsed;
 }
 

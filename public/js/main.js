@@ -328,7 +328,15 @@ async function boot() {
   setSyncReporter(setSync);
   // Data can arrive after boot — a sync on foregrounding, or a merge with another device —
   // and those shows need their metadata fetched too, not just a repaint.
-  setDataListener(() => { render(); hydrateLibrary(); });
+  /* A merge can bring a theme with it, but only when the vault is the one holding it. The
+     device store is written from here rather than in io/storage.js, because applying a theme
+     is a thing the UI does and the io layer has no business reaching into it. */
+  setDataListener(() => {
+    const set = state.settings || {};
+    if (set.themeSync && set.theme && set.theme !== readTheme()) applyTheme(set.theme);
+    render();
+    hydrateLibrary();
+  });
   setRepaint(render);
   // beforeinstallprompt can arrive after boot; repaint so Settings picks it up.
   onInstallStateChange(() => { if (route.name === "you") render(); });

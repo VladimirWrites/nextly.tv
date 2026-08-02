@@ -85,6 +85,12 @@ test("migrate drops a theme left in an old vault", () => {
   assert.equal(s.settings.theme, undefined);
   assert.equal(s.settings.future, 1, "and takes nothing else with it");
   assert.ok(!("theme" in JSON.parse(JSON.stringify(s.settings))), "gone from the serialised form too");
+  assert.equal(s.settings.themeSync, false, "and sharing is off unless someone asked for it");
+});
+
+test("a theme that is meant to be shared is kept", () => {
+  const s = migrate({ settings: { theme: "light", themeSync: true } });
+  assert.equal(s.settings.theme, "light");
 });
 
 test("ensureDel is idempotent and keeps existing tombstones", () => {
