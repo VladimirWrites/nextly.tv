@@ -14,7 +14,7 @@ a Cloudflare Worker, D1, and native ES modules with no bundler.
 
 ## Why it exists
 
-Tracking services shut down and take watch histories with them. Three design decisions
+Tracking services shut down and take watch histories with them. Four design decisions
 follow from refusing that:
 
 **The server can't read your data.** An account number derives two values: a SHA-256 hash
@@ -29,6 +29,16 @@ catalogue that still exists. Nothing depends on one provider's numeric ids survi
 
 **Catalogues are swappable.** `public/js/io/providers/` holds one file per catalogue, each
 normalizing to a shared shape. Adding one is a file; losing one costs a file.
+
+**No address names a show.** A path is sent to the server on every navigation that reaches
+the network — a refresh, a cold start, a restored tab, a link someone opened — so
+`/show/tmdb:67070` would tell whoever runs the server which programme an address is watching.
+That is exactly the fact the encryption exists to withhold, and it was sitting in the one place
+nobody thought to look. The subject goes in the fragment instead: `/show#tmdb:67070`. A
+fragment is the only part of a URL a browser never transmits, to the origin or to anything in
+front of it. The server sees `/show` and learns that somebody opened a show page, which is
+nothing. `domain/routes.js` is that decision, on its own and tested, and there is no longer a
+shape of address that carries a subject anywhere else.
 
 ## Running it
 
@@ -77,7 +87,7 @@ word for it. See [SECURITY.md](SECURITY.md) for what that does and does not chan
 npm test
 ```
 
-389 tests over the domain logic, the crypto, the provider normalizers, the vault API and the
+411 tests over the domain logic, the crypto, the provider normalizers, the vault API and the
 Worker's routing — Node's own runner, no browser, no dependencies. The ones worth reading
 first are `tests/merge.test.mjs` and `tests/rewatch.test.mjs`: every real two-device
 scenario, including the ones that would silently lose an episode.
@@ -111,6 +121,7 @@ public/js/domain/         Pure logic. No DOM, no network, no clock it wasn't han
   scores.js                 per-episode ratings, and the season's shape
   share.js                  parsing whatever another app shared with us
   discover.js               ranking what's on into something worth showing
+  routes.js                 what an address means, and what address a screen has
   store.js                  the one live state object
 
 public/js/io/             Effects.
@@ -125,6 +136,8 @@ public/js/io/             Effects.
 public/js/ui/             DOM. One file per screen, plus a few shared pieces.
   dom.js                    the element builder, toasts, media that outlives a render
   barcode.js                the strip
+  discover.js               the rows on Search, and what each one is
+  feed.js                   one of those rows in full, a page at a time
   show.js                   a show you track …
   show-preview.js           … one you have only found …
   show-parts.js             … and everything both pages are built from
@@ -188,6 +201,20 @@ left off; a paused show coming back next week is exactly when you'd unpause it.
 
 The horizon is 120 days, because catalogues occasionally carry a placeholder date years out.
 Anything past it is reported as a count rather than silently dropped.
+
+## Finding something new
+
+An empty search box is a dead end, so Search opens on rows of what's worth starting. Which
+rows depends on the catalogue in use, because a card opens a show under its catalogue's episode
+numbering and a mixed screen would hand back TVmaze shows to someone who chose TMDB.
+
+Every row ends in a card that opens the whole feed, a page at a time. The two sides of that
+work differently and the screen deliberately can't tell: TMDB pages on the server, twenty at a
+time, and reports how many pages exist — which is passed on rather than inferred, since a short
+page is no proof of the end when the last page of an exact multiple of twenty is full. The
+TVmaze rows are computed here from a schedule window this client already holds, so page one is
+all of it: the row shows two dozen and the full screen lifts that limit without another
+request.
 
 ## The barcode
 
