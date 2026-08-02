@@ -1114,8 +1114,19 @@ div.bar-row {
    *
    * Held level with the right edge of the content rather than the window, which on a wide
    * screen is somewhere else entirely. */
+  /* Below the toolbar, the same as on a phone. The bar is hidden at this width — except on a
+     screen that has controls in it, which is every screen this strip appears on, since it only
+     exists under the alphabetical sort in the library and the library carries sort and search.
+     Running from the top of the window instead put the letters behind that bar: not always,
+     which is what made it look like one device's fault, but whenever the window was short
+     enough that centring the strip pushed its first letters up into the bar. A 1920x1200
+     tablet at two device pixels per CSS pixel is a 600px-tall window, and lost A and B.
+
+     Not conditioned on the bar actually being there with :has(), deliberately: the devices most
+     likely to be short and wide are old tablets, and old tablets are exactly where :has() is
+     missing. A rule that fixes this only on browsers that never had the problem is no fix. */
   .az {
-    top: var(--wco-off);
+    top: calc(var(--wco-off) + var(--bar-h));
     bottom: 0;
     right: max(6px, calc((100vw - var(--rail) - var(--wrap)) / 2));
     gap: 2px;
