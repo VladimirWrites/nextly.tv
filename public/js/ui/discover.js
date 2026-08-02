@@ -7,7 +7,7 @@
 // A card opens a show under its catalogue's episode numbering, so a mixed screen would hand
 // back TVmaze shows to someone who chose TMDB. TVmaze rows are built from its schedule
 // ranked by popularity; TMDB's come from endpoints TVmaze has no equivalent for.
-import { h, mount, posterFallback, shelfScroller, poster } from "./dom.js";
+import { h, svg, ICON, mount, posterFallback, shelfScroller, poster } from "./dom.js";
 import { state } from "../domain/store.js";
 import { trackedKeys } from "../domain/discover.js";
 import { fmtDay, daysUntil } from "../domain/dates.js";
@@ -16,14 +16,16 @@ import * as discover from "../io/discover.js";
 import * as cache from "../io/cache.js";
 
 // Each row loads independently and paints as it arrives, so one slow feed never holds up
-// the others.
-const ROWS = [
+// the others. Exported because the screen that shows a whole feed is the same feed: it takes
+// its title, its lede and its captions from here rather than keeping a second copy that can
+// drift out of step with this one.
+export const ROWS = [
   {
     id: "premieres",
     via: "tvmaze",
     title: "Premieres coming up",
     lede: "New seasons and new shows about to start.",
-    load: (tracked) => discover.premiereFeed({ tracked }),
+    load: (tracked) => discover.feedPage("premieres", 1, { tracked }),
     caption: (c) => (c.air ? `${c.season > 1 ? `Season ${c.season}` : "New"} · ${whenLabel(c.air)}` : null),
   },
   {
@@ -31,7 +33,7 @@ const ROWS = [
     via: "tvmaze",
     title: "On today",
     lede: "Airing right now, most popular first.",
-    load: (tracked) => discover.airingFeed({ tracked }),
+    load: (tracked) => discover.feedPage("today", 1, { tracked }),
     caption: (c) => c.network,
   },
   {
@@ -39,14 +41,14 @@ const ROWS = [
     via: "tmdb",
     title: "Trending this week",
     lede: "What people are watching most.",
-    load: () => discover.trendingFeed(),
+    load: () => discover.feedPage("trending"),
     caption: (c) => scoreCaption(c),
   },
   {
     id: "popular",
     via: "tmdb",
     title: "Popular",
-    load: () => discover.popularFeed(),
+    load: () => discover.feedPage("popular"),
     caption: (c) => scoreCaption(c),
   },
   {
@@ -54,7 +56,7 @@ const ROWS = [
     via: "tmdb",
     title: "Best rated",
     lede: "Highest scored, by people who voted enough to mean it.",
-    load: () => discover.topRatedFeed(),
+    load: () => discover.feedPage("toprated"),
     caption: (c) => scoreCaption(c),
   },
 ];
@@ -90,8 +92,13 @@ export function renderDiscover(root, { go }) {
        reappear for the frame before the feed resolves. */
     const held = (drawn.get(row.id) || []).filter((c) => !tracked.has(c.key));
     // Straight to the posters where this row has already been drawn once.
+    /* One way of drawing a row, used by both the held cards and the ones that arrive, so the
+       way out of it cannot be present on one path and missing on the other — which it was:
+       the card was appended only when a feed resolved, so a repaint that painted from held
+       cards, or one where nothing had changed and the paint was skipped, dropped it. */
+    const paint = (cards) => [...cards.map((c) => posterCard(c, row.caption(c), go)), moreCard(row, go)];
     const strip = shelfScroller(h("div.shelf", held.length
-      ? held.map((c) => posterCard(c, row.caption(c), go))
+      ? paint(held)
       : [skeleton(), skeleton(), skeleton(), skeleton()]), `row:${row.id || row.title}`);
     const section = h("div", [
       h("div.shelf-head", [
@@ -102,7 +109,7 @@ export function renderDiscover(root, { go }) {
     ]);
 
     row.load(tracked)
-      .then((all) => {
+      .then(({ cards: all }) => {
         // Discovery offers things you don't have. TVmaze feeds drop tracked shows in the
         // domain layer; TMDB's endpoints take no such parameter, so both are filtered here.
         const cards = all.filter((c) => !tracked.has(c.key));
@@ -111,7 +118,7 @@ export function renderDiscover(root, { go }) {
         const same = held.length === cards.length && held.every((c, i) => c.key === cards[i].key);
         drawn.set(row.id, cards);
         if (same) return;
-        strip.replaceChildren(...cards.map((c) => posterCard(c, row.caption(c), go)));
+        strip.replaceChildren(...paint(cards));
       })
       .catch(() => section.remove());
 
@@ -145,6 +152,23 @@ function posterCard(card, caption, go) {
   ]);
 }
 
+/* The last card in the row, and a card rather than a link beside the heading because that is
+   where the hand already is: someone who wants more of a row has just scrolled to the end of
+   it, and the end of it is exactly where this is. Shaped like the cards around it so the row
+   keeps its rhythm, drawn as an outline so it never reads as a show. */
+function moreCard(row, go) {
+  return h("button.shelf-card.shelf-more", {
+    type: "button",
+    onclick: () => go("feed", row.id),
+    "aria-label": `See more: ${row.title}`,
+  }, [
+    h("div.shelf-art.shelf-more-art", [
+      svg(ICON.caret, "shelf-more-icon"),
+    ]),
+    h("div.shelf-name.t-title", { text: "See more" }),
+  ]);
+}
+
 /* Poster, title, caption — the same three boxes a real card has, so a row does not grow by 44px
    the moment its data lands and shove everything below it down the page. */
 const skeleton = () => h("div.shelf-card", [
@@ -152,3 +176,6 @@ const skeleton = () => h("div.shelf-card", [
   h("div.shelf-name", [h("span.skeleton.skeleton-line")]),
   h("div.shelf-cap", [h("span.skeleton.skeleton-line", { style: { width: "60%" } })]),
 ]);
+
+// The row a whole-feed screen is showing.
+export const feedById = (id) => ROWS.find((r) => r.id === id) || null;

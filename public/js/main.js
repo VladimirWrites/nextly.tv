@@ -15,6 +15,8 @@ import { stopBarWatch } from "./ui/show-parts.js";
 import { renderPerson } from "./ui/person.js";
 import { renderSeason, renderEpisode } from "./ui/detail.js";
 import { renderStats } from "./ui/stats.js";
+import { renderFeed } from "./ui/feed.js";
+import { feedById } from "./ui/discover.js";
 import * as view from "./ui/viewstate.js";
 import * as trail from "./ui/trail.js";
 import { renderSearch, presetSearch } from "./ui/search.js";
@@ -164,7 +166,10 @@ function render() {
   if (!keysReady()) return;
 
   const waiting = upNextList(state.shows, cache.getMeta, opts()).length;
-  const titles = { next: "Up next", library: "Library", search: "Search", you: "You", stats: "Your year", show: "", person: "", season: "", episode: "" };
+  /* A feed's name is the row it came from. Put here rather than drawn on the page so it lands
+     in the bar with every other screen's, and so the document title says which feed too. */
+  const feed = route.name === "feed" ? feedById(route.arg) : null;
+  const titles = { next: "Up next", library: "Library", search: "Search", you: "You", stats: "Your year", show: "", person: "", season: "", episode: "", feed: feed ? feed.title : "" };
   // The show page bleeds its bar and cover to the edges of the column, so it caps its own
   // children instead of being capped as a whole.
   const body = h("main.main", { class: route.name === "show" ? "is-show" : null });
@@ -178,7 +183,7 @@ function render() {
      they carry a back button already, so the bar is a second way out of a screen that has
      one, and it costs a permanent 84px band on the longest scroll in the app. The rail stays
      on a desktop, where the room is free either way. */
-  document.body.classList.toggle("no-nav", ["show", "person", "season", "episode", "stats"].includes(route.name));
+  document.body.classList.toggle("no-nav", ["show", "person", "season", "episode", "stats", "feed"].includes(route.name));
 
   mount(app, renderTitlebar(), h("div.shell", [
     /* The nav replaces rather than pushes. Its four screens are places you switch between, not
@@ -186,7 +191,7 @@ function render() {
        on a phone, rather than walking backwards through the tabs you happened to visit. Only
        going *into* something — a show, an actor, a season — is worth an entry. */
     renderNav(["show", "person", "season", "episode"].includes(route.name) ? "library"
-      : route.name === "stats" ? "you" : route.name,
+      : route.name === "stats" ? "you" : route.name === "feed" ? "search" : route.name,
     (name) => go(name, null, { replace: true }), waiting),
     h("div.shell-main", [top ? top.bar : null, body]),
   ]));
@@ -212,6 +217,7 @@ function render() {
   else if (route.name === "person") renderPerson(body, route.arg, ctx);
   else if (route.name === "season") renderSeason(body, route.arg, ctx);
   else if (route.name === "episode") renderEpisode(body, route.arg, ctx);
+  else if (route.name === "feed") renderFeed(body, route.arg, ctx);
   else renderUpNext(body, ctx);
 }
 

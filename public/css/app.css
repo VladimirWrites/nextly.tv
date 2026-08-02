@@ -1143,6 +1143,67 @@ div.bar-row {
   }
 }
 
+/* ---------- see more, and the whole feed behind it ---------- */
+
+/* Shaped like the cards beside it so the row keeps its rhythm, and outlined rather than filled
+   so it never reads as a show with missing artwork. */
+.shelf-more-art {
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--line);
+  background: transparent;
+}
+
+.shelf-more-icon {
+  width: 26px;
+  height: 26px;
+  stroke: var(--dim);
+}
+
+.shelf-more:hover .shelf-more-art {
+  border-color: var(--signal);
+}
+
+.shelf-more:hover .shelf-more-icon {
+  stroke: var(--signal);
+}
+
+/* The cards are the shelf's, and a shelf card is 128px wide because a horizontal strip needs
+   every card the same size. In a grid of 1fr columns that leaves each one sitting at the left
+   of a wider cell with the slack piling up on the right, which is why the whole grid looked
+   pushed off centre with a margin down one side. Here they fill their column.
+
+   The reserved line heights go too. They keep a shelf's titles and captions on the same line
+   as each other, which matters when the cards are in a row and read across; in a grid they are
+   read down, and reserving two lines for every one-line title just spreads the page out. */
+.feed .grid {
+  align-items: start;
+}
+
+.feed .grid .shelf-card {
+  width: auto;
+}
+
+.feed .grid .shelf-name,
+.feed .grid .shelf-cap {
+  min-height: 0;
+}
+
+/* Both the sentinel the observer watches and the place the answer is written, so there is one
+   box rather than two and it can never be scrolled past without being noticed. */
+.feed-foot {
+  min-height: 60px;
+  display: grid;
+  place-items: center;
+  padding: 22px 0 8px;
+}
+
+.feed-more,
+.feed-end {
+  color: var(--dimmer);
+  font-size: 13px;
+}
+
 /* ---------- section headers ---------- */
 
 .sect {

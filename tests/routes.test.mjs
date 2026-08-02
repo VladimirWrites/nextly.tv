@@ -6,7 +6,7 @@
 // the server. The rest is making sure that cost neither the odd characters nor the round trip.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseRoute, pathFor, DETAIL } from "../public/js/domain/routes.js";
+import { parseRoute, pathFor, DETAIL, HOME } from "../public/js/domain/routes.js";
 
 /* ---- the property this exists for ---- */
 
@@ -131,5 +131,14 @@ test("a broken escape in the address bar does not throw", () => {
 /* ---- the table itself ---- */
 
 test("DETAIL names exactly the screens that have a subject", () => {
-  assert.deepEqual(Object.keys(DETAIL).sort(), ["episode", "person", "season", "show"]);
+  assert.deepEqual(Object.keys(DETAIL).sort(), ["episode", "feed", "person", "season", "show"]);
+});
+
+/* A whole discovery feed. Same rule as every other route that names something: the name goes in
+   the fragment, so the server sees only that a feed was opened. */
+test("a feed is named in the fragment like anything else", () => {
+  assert.deepEqual(parseRoute("/feed", "#trending"), { name: "feed", arg: "trending" });
+  assert.equal(pathFor("feed", "trending"), "/feed#trending");
+  assert.deepEqual(parseRoute("/feed", ""), HOME, "a feed with no name is not a place");
+  assert.deepEqual(parseRoute("/feed/trending", ""), HOME, "and the path form is not a route at all");
 });

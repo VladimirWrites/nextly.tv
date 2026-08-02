@@ -252,7 +252,7 @@ export default {
    404 as any other unknown path. See the routing note in public/js/domain/routes.js. */
 const APP_ROUTES = new Set([
   "/library", "/search", "/you", "/stats", "/share",
-  "/show", "/person", "/season", "/episode",
+  "/show", "/person", "/season", "/episode", "/feed",
 ]);
 
 const isAppRoute = (p) => APP_ROUTES.has(p.endsWith("/") && p.length > 1 ? p.slice(0, -1) : p);

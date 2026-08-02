@@ -305,7 +305,7 @@ export function similarSection(show, go) {
   const strip = shelfScroller(h("div.shelf"), `like:${show.id}`);
   const section = h("div", [h("div.sect", [h("h2.t-label", { text: "More like this" })]), strip]);
 
-  discover.similarTo(show).then((cards) => {
+  discover.similarTo(show).then(({ cards }) => {
     if (!cards.length) return section.remove();
     strip.replaceChildren(...cards.slice(0, 20).map((c) => {
       cache.putHint(c);

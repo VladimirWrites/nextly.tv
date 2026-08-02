@@ -64,6 +64,25 @@ export async function airingFeed(opts = {}) {
   return airing(day, opts);
 }
 
+/* One shape for both catalogues, so a screen showing a whole feed does not have to know which
+   kind it is looking at.
+
+   TMDB pages on the server, twenty at a time, and says how many pages there are. TVmaze does
+   not page at all: those rows are computed here from a schedule window this client already
+   holds, so page one is everything there is and asking for page two is asking for nothing. The
+   row shows the first two dozen; the whole-feed screen lifts that and gets the rest for free,
+   without a single extra request. */
+export async function feedPage(id, page = 1, opts = {}) {
+  // opts carries the limit through untouched: the row leaves it alone and takes the domain
+  // default of two dozen, the whole-feed screen passes Infinity and gets the lot.
+  if (id === "premieres") return { cards: page > 1 ? [] : await premiereFeed(opts), more: false };
+  if (id === "today") return { cards: page > 1 ? [] : await airingFeed(opts), more: false };
+  const fn = { trending: trendingFeed, popular: popularFeed, toprated: topRatedFeed }[id];
+  if (!fn) return { cards: [], more: false };
+  const { cards, pages } = await fn(page);
+  return { cards, more: page < pages };
+}
+
 /* ---- feeds that need the user's TMDB key ---- */
 
 /* Whether TMDB is actually the catalogue in use — not merely whether a key is stored.
@@ -71,34 +90,36 @@ export async function airingFeed(opts = {}) {
    contradicted Settings telling the user in as many words that the key was not being used. */
 export const hasTmdb = () => activeProvider().id === "tmdb";
 
-export async function trendingFeed() {
-  if (!hasTmdb()) return [];
-  return once("trending", () => tmdb.trending("week").catch(() => []));
+const NO_MORE = { cards: [], pages: 1 };
+
+export async function trendingFeed(page = 1) {
+  if (!hasTmdb()) return NO_MORE;
+  return once(`trending:${page}`, () => tmdb.trending("week", page).catch(() => NO_MORE));
 }
 
-export async function popularFeed() {
-  if (!hasTmdb()) return [];
-  return once("popular", () => tmdb.popular().catch(() => []));
+export async function popularFeed(page = 1) {
+  if (!hasTmdb()) return NO_MORE;
+  return once(`popular:${page}`, () => tmdb.popular(page).catch(() => NO_MORE));
 }
 
 // Keeps the screen three rows deep on TMDB too. Not a mirror of the TVmaze schedule row —
 // TMDB has no comparable listing, and the highest-rated shows are worth more here than a
 // literal match would be.
-export async function topRatedFeed() {
-  if (!hasTmdb()) return [];
-  return once("toprated", () => tmdb.topRated().catch(() => []));
+export async function topRatedFeed(page = 1) {
+  if (!hasTmdb()) return NO_MORE;
+  return once(`toprated:${page}`, () => tmdb.topRated(page).catch(() => NO_MORE));
 }
 
 /* Shows like this one. A TVmaze-tracked show has no TMDB id, but it does carry an IMDb id,
    so one extra request maps it across — which is the whole reason those ids are stored in
    the vault rather than only a catalogue's own numbering. */
-export async function similarTo(show) {
-  if (!hasTmdb()) return [];
-  return once(`similar:${show.id}`, async () => {
+export async function similarTo(show, page = 1) {
+  if (!hasTmdb()) return NO_MORE;
+  return once(`similar:${show.id}:${page}`, async () => {
     let ref = show.src === "tmdb" ? show.ref : null;
     if (!ref) ref = await tmdb.tmdbIdFromExternal({ imdb: show.imdb, tvdb: show.tvdb }).catch(() => null);
-    if (!ref) return [];
-    return tmdb.similar(ref).catch(() => []);
+    if (!ref) return NO_MORE;
+    return tmdb.similar(ref, page).catch(() => NO_MORE);
   });
 }
 

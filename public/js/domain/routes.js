@@ -21,7 +21,12 @@
 // decision and decisions are testable. The router owns `location` and `history`.
 
 // Route -> how many parts its argument has. Also the test for "does this route name a thing".
-export const DETAIL = { show: 1, person: 1, season: 2, episode: 3 };
+/* `feed` names which discovery list is being shown in full. It is in here rather than among the
+   tabs for the same reason as the rest: a feed is a thing an address names, and naming it in
+   the path would tell the server which one. That it is only ever a word like "trending" today
+   is not a reason to build the other shape of address — the next one might be "shows like
+   this", and that is a show. */
+export const DETAIL = { show: 1, person: 1, season: 2, episode: 3, feed: 1 };
 
 const TABS = ["library", "search", "you", "stats"];
 

@@ -129,11 +129,32 @@ test("TMDB rows are on only when TMDB is chosen and a key is set", () => {
 
 test("the TMDB feeds return nothing rather than calling out when TMDB is not in use", async () => {
   configure("tvmaze", "a-real-key");
-  assert.deepEqual(await trendingFeed(), []);
-  assert.deepEqual(await popularFeed(), []);
-  assert.deepEqual(await topRatedFeed(), []);
-  assert.deepEqual(await similarTo({ id: "tvmaze:1", src: "tvmaze", imdb: "tt1" }), []);
+  // A page rather than a bare list now, because these feeds are paged. Empty means the same
+  // thing it always did: nothing to show, and no request made.
+  const empty = { cards: [], pages: 1 };
+  assert.deepEqual(await trendingFeed(), empty);
+  assert.deepEqual(await popularFeed(), empty);
+  assert.deepEqual(await topRatedFeed(), empty);
+  assert.deepEqual(await similarTo({ id: "tvmaze:1", src: "tvmaze", imdb: "tt1" }), empty);
   configure("tvmaze", "");
+});
+
+/* The whole-feed screen and the row on the search screen go through one accessor, so the shape
+   it hands back has to be the same whichever catalogue answered — a screen that had to ask
+   which kind of feed it was showing would be the bug this prevents. */
+test("feedPage answers in one shape for both catalogues", async () => {
+  const { feedPage } = await import("../public/js/io/discover.js");
+  configure("tvmaze", "");
+  const tv = await feedPage("premieres", 1, { tracked: new Set() });
+  assert.ok(Array.isArray(tv.cards));
+  assert.equal(tv.more, false, "TVmaze rows are computed here, so page one is all of it");
+  assert.deepEqual(await feedPage("premieres", 2, { tracked: new Set() }), { cards: [], more: false });
+
+  const tmdb = await feedPage("trending", 1);
+  assert.ok(Array.isArray(tmdb.cards), "and the same shape when TMDB is not even in use");
+  assert.equal(tmdb.more, false);
+
+  assert.deepEqual(await feedPage("not-a-feed"), { cards: [], more: false });
 });
 
 /* The mirror image, and the one the user hit: the keyless rows kept showing under TMDB. They

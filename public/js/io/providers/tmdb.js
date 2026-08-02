@@ -140,14 +140,21 @@ const asCard = (r) => ({
   overview: r.overview || "",
 });
 
-export async function trending(window = "week") {
-  const d = await get(`/trending/tv/${window === "day" ? "day" : "week"}`);
-  return (d.results || []).map(asCard);
+/* Paged, because these lists are longer than one screen of them.
+
+   TMDB answers twenty per page and there is no way to ask for more — no per_page — so the page
+   number is the only lever. The count of pages comes back with the results and is passed on
+   rather than dropped, since "is there any more" is a question the screen has to answer and
+   guessing it from a short page is wrong: the last page of an exact multiple of twenty is
+   full. */
+const paged = (d) => ({ cards: (d.results || []).map(asCard), pages: +d.total_pages || 1 });
+
+export async function trending(window = "week", page = 1) {
+  return paged(await get(`/trending/tv/${window === "day" ? "day" : "week"}`, { page }));
 }
 
-export async function popular() {
-  const d = await get("/tv/popular");
-  return (d.results || []).map(asCard);
+export async function popular(page = 1) {
+  return paged(await get("/tv/popular", { page }));
 }
 
 /* Just the score, for a show tracked under the other catalogue. The full record would pull
@@ -165,20 +172,19 @@ export async function ratingOf(ref) {
   };
 }
 
-export async function topRated() {
-  const d = await get("/tv/top_rated");
-  return (d.results || []).map(asCard);
+export async function topRated(page = 1) {
+  return paged(await get("/tv/top_rated", { page }));
 }
 
 // Shows like this one. TMDB's "recommendations" are better curated than "similar", which is
 // mostly genre overlap, so it is tried first.
-export async function similar(ref) {
+export async function similar(ref, page = 1) {
   for (const path of ["recommendations", "similar"]) {
-    const d = await get(`/tv/${encodeURIComponent(ref)}/${path}`).catch(() => null);
+    const d = await get(`/tv/${encodeURIComponent(ref)}/${path}`, { page }).catch(() => null);
     const rows = d && (d.results || []);
-    if (rows && rows.length) return rows.map(asCard);
+    if (rows && rows.length) return paged(d);
   }
-  return [];
+  return { cards: [], pages: 1 };
 }
 
 // Same name as on the other provider, so the layer above can ask either without knowing which.
