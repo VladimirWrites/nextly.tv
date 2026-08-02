@@ -232,34 +232,9 @@ export function trailerLink(root, m, n = null) {
     found.set(id, t || null);
     if (!t || !row.isConnected) return;
     row.append(chip(t, true));
-    grow(row);
   }).catch(() => {});
 }
 
-/* The row was empty and is suddenly a chip tall, and because the artwork column is a column,
-   everything under the hero drops by that much in one frame. Fading the chip in does nothing
-   about that — the space it needs is taken the instant it is in the document, whatever it
-   looks like.
-
-   So the row is grown to the height just measured rather than allowed to snap to it. The
-   inline height comes off at the end: left on, it would freeze the row at one chip's worth and
-   a second one would have nowhere to go. */
-function grow(row) {
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  // The laid-out height, not scrollHeight: this is what gets written back to style.height, and
-  // the two do not agree about padding and borders.
-  const to = row.getBoundingClientRect().height;
-  if (!to) return;
-  const clear = () => { row.style.height = ""; };
-  row.style.height = "0px";
-  // Read it back, or both heights are set in one frame, the browser only ever sees the second,
-  // and there is nothing for the transition to move from.
-  void row.offsetHeight;
-  row.style.height = `${to}px`;
-  row.addEventListener("transitionend", clear, { once: true });
-  // A transition that never starts never ends, and the row would stay pinned at one chip.
-  setTimeout(clear, 600);
-}
 
 /* Where a score comes from matters as much as the number: an 8.4 from a few hundred people
    and an 8.4 from a hundred thousand are different claims. Each is labelled with its source

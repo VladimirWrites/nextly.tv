@@ -1922,14 +1922,6 @@ div.bar-row {
 
 /* The artwork and what hangs under it. As wide as the poster and no wider, so a chip beneath
  * lines up with its edges rather than with the text column. */
-/* Empty until the trailer answers, and grown to fit when it does — see grow() in
-   ui/show-parts.js. The height is animated rather than taken in one frame, because this
-   column is a column and everything below the hero moves down with it. */
-.show-links {
-  overflow: hidden;
-  transition: height 0.28s cubic-bezier(0, 0, 0.2, 1);
-}
-
 .show-art-col {
   flex: none;
   display: flex;
@@ -3553,9 +3545,14 @@ button.score {
 
 /* The trailer is the one thing on this page that cannot be drawn with the rest of it: for a
    show numbered by another catalogue it is a request of its own, so it lands seconds after
-   everything around it has settled. Appearing from nothing in a row that was empty is the
-   most abrupt arrival on the page, and the one most likely to be looked straight at. It rises
-   the small distance it would have travelled if it had always been there. */
+   everything around it has settled. Appearing from nothing in a row that was empty is the most
+   abrupt arrival on the page, and the one most likely to be looked straight at. It rises the
+   small distance it would have travelled if it had always been there.
+
+   Opacity and transform only, so this is the compositor's work and not the layout engine's.
+   The row taking its space costs one reflow, which is unavoidable and cheap; animating the
+   row's height to soften it cost a reflow on every frame for the length of the animation,
+   which is a great deal of work to spend on thirty-eight pixels moving once. */
 .arrive-chip {
   animation: arrive-chip 0.26s cubic-bezier(0, 0, 0.2, 1) both;
 }

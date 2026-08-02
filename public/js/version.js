@@ -1,2 +1,2 @@
 // Written by scripts/sync-version.mjs from package.json. Do not edit.
-export const VERSION = "1.0.5";
+export const VERSION = "1.0.6";
