@@ -30,10 +30,18 @@
      the real render arrived.
 
      One per device resolution, because iOS matches them exactly and an image that does not
-     match gets scaled, which is the same bug wearing a different hat. Portrait only, and dark
-     only to match the manifest's background_color: a device matching no link at all is back to
-     the snapshot, so every phone matching something matters more than the theme being right for
-     the third of a second this is on screen. Regenerate with scripts/gen-splash.mjs. -->
+     match gets scaled, which is the same bug wearing a different hat. Portrait only.
+
+     Both schemes, and the order is the point: the light set carries no colour-scheme query and
+     is declared first, the dark set is qualified and declared after. A browser that understands
+     prefers-color-scheme takes the later, more specific match; one that does not fails to match
+     the qualified links at all and falls back to the first set. Either way every device matches
+     something, and matching nothing is how the original bug returns.
+
+     What this cannot follow is the theme set inside the app. iOS picks the image before any of
+     our code runs, so the system preference is all it can read. Regenerate both sets with
+     scripts/gen-splash.mjs. -->
+
 <link rel="apple-touch-startup-image" href="/assets/splash/640x1136.png"
       media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
 <link rel="apple-touch-startup-image" href="/assets/splash/750x1334.png"
@@ -58,6 +66,31 @@
       media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
 <link rel="apple-touch-startup-image" href="/assets/splash/1320x2868.png"
       media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+
+<link rel="apple-touch-startup-image" href="/assets/splash/640x1136-dark.png"
+      media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: dark)">
+<link rel="apple-touch-startup-image" href="/assets/splash/750x1334-dark.png"
+      media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: dark)">
+<link rel="apple-touch-startup-image" href="/assets/splash/1242x2208-dark.png"
+      media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+<link rel="apple-touch-startup-image" href="/assets/splash/1125x2436-dark.png"
+      media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+<link rel="apple-touch-startup-image" href="/assets/splash/828x1792-dark.png"
+      media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) and (prefers-color-scheme: dark)">
+<link rel="apple-touch-startup-image" href="/assets/splash/1242x2688-dark.png"
+      media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+<link rel="apple-touch-startup-image" href="/assets/splash/1170x2532-dark.png"
+      media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+<link rel="apple-touch-startup-image" href="/assets/splash/1284x2778-dark.png"
+      media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+<link rel="apple-touch-startup-image" href="/assets/splash/1179x2556-dark.png"
+      media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+<link rel="apple-touch-startup-image" href="/assets/splash/1290x2796-dark.png"
+      media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+<link rel="apple-touch-startup-image" href="/assets/splash/1206x2622-dark.png"
+      media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
+<link rel="apple-touch-startup-image" href="/assets/splash/1320x2868-dark.png"
+      media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait) and (prefers-color-scheme: dark)">
 
 <link rel="preload" href="/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/base.css">
