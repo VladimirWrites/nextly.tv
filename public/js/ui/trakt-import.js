@@ -14,6 +14,7 @@ import { readJSONZip } from "../io/zip.js";
 import { readExport, HISTORY_FILE } from "../domain/trakt-export.js";
 import { importFeed, previewFeed } from "../io/import-feed.js";
 import { hydrateLibrary } from "./actions.js";
+import { state } from "../domain/store.js";
 
 /* Matched rather than listed: a long history is split across watched-history-1.json and its
    numbered siblings, and how many there are is only known once the zip is open. */
@@ -60,21 +61,35 @@ function pick(out, repaint) {
   input.click();
 }
 
+/* What importing would do, in the reader's terms rather than the code's.
+
+   Three situations and they read differently. Something matched; nothing matched though the
+   library holds shows; and nothing matched because the library is empty — the common one on a
+   first run, where "nothing new for the shows you track" is a strange thing to be told by an
+   app you have only just started using.
+
+   The last two are told apart by how many shows are held, not by how many matched. `p.shows`
+   counts what this file lines up with, which is zero in both cases — so reading the library
+   size off the preview would tell somebody with two hundred shows that they have none. */
+export function what(p, held = (state.shows || []).length) {
+  if (p.marks || p.updated) {
+    return `${fmtInt(p.marks)} new to ${fmtInt(p.shows)} shows you track`
+      + (p.updated ? `, ${fmtInt(p.updated)} that would gain a watch date` : "")
+      + (p.newShows ? `, and ${fmtInt(p.newShows)} shows you don't.` : ".");
+  }
+  if (!p.newShows) return "Nothing in there that isn't already here.";
+  return held
+    ? `Nothing new for the shows you track, and ${fmtInt(p.newShows)} shows you don't.`
+    : "None of them are in your library yet.";
+}
+
 /* What it holds and what importing it would do, before anything is done.
    "Added 1,412 marks" is not something anyone should learn afterwards. */
 function review(read, out, repaint) {
   const p = previewFeed(read.feed);
   const lines = [
     h("div", { text: `${fmtInt(read.episodes)} episodes across ${fmtInt(read.feed.shows.length)} shows in that file.` }),
-    h("div", {
-      text: p.marks || p.updated
-        ? `${fmtInt(p.marks)} new to ${fmtInt(p.shows)} shows you track`
-          + (p.updated ? `, ${fmtInt(p.updated)} that would gain a watch date` : "")
-          + (p.newShows ? `, and ${fmtInt(p.newShows)} shows you don't.` : ".")
-        : p.newShows
-          ? `Nothing new for the shows you track. ${fmtInt(p.newShows)} shows you don't.`
-          : "Nothing in there that isn't already here.",
-    }),
+    h("div", { text: what(p) }),
   ];
 
   /* A history that does not add up to what Trakt says it holds. Said plainly: an import that
@@ -86,14 +101,27 @@ function review(read, out, repaint) {
       + `${read.missing.length > 3 ? ", …" : ""}). Trakt's export may not go all the way back.` }));
   }
 
+  /* Two buttons for one action, at two prices. The first applies what can be matched for
+     nothing; the second does that *and* looks up the rest, at a request each.
+
+     Which is why the second reads "Also" only when the first is beside it — a library with
+     nothing tracked yet gets one button, and "Also add 26 shows" invites the reasonable
+     question of what else it is about to do. */
+  const tracked = p.marks || p.updated;
   const buttons = h("div", { style: { display: "flex", gap: "8px", marginTop: "8px", flexWrap: "wrap" } }, [
-    p.marks || p.updated
+    tracked
       ? h("button.btn.btn-sm.btn-primary", { type: "button", text: "Import into tracked shows",
           onclick: () => run(read.feed, false, out, repaint) })
       : null,
     p.newShows
-      ? h("button.btn.btn-sm", { type: "button", text: `Also add ${fmtInt(p.newShows)} new shows`,
-          onclick: () => run(read.feed, true, out, repaint) })
+      ? h("button.btn.btn-sm", {
+          type: "button",
+          class: tracked ? null : "btn-primary",
+          text: tracked
+            ? `Also add ${fmtInt(p.newShows)} new shows`
+            : `Add ${fmtInt(p.newShows)} shows and their history`,
+          onclick: () => run(read.feed, true, out, repaint),
+        })
       : null,
   ]);
 
