@@ -30,7 +30,7 @@ import { showKey } from "./domain/constants.js";
 import { parseShared } from "./domain/share.js";
 import { parseRoute, pathFor } from "./domain/routes.js";
 import { deriveKeys, keysReady } from "./io/crypto.js";
-import { bootVault, loadServer, flushSync, rememberedToken, rememberToken, setSyncReporter, setDataListener, askToPersist, readTheme } from "./io/storage.js";
+import { openLocal, syncVault, loadServer, flushSync, rememberedToken, rememberToken, setSyncReporter, setDataListener, askToPersist, readTheme } from "./io/storage.js";
 import * as cache from "./io/cache.js";
 import * as meta from "./io/meta.js";
 
@@ -361,11 +361,22 @@ async function browse(r) {
 }
 
 
+/* The vault is opened in two steps and the screen is drawn between them.
+
+   The old order awaited the whole of bootVault, which ends in a request to /api/vault — so
+   every launch on a phone held an empty page up for as long as a sleeping radio took to
+   answer, with the finished library sitting in localStorage the entire time. Nothing about
+   that request changes what is drawn in the common case: the merge usually brings nothing.
+
+   The exception is a device with no copy of its own, where there genuinely is nothing to draw
+   and an empty library would look like a lost one. That case, and only that case, still waits. */
 async function signIn(token) {
   rememberToken(token);
   await deriveKeys(token);
   await cache.loadAll();
-  await bootVault();
+  const had = openLocal();
+  if (!had) await syncVault();
+
   applyTheme(readTheme());
   // There is a vault now, so its local copy is worth asking the browser to keep.
   askToPersist();
@@ -374,6 +385,17 @@ async function signIn(token) {
   // Metadata fills in behind the paint: the library already renders from cache, and each
   // result repaints as it lands.
   hydrateLibrary();
+
+  /* And the sync, now that there is something on screen to correct. A repaint only when the
+     merge actually changed something — the usual answer is that it did not, and redrawing a
+     correct screen out from under somebody who has started reading it is its own bug. */
+  if (had) {
+    syncVault().then((changed) => {
+      if (!changed) return;
+      render();
+      hydrateLibrary();
+    }).catch(() => { /* loadServer reports offline itself; the local copy stands */ });
+  }
 }
 
 async function boot() {

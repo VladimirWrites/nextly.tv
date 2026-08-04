@@ -229,10 +229,26 @@ async function mergeRemote(blob, updatedAt) {
 
    Returns the merged state only when the merge actually changed something, and null otherwise —
    which is the usual case on a foreground, and is what lets the app leave the screen alone. */
+/* A phone whose radio is asleep, or on a connection that accepts the socket and then says
+   nothing, leaves fetch waiting for minutes — the browser's own limit is far past the point
+   where a person has decided the app is broken. Sync is the one thing here that can be given
+   up on safely: the local copy is complete, the next foreground tries again, and nothing is
+   lost by deciding this attempt is not coming. */
+const VAULT_TIMEOUT = 12000;
+
+/* Feature-checked rather than called outright. AbortSignal.timeout is not in Safari before 16,
+   and calling it there throws — inside the try below, which would have been caught and reported
+   as "Offline", quietly turning a missing convenience into a device that never syncs again. */
+const giveUpAfter = (ms) =>
+  (typeof AbortSignal !== "undefined" && AbortSignal.timeout) ? AbortSignal.timeout(ms) : undefined;
+
 export async function loadServer() {
   if (!keysReady()) return null;
   try {
-    const r = await fetch("/api/vault", { headers: { "X-Vault-Id": getAccountId() } });
+    const r = await fetch("/api/vault", {
+      headers: { "X-Vault-Id": getAccountId() },
+      signal: giveUpAfter(VAULT_TIMEOUT),
+    });
     if (r.status === 404) {
       setSync("ok", "New vault");
       setBaseline(state);
@@ -249,14 +265,36 @@ export async function loadServer() {
   }
 }
 
-// Bring a signed-in session up: local first so the UI paints immediately, then the server.
-export async function bootVault() {
+/* ---- bringing a session up, in two halves ----
+
+   Split because they cost completely different things. The local half is a localStorage read
+   and is done before the next frame; the server half is a round trip on a radio that may have
+   been asleep. Joined together they were one await, and the app drew nothing until the slow
+   half finished — a documented "paints immediately" that never did. */
+
+/* Everything that needs no network. Returns false when this device has no copy yet, which is
+   the one case where painting straight away would be a lie: a new device signing in to an
+   existing account would show an empty library and then fill it, which reads as data loss to
+   the person it happens to. */
+export function openLocal() {
   const local = loadLocal();
   setState(local || emptyState());
   setBaseline(state);
+  return !!local;
+}
+
+// The server half. Resolves truthy when the merge changed something and the screen is stale.
+export async function syncVault() {
   const merged = await loadServer();
   // A merge that changed anything needs pushing back, so the other device converges too.
   if (merged) await pushServer();
+  return merged;
+}
+
+// Both halves in order, for a caller that has nothing to draw until the vault is whole.
+export async function bootVault() {
+  openLocal();
+  await syncVault();
   return state;
 }
 
