@@ -10,7 +10,7 @@
  * /api/* is NEVER cached. The vault must always be live — a stale blob merged as if it were
  * current is exactly how you lose data.
  */
-const VERSION = "v1.3.1";
+const VERSION = "v1.4.0";
 const SHELL = "nextly-shell-" + VERSION;
 const ART = "nextly-art-v1";          // catalogue posters, kept across shell upgrades
 const ART_MAX = 400;
@@ -41,6 +41,7 @@ const FILES = [
   "/js/domain/constants.js",
   "/js/domain/dates.js",
   "/js/domain/discover.js",
+  "/js/domain/external.js",
   "/js/domain/labels.js",
   "/js/domain/merge.js",
   "/js/domain/model.js",
@@ -52,13 +53,16 @@ const FILES = [
   "/js/domain/share.js",
   "/js/domain/stats.js",
   "/js/domain/store.js",
+  "/js/domain/trakt-export.js",
   "/js/io/cache.js",
   "/js/io/crypto.js",
   "/js/io/discover.js",
+  "/js/io/import-feed.js",
   "/js/io/meta.js",
   "/js/io/providers/tmdb.js",
   "/js/io/providers/tvmaze.js",
   "/js/io/storage.js",
+  "/js/io/zip.js",
   "/js/ui/actions.js",
   "/js/ui/anon.js",
   "/js/ui/barcode.js",
@@ -82,6 +86,7 @@ const FILES = [
   "/js/ui/show.js",
   "/js/ui/stats.js",
   "/js/ui/trail.js",
+  "/js/ui/trakt-import.js",
   "/js/ui/upnext.js",
   "/js/ui/viewstate.js",
   "/js/version.js",
