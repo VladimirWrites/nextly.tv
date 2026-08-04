@@ -79,16 +79,23 @@ async function inflate(bytes) {
 
 /* Every file in the zip whose name a caller wants, as text.
  *
- * Selective on purpose. A Trakt export holds forty-three files, most of which are somebody's
- * comments, ratings, social graph and account settings — this app wants two of them, and
- * decompressing the rest would mean holding the others in memory for no reason at all. */
+ * Selective on purpose. A Trakt export holds forty-odd files, most of which are somebody's
+ * comments, ratings, social graph and account settings — this app wants the history and the
+ * totals, and decompressing the rest would mean holding the others in memory for no reason.
+ *
+ * `wanted` is either a list of names or a function taking one, since the history's file names
+ * are only known once the zip has been opened. */
 export async function readZip(buffer, wanted) {
   const view = new DataView(buffer);
-  const want = wanted ? new Set(wanted) : null;
+  /* A list of names or a test for one. The test is not a convenience: Trakt splits a history
+     into watched-history-1.json, -2 and so on once it is long enough, and how many there are
+     is not known until the directory has been read. */
+  const want = typeof wanted === "function" ? wanted
+    : wanted ? ((name) => new Set(wanted).has(name)) : null;
   const out = {};
 
   for (const entry of entries(view)) {
-    if (want && !want.has(entry.name)) continue;
+    if (want && !want(entry.name)) continue;
     if (entry.name.endsWith("/")) continue;
     // Bit 0 is the encryption flag. Nothing here can read one, and guessing would produce
     // rubbish rather than an error.

@@ -11,10 +11,12 @@
 // discovered halfway through a progress bar.
 import { h, toast } from "./dom.js";
 import { readJSONZip } from "../io/zip.js";
-import { readExport } from "../domain/trakt-export.js";
+import { readExport, HISTORY_FILE } from "../domain/trakt-export.js";
 import { importFeed, previewFeed } from "../io/import-feed.js";
 
-const WANTED = ["watched-history.json", "watched-shows.json"];
+/* Matched rather than listed: a long history is split across watched-history-1.json and its
+   numbered siblings, and how many there are is only known once the zip is open. */
+const WANTED = (name) => name === "watched-shows.json" || HISTORY_FILE.test(name);
 
 const fmtInt = (n) => Number(n || 0).toLocaleString();
 

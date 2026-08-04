@@ -4,12 +4,15 @@
 // creating an API application on Trakt is a paid feature, so the obvious route — connect an
 // app, read the history — is closed to most people. A download is not.
 //
-// The zip holds 43 files and this reads one of them.
+// The zip holds forty-odd files and this reads two kinds of them.
 //
-//   watched-history.json  one entry per play: when, which episode, and the show's ids.
+//   watched-history.json  one entry per play: when, which episode, and the show's ids. A long
+//   watched-history-N.json  history is split at 250 entries a file and numbered from 1, with
+//                         no unnumbered file alongside — so a small account has the first name
+//                         and a real one has the second, and both have to be understood.
 //   watched-shows.json    one entry per show: total plays and a last-watched date. No seasons,
-//                         no episodes — which is the whole reason the history file is the
-//                         source and this one is only a cross-check.
+//                         no episodes — which is the whole reason the history is the source and
+//                         this one is only a cross-check.
 //
 // Everything else in the zip is ratings, comments, notes, lists, collection, social graph and
 // account settings. None of it is a watch mark, and none of it is read. The profile and
@@ -135,10 +138,26 @@ export function shortfall(feed, watchedShows) {
    imports, it just cannot say whether anything was left out. An export missing the history is
    not an export this can use, and says so rather than importing nothing and calling it a
    success. */
+/* The history's file names, in the order their contents belong in.
+
+   Trakt splits at 250 entries and numbers the pieces from 1. A short history is a single
+   unnumbered file instead, so both shapes exist and an export has one or the other. Sorted
+   numerically rather than as text, or page 10 would fall between 1 and 2 — which would not
+   corrupt anything here, since nothing depends on order, but it would make every dump of this
+   list confusing to read. */
+export const HISTORY_FILE = /^watched-history(?:-(\d+))?\.json$/;
+
+export function historyFiles(names) {
+  return [...names]
+    .filter((n) => HISTORY_FILE.test(n))
+    .sort((a, b) => (+(a.match(HISTORY_FILE)[1] || 0)) - (+(b.match(HISTORY_FILE)[1] || 0)));
+}
+
 export function readExport(files) {
-  const history = files && files["watched-history.json"];
-  if (!Array.isArray(history)) {
-    throw new Error("That doesn't look like a Trakt export — no watched-history.json inside.");
+  const pages = historyFiles(Object.keys(files || {}));
+  const history = pages.flatMap((name) => (Array.isArray(files[name]) ? files[name] : []));
+  if (!pages.length || !history.length) {
+    throw new Error("That doesn't look like a Trakt export — no watched history inside.");
   }
   const feed = feedFromHistory(history);
   const episodes = feed.shows.reduce((t, s) => t + s.episodes.length, 0);
@@ -148,6 +167,7 @@ export function readExport(files) {
     episodes,
     plays,
     events: history.length,
+    pages: pages.length,
     missing: shortfall(feed, files["watched-shows.json"]),
   };
 }

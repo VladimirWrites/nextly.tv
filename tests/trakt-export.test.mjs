@@ -6,7 +6,7 @@
 // the other file is only ever a cross-check.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { feedFromHistory, shortfall, readExport } from "../public/js/domain/trakt-export.js";
+import { feedFromHistory, shortfall, readExport, historyFiles } from "../public/js/domain/trakt-export.js";
 
 const play = (show, s, e, at, extra = {}) => ({
   id: Math.round(Math.random() * 1e6),
@@ -118,6 +118,58 @@ test("the totals file is optional", () => {
 });
 
 test("something that isn't a Trakt export is refused by name", () => {
-  assert.throws(() => readExport({}), /watched-history\.json/);
-  assert.throws(() => readExport({ "watched-history.json": { shows: [] } }), /watched-history\.json/);
+  assert.throws(() => readExport({}), /watched history/);
+  assert.throws(() => readExport({ "watched-history.json": { shows: [] } }), /watched history/,
+    "present but not a list, which is a broken export rather than an empty one");
+  assert.throws(() => readExport({ "watched-movies.json": [] }), /watched history/,
+    "an export of somebody who only logs films has nothing here to read");
+});
+
+/* ---- how a long history is filed ----
+
+   Found the hard way. An account with eighteen plays exports one watched-history.json; a real
+   one exports watched-history-1.json through -6, at 250 entries each, and no unnumbered file
+   at all. A reader that only knows the first name rejects every export worth importing. */
+
+test("a history split across numbered files is read as one", () => {
+  const page = (n, from) => Array.from({ length: n }, (_, i) => play(WIRE, 1, from + i, "2018-02-03T21:30:00Z"));
+  const r = readExport({
+    "watched-history-1.json": page(250, 1),
+    "watched-history-2.json": page(250, 251),
+    "watched-history-3.json": page(100, 501),
+    "watched-shows.json": [{ plays: 600, show: WIRE }],
+  });
+  assert.equal(r.pages, 3);
+  assert.equal(r.events, 600);
+  assert.equal(r.episodes, 600);
+  assert.deepEqual(r.missing, [], "and the totals line up, so nothing is reported as short");
+});
+
+test("the unnumbered file is still understood, since a small account gets one", () => {
+  const r = readExport({ "watched-history.json": [play(WIRE, 1, 1, "2018-02-03T21:30:00Z")] });
+  assert.equal(r.pages, 1);
+  assert.equal(r.episodes, 1);
+});
+
+/* Sorted by number, not as text, or page 10 lands between 1 and 2. Nothing downstream depends
+   on the order — the fold is order-independent and there is a test above saying so — but a
+   list that reads wrongly invites somebody to fix the wrong thing later. */
+test("pages are ordered numerically", () => {
+  assert.deepEqual(
+    historyFiles(["watched-history-10.json", "watched-history-2.json", "watched-history-1.json"]),
+    ["watched-history-1.json", "watched-history-2.json", "watched-history-10.json"],
+  );
+});
+
+test("a file that merely starts with the same words is not a history page", () => {
+  assert.deepEqual(historyFiles(["watched-history-notes.json", "watched-movies.json", "watched-playback.json"]), []);
+});
+
+/* Trakt exports an unknown watch date as the Unix epoch rather than as null. Sixteen of them
+   turned up in one real export. Parsing gives 0, which is exactly what the feed shape means by
+   "the service does not say" — so this passes by construction, and the test is here to keep it
+   passing if anyone ever reaches for a truthier date parse. */
+test("a watch date at the epoch means unknown, not 1970", () => {
+  const feed = feedFromHistory([play(WIRE, 1, 1, "1970-01-01T00:00:00.000Z")]);
+  assert.equal(feed.shows[0].episodes[0].at, 0);
 });
