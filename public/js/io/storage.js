@@ -275,8 +275,27 @@ export async function deleteVault() {
    readable in any text editor, with show names spelled out. If this app disappears, that
    file is still a complete record of what you watched. */
 
-export function exportJSON() {
-  return JSON.stringify({ app: "nextly", exported: new Date().toISOString(), ...state }, null, 2);
+/* The export is a file people are told to keep, and told they can hand to something else. It
+   is also the only copy of a library that survives this app disappearing, so what goes in it
+   is a real choice rather than an obvious one.
+
+   Credentials are the part worth deciding about. The TMDB key is yours, it belongs with a
+   backup, and leaving it out means re-entering it after a restore. It is also a live
+   credential sitting in a plaintext file that gets mailed around, posted for debugging and
+   handed to converter scripts. Both are true at once, so the caller says which it wants.
+
+   `keys: false` takes out anything credential-shaped. Nothing else in settings is a secret. */
+export function exportJSON({ keys = true } = {}) {
+  const settings = { ...(state.settings || {}) };
+  if (!keys) {
+    delete settings.tmdbKey;
+    // Whatever else ends up here. A field that does not exist yet costs nothing to remove,
+    // and a credential that outlives someone remembering to add it here costs plenty.
+    delete settings.sync;
+  }
+  return JSON.stringify(
+    { app: "nextly", exported: new Date().toISOString(), ...state, settings },
+    null, 2);
 }
 
 export function importJSON(text) {

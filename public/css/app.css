@@ -2902,6 +2902,23 @@ button.score {
   overflow: hidden;
 }
 
+/* A choice that belongs to the control beside it rather than to a settings row of its own. */
+.set-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  color: var(--dim);
+  cursor: pointer;
+}
+
+.set-check input {
+  accent-color: var(--signal);
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
 .set-group + .set-group {
   margin-top: 14px;
 }

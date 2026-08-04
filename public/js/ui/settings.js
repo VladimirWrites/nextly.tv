@@ -10,7 +10,7 @@ import { VERSION } from "../version.js";
 import { totalWatched, totalEpisodes } from "../domain/model.js";
 import { relTime } from "../domain/dates.js";
 import { canonToken, copyText } from "../io/crypto.js";
-import { exportJSON, importJSON, syncedAt, rememberedToken, forgetToken, deleteVault, scheduleSync, flushSync, storageUse, readTheme, writeTheme } from "../io/storage.js";
+import { exportJSON, importJSON, syncedAt, rememberedToken, forgetToken, deleteVault, scheduleSync, flushSync, storageUse, readView, writeView, readTheme, writeTheme } from "../io/storage.js";
 import { clearAll as clearMetaCache } from "../io/cache.js";
 import { refreshLibrary, retimeLibrary } from "./actions.js";
 import * as meta from "../io/meta.js";
@@ -111,8 +111,7 @@ export function renderSettings(root, { go, repaint }) {
     h("div.sect", [h("h2.t-label", { text: "Your data" })]),
     h("div.set-group", [
       storageRow(),
-      row("Export", "A readable JSON file with every show name and episode you've marked. Keep one somewhere safe — it outlives this app.",
-        h("button.btn.btn-sm", { type: "button", text: "Export JSON", onclick: doExport })),
+      exportRow(repaint),
       row("Import", "Merges a previous export into what's here. Nothing is overwritten — the newer mark wins per episode.",
         h("button.btn.btn-sm", { type: "button", text: "Import JSON", onclick: () => doImport(repaint) })),
       row("Account number", "The only key to your vault. Anyone with it can read your data.",
@@ -399,9 +398,42 @@ export function applyTheme(pref) {
   document.head.append(h("meta", { name: "theme-color", content: dark ? "#12141b" : "#f1f2f6" }));
 }
 
+/* Whether an export carries credentials, remembered on this device.
+
+   On by default, because the file is a backup before it is anything else and a backup that
+   restores everything except the key is a backup with a footnote. The choice sits against the
+   button rather than in a menu, because the reason to turn it off — sending this particular
+   file somewhere — is a decision made at the moment of exporting, not in advance.
+
+   The label says which state it is in rather than what the box does, so nobody has to work out
+   whether a tick means include or exclude. */
+const exportKeys = () => readView().exportKeys !== false;
+
+function exportRow(repaint) {
+  return h("div.set-row", { style: { alignItems: "flex-start" } }, [
+    h("div.set-text", [
+      h("div.set-name", { text: "Export" }),
+      h("div.set-hint", { text: "A readable JSON file with every show name and episode you've "
+        + "marked. Keep one somewhere safe — it outlives this app." }),
+      h("label.set-check", { style: { marginTop: "10px" } }, [
+        h("input", {
+          type: "checkbox",
+          checked: exportKeys() ? "" : null,
+          onchange: (e) => { writeView({ exportKeys: e.target.checked }); repaint(); },
+        }),
+        h("span", { text: exportKeys()
+          ? "Including your TMDB key"
+          : "Without your TMDB key — you'll re-enter it after a restore" }),
+      ]),
+    ]),
+    h("button.btn.btn-sm", { type: "button", text: "Export JSON", onclick: doExport }),
+  ]);
+}
+
 function doExport() {
   const stamp = new Date().toISOString().slice(0, 10);
-  const url = URL.createObjectURL(new Blob([exportJSON()], { type: "application/json" }));
+  const url = URL.createObjectURL(
+    new Blob([exportJSON({ keys: exportKeys() })], { type: "application/json" }));
   const a = document.createElement("a");
   a.href = url;
   a.download = `nextly-${stamp}.json`;
