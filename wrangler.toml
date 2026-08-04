@@ -3,6 +3,15 @@ name = "nextly-tv"
 main = "src/index.js"
 compatibility_date = "2024-11-01"
 
+# Each uploaded version gets its own URL, so a branch can be looked at without being deployed.
+#
+# On its own this changes nothing: Workers Builds runs `wrangler deploy` for every branch, and
+# a deploy takes the routes below whatever branch it came from — which is how an unmerged
+# branch ended up serving app.nextly.tv. The other half is in the dashboard, where the
+# non-production deploy command has to be `wrangler versions upload`. Upload publishes a
+# version and routes nothing to it; deploy is what main should keep using.
+preview_urls = true
+
 # Both hostnames hit the same Worker; src/index.js decides which document to serve from the
 # hostname. Declared here rather than clicked in the dashboard so a deploy re-creates them,
 # and so it is obvious that "app." is a separate name needing its own DNS record — attaching
