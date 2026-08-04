@@ -3,6 +3,7 @@
 // This screen is also where the app makes its promise checkable: the export is a plain JSON
 // file with show names spelled out, so you can read your own history without this app, this
 // server, or any catalogue.
+import { traktSection } from "./trakt-import.js";
 import { h, mount, toast, confirmWord, isStandalone, isIOS, isFirefoxDesktop, IOS_STORAGE_WARNING, canPromptInstall, promptInstall } from "./dom.js";
 import { confirmDialog } from "./overlay.js";
 import { state } from "../domain/store.js";
@@ -155,6 +156,8 @@ export function renderSettings(root, { go, repaint }) {
           location.reload();
         } })),
     ]),
+
+    traktSection(repaint),
 
     /* The whole promise of this app is that the server cannot read your data, and there is no
        way to check that from the outside: the code that holds your key is served by the same

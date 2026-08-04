@@ -3,6 +3,22 @@ name = "nextly-tv"
 main = "src/index.js"
 compatibility_date = "2024-11-01"
 
+# Each uploaded version gets its own URL, so a branch can be looked at without being deployed.
+#
+# Preview URLs are served from the workers.dev subdomain and nowhere else — Cloudflare does not
+# let them run on a custom domain — so workers_dev has to be on for them to exist at all. The
+# cost of that is a second permanent address for production, nextly-tv.<subdomain>.workers.dev,
+# serving this same Worker. Same code, same policy, same vault, and app.html is noindex, so it
+# is an extra address rather than an extra surface. Accepted deliberately: reviewing a branch on
+# a phone is worth more than one hostname's tidiness.
+#
+# The other half is in the dashboard: the non-production deploy command has to be
+# `wrangler versions upload`, which publishes a version and routes nothing to it. `deploy` takes
+# the routes below whatever branch it was built from, which is how an unmerged branch came to be
+# production, and is what main alone should keep using.
+workers_dev = true
+preview_urls = true
+
 # Both hostnames hit the same Worker; src/index.js decides which document to serve from the
 # hostname. Declared here rather than clicked in the dashboard so a deploy re-creates them,
 # and so it is obvious that "app." is a separate name needing its own DNS record — attaching

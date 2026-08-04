@@ -175,11 +175,16 @@ export function markEpisode(state, id, key, on = true, now = Date.now()) {
 }
 
 /* Watching an episode of something you had merely planned means you have started it. Every
-   way of marking goes through here — one episode, a catch-up, a whole season.
+   way of marking goes through here — one episode, a catch-up, a whole season, and an import.
 
    Only from planned: pausing or dropping a show and then correcting one mark should not
-   quietly put it back in Up next. Clearing a mark never promotes anything either. */
-function start(sh, now) {
+   quietly put it back in Up next. Clearing a mark never promotes anything either.
+
+   Exported because an import writes marks through domain/external.js rather than through the
+   functions above, and skipping this left every imported show sitting at "planned" — which
+   Up next passes over, so a library that had just gained a thousand marks showed nothing at
+   all on the screen it opens on. */
+export function start(sh, now) {
   if (sh.st !== "planned") return;
   sh.st = "active";
   sh.m = now;

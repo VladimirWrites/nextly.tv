@@ -15,6 +15,7 @@ export function defSettings() {
     tmdbKey: "",         // the user's own TMDB key; travels in the encrypted blob, never to our server
     specials: false,     // count specials towards progress and up-next
     themeSync: false,    // whether the theme below is shared with your other devices
+    sync: {},            // per-service tracker credentials; stripped from the export
     m: 0,                // mtime, so two devices changing settings resolve newest-wins
   };
 }
