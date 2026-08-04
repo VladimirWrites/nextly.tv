@@ -10,7 +10,7 @@
 // and returns metadata in the shape documented in io/cache.js.
 import * as tvmaze from "./providers/tvmaze.js";
 import * as tmdb from "./providers/tmdb.js";
-import { parseShowKey } from "../domain/constants.js";
+import { parseShowKey, PORTABLE_SRC} from "../domain/constants.js";
 import { state } from "../domain/store.js";
 
 const PROVIDERS = { tvmaze, tmdb };
@@ -39,6 +39,28 @@ export const usable = (srcId) => {
   const p = provider(srcId);
   return !p.needsKey || p.hasKey();
 };
+
+/* Turn a portable link into this device's own key.
+ *
+ * Asked of every catalogue that can be reached, starting with the one in use, so a reader on
+ * TVmaze gets a TVmaze key and a reader with a TMDB key gets a TMDB one. What comes back is a
+ * real catalogue record with a real catalogue key, which is the only kind the vault stores.
+ *
+ * Null when nothing can place it. That is a real outcome — a show one catalogue has never
+ * heard of — and it is the caller's job to say so rather than to show an empty page. */
+export async function resolvePortable(key) {
+  const parsed = parseShowKey(key);
+  if (!parsed || !PORTABLE_SRC.has(parsed.src)) return null;
+  const ids = parsed.src === "imdb" ? { imdb: parsed.ref } : { tvdb: parsed.ref };
+  const first = activeProvider().id;
+  const order = [first, ...Object.keys(PROVIDERS).filter((id) => id !== first)];
+  for (const id of order) {
+    if (!usable(id)) continue;
+    const found = await PROVIDERS[id].lookup(ids).catch(() => null);
+    if (found) return found;
+  }
+  return null;
+}
 
 /* Metadata for one show, from its own catalogue where possible and from another where not.
 

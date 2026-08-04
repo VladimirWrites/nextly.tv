@@ -11,6 +11,7 @@ import { h, svg, ICON, mount, toast } from "./dom.js";
 import { epCode } from "../domain/constants.js";
 import * as cache from "../io/cache.js";
 import * as discover from "../io/discover.js";
+import { signedOut, startAccount, anonBar } from "./anon.js";
 import { ensureMeta, trackShow, opts } from "./actions.js";
 import {
   stickyBar, watchTitle, header, expandable, trailerLink, ratings, hintRatings,
@@ -30,6 +31,10 @@ export function renderPreview(root, id, { go, back }) {
     // The element is captured before the first await: currentTarget is nulled the moment the
     // handler yields, so reading it in the catch threw and left the button dead for good.
     onclick: async (e) => {
+      /* Nothing to track into. Someone who arrived on a shared link has no vault, and the
+         honest response is the screen that makes one rather than a disabled button or an
+         error about a key. The address stays, so they land back here afterwards. */
+      if (signedOut()) return startAccount();
       const btn = e.currentTarget;
       btn.disabled = true;
       try {
@@ -71,6 +76,8 @@ export function renderPreview(root, id, { go, back }) {
       // only on the page you reach after tracking.
       castSection(meta, go),
       similarSection(stub, go),
+      // Only ever drawn for somebody who arrived without a vault; returns null otherwise.
+      anonBar(),
     ]),
   );
   watchTitle(bar, root.querySelector(".show-name"));

@@ -5,6 +5,8 @@
 // show. Tapping one goes to that show's page, which already knows how to handle a show you
 // track and one you don't.
 import { h, svg, ICON, mount, posterFallback, shelfScroller, keepMedia, poster } from "./dom.js";
+import { shareButton } from "./share-button.js";
+import { anonBar } from "./anon.js";
 import * as meta from "../io/meta.js";
 import { fmtDate } from "../domain/dates.js";
 import { empty } from "./upnext.js";
@@ -17,8 +19,12 @@ const seen = new Map();
 
 export function renderPerson(root, key, { go, back, top }) {
   if (top) {
-    top.bar.classList.remove("has-actions", "is-searching");
-    top.actions.replaceChildren();
+    top.bar.classList.remove("is-searching");
+    /* The name is not known yet — it arrives with the record — so the button is labelled from
+       the cached one where there is one and left generic otherwise. It shares an address, and
+       the address is known from the first frame. */
+    top.bar.classList.add("has-actions");
+    top.actions.replaceChildren(shareButton((seen.get(key) || {}).name || "this person", "person", key));
     /* This screen is only ever arrived at from a show, so it is the one place in the app that
        needs a way out that isn't the nav: the show you were reading is not on the nav, and
        finding your way back to it through the library is absurd. */
@@ -106,6 +112,9 @@ function paint(root, who, go, top) {
 
     who.shows.length ? h("div.sect", [h("h2.t-label", { text: "Also in" })]) : null,
     who.shows.length ? shelfScroller(h("div.shelf", who.shows.map((s) => showCard(s, go))), `also:${who.key}`) : null,
+
+    // Only ever drawn for somebody who arrived without a vault; returns null otherwise.
+    anonBar(),
   );
 
   /* After mount, because until it is in the document there is no height to compare. An open

@@ -13,10 +13,11 @@ import { state } from "../domain/store.js";
 import { findShow, findSameShow, rememberAlias } from "../domain/schema.js";
 import { showProgress, nextUp, levelMap, passOf } from "../domain/progress.js";
 import { returnsIn } from "../domain/schedule.js";
-import { epCode, SHOW_STATUS, passLabel, ordinal, fmtDuration } from "../domain/constants.js";
+import { epCode, SHOW_STATUS, passLabel, ordinal, fmtDuration, isPortableKey, parseShowKey} from "../domain/constants.js";
 import { fmtDate } from "../domain/dates.js";
 import { dayKey } from "../domain/stats.js";
 import * as cache from "../io/cache.js";
+import * as meta from "../io/meta.js";
 import { scheduleSync } from "../io/storage.js";
 import {
   catchUpToLatest, untrackShow, changeStatus, ensureMeta,
@@ -50,6 +51,13 @@ export function renderShow(root, id, { go, back }) {
      resolved the portable ids — so the same series found in the other catalogue showed as
      untracked, and Track then answered "already in your library". One series is one row, so
      it is also one page: the one the marks are recorded against. */
+  /* A portable address, which is what a shared link carries. It names the series in ids every
+     catalogue can read, and this device turns it into its own key before anything else happens
+     — because a mark belongs to a catalogue's numbering, and "imdb:tt0903747" is not a
+     numbering. Replaced rather than pushed, so Back does not land on an address that only
+     redirects. */
+  if (isPortableKey(id)) return openPortable(root, id, { go, back });
+
   if (!show) {
     const held = sameSeries(id);
     if (held) {
@@ -147,6 +155,43 @@ export function renderShow(root, id, { go, back }) {
   expandable(root, show.id);
   trailerLink(root, meta);
 }
+
+/* Resolving a shared link.
+
+   Matched against the library first and with no network at all: the portable ids are already in
+   every vault record, so somebody who tracks this series lands on their own page with their own
+   marks rather than on a stranger's preview of it. */
+function openPortable(root, key, { go, back }) {
+  const held = findSameShow(state, {
+    imdb: parseShowKey(key).src === "imdb" ? parseShowKey(key).ref : null,
+    tvdb: parseShowKey(key).src === "tvdb" ? parseShowKey(key).ref : null,
+  });
+  if (held) return go("show", held.id, { replace: true });
+
+  mount(root, resolving());
+  /* Wrapped, not chained. A .catch() only sees what the promise rejects with, and a mistake
+     before the promise exists — a missing import, say — throws straight past it and leaves the
+     screen saying "Finding this show…" for ever. */
+  (async () => {
+    try {
+      const m = await meta.resolvePortable(key);
+      if (m && m.key) return go("show", m.key, { replace: true });
+    } catch (e) { /* fall through */ }
+    mount(root, unplaceable(go));
+  })();
+}
+
+const resolving = () => h("div.empty", [h("p", { text: "Finding this show…" })]);
+
+/* A catalogue that has never heard of it. Said plainly rather than left as an empty page,
+   because the reader did nothing wrong — they followed a link, and the show simply is not in
+   the catalogue this device uses. */
+const unplaceable = (go) => h("div.empty", [
+  h("div.empty-title.t-title", { text: "Couldn't find that show" }),
+  h("p", { text: "The link is for a show your catalogue doesn't list. Searching for it by name may still find it." }),
+  h("button.btn.btn-primary", { type: "button", text: "Search", onclick: () => go("search"),
+    style: { marginTop: "18px" } }),
+]);
 
 /* Before the record lands. Status, ids and the untrack button all come from the vault, so
    they work now rather than waiting on a catalogue that might not answer. */

@@ -11,8 +11,10 @@
 import { h, svg, ICON, mount, keepMedia } from "./dom.js";
 import { state } from "../domain/store.js";
 import { findShow } from "../domain/schema.js";
+import { shareButton } from "./share-button.js";
+import { anonBar } from "./anon.js";
 import { seasonProgress, levelMap, passOf } from "../domain/progress.js";
-import { epKey, epCode, fmtScore, fmtDuration, airsLabel } from "../domain/constants.js";
+import { epKey, epCode, fmtScore, fmtDuration, airsLabel, portableKey} from "../domain/constants.js";
 import { fmtDate, fmtDay, seasonYears, hasAired, isUpcoming } from "../domain/dates.js";
 import { avgScore, bestScored, scoredCount } from "../domain/scores.js";
 import { chartInto, chartCaption } from "./chart.js";
@@ -49,8 +51,13 @@ function record(root, arg, { top }) {
      in the bar when the record names the show is just a gap. */
   const name = (show && show.name) || (cache.getHint(at.id) || {}).name || (meta && meta.name) || "";
   if (top) {
-    top.bar.classList.remove("has-actions", "is-searching");
-    top.actions.replaceChildren();
+    top.bar.classList.remove("is-searching");
+    top.bar.classList.add("has-actions");
+    /* The series, not the episode. An episode number belongs to one catalogue's numbering, so
+       a shared episode address means something different to a reader on the other one — and
+       the series page is where they would go next anyway. */
+    top.actions.replaceChildren(
+      shareButton(name || "this show", "show", portableKey(at.id, show || meta || {})));
     top.bar.querySelector(".topbar-title").textContent = name;
   }
 
@@ -164,6 +171,9 @@ export function renderSeason(root, arg, { go, back, top }) {
       p ? h("span.sect-count", { text: `${p.watched}/${p.aired}` }) : null,
     ]),
     h("div.detail-list", eps.map((ep) => episodeLine(at.id, se, ep, show, go, from))),
+
+    // Only ever drawn for somebody who arrived without a vault; returns null otherwise.
+    anonBar(),
   );
 
   if (chart && !chartInto(box, se, eps, { onPick: (pt) => go("episode", `${at.id}/${se.n}/${pt.e}`) })) {
@@ -270,6 +280,9 @@ export function renderEpisode(root, arg, { go, back, top }) {
         svg(ICON.caret, "detail-caret"),
       ]),
     ]),
+
+    // Only ever drawn for somebody who arrived without a vault; returns null otherwise.
+    anonBar(),
   );
 }
 

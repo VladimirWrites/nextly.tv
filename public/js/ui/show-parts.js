@@ -8,10 +8,11 @@ import { h, svg, ICON, posterFallback, shelfScroller, keepMedia, poster } from "
 import { state } from "../domain/store.js";
 import { findShow } from "../domain/schema.js";
 import { passOf } from "../domain/progress.js";
-import { passLabel, fmtScore, fmtVotes } from "../domain/constants.js";
+import { passLabel, fmtScore, fmtVotes, portableKey} from "../domain/constants.js";
 import * as cache from "../io/cache.js";
 import * as view from "./viewstate.js";
 import * as discover from "../io/discover.js";
+import { shareButton } from "./share-button.js";
 import * as meta from "../io/meta.js";
 
 /* ---- which render is the one being waited for ----
@@ -53,6 +54,8 @@ export function stickyBar(show, back) {
         onclick: () => back(findShow(state, show.id) ? "library" : "search"),
       }, [svg(ICON.back)]),
       title,
+      // Pushed to the far end by the title growing, so it sits where a bar's action always is.
+      shareButton(show.name, "show", portableKey(show.id, show), "btn.lib-btn.show-bar-share"),
     ]),
   ]);
 }

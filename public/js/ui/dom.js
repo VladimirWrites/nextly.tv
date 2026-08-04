@@ -71,6 +71,17 @@ export const ICON = {
   back: ["M20 12H4", "M10 6l-6 6 6 6"],
   info: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "M12 11v6", "M12 7.6v.6"],
   x: ["M6 6l12 12", "M18 6L6 18"],
+  /* Three glyphs for one verb. Every platform has taught its users a different shape for
+     share, and the one they were taught is the one they recognise without reading a label:
+     Apple's box with an arrow leaving it, Android's three connected nodes. Neither is more
+     correct — a button that looks like the system's own is simply understood faster.
+     Everywhere else gets a chain link, which reads as "a link" without claiming to be any
+     platform's convention. */
+  shareApple: ["M12 3v12", "M8.5 6.5L12 3l3.5 3.5", "M6 12v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-7"],
+  shareAndroid: ["M18 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z", "M6 15a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z",
+                 "M18 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z", "M8.2 11.3l7.6-3.6", "M8.2 12.7l7.6 3.6"],
+  shareChain: ["M10 13a4 4 0 0 0 5.7 0l2.6-2.6a4 4 0 1 0-5.7-5.7L11.4 6",
+              "M14 11a4 4 0 0 0-5.7 0l-2.6 2.6a4 4 0 1 0 5.7 5.7L12.6 18"],
   // Double check — "everything up to here is done". An arrow onto a line reads as download.
   catchup: ["M1.5 12.8l4.2 4.2L14.4 8.3", "M9.6 17l1.4 1.4L22.5 7.3"],
 };
@@ -328,6 +339,40 @@ export const isFirefoxDesktop = () => {
   const ua = navigator.userAgent || "";
   return /firefox|fxios/i.test(ua) && !/android|mobile|tablet/i.test(ua);
 };
+
+/* Which platform's share glyph to draw. Cosmetic only — nothing here decides what the app can
+   do, in the same way isIOS() only ever picks a sentence. There is no feature test for "which
+   shape does this person already know", so the agent string is the only thing to ask. */
+export function shareIcon() {
+  const ua = navigator.userAgent || "";
+  if (isIOS() || /mac os x/i.test(ua)) return ICON.shareApple;
+  if (/android/i.test(ua)) return ICON.shareAndroid;
+  return ICON.shareChain;
+}
+
+/* Hand a link to whatever the device shares with, and fall back to the clipboard where there
+   is nothing — desktop Chrome on Linux, and Firefox nearly everywhere.
+
+   The address carries its subject in the fragment, which is exactly the part a browser never
+   sends to a server. Putting it in a message is the one moment that fact is meant to travel:
+   the routing keeps the show out of our logs, not out of a link somebody deliberately sends. */
+export async function shareLink({ title, url }) {
+  if (typeof navigator.share === "function") {
+    try {
+      await navigator.share({ title, url });
+      return "shared";
+    } catch (e) {
+      // Cancelling a share sheet is not a failure and must not fall through to the clipboard.
+      if (e && e.name === "AbortError") return "cancelled";
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    return "copied";
+  } catch (e) {
+    return "failed";
+  }
+}
 
 export const isIOS = () =>
   /iphone|ipad|ipod/i.test(navigator.userAgent || "") ||

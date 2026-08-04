@@ -142,3 +142,32 @@ test("a feed is named in the fragment like anything else", () => {
   assert.deepEqual(parseRoute("/feed", ""), HOME, "a feed with no name is not a place");
   assert.deepEqual(parseRoute("/feed/trending", ""), HOME, "and the path form is not a route at all");
 });
+
+/* A shared address has to survive arriving somewhere that cannot read it. A catalogue key is a
+   number only that catalogue understands; the ids in every vault record are not. */
+test("a portable key is a key, and is not a catalogue", async () => {
+  const { isPortableKey, parseShowKey, PORTABLE_SRC } =
+    await import("../public/js/domain/constants.js");
+  assert.equal(isPortableKey("imdb:tt0903747"), true);
+  assert.equal(isPortableKey("tvdb:81189"), true);
+  assert.equal(isPortableKey("tmdb:1396"), false, "a catalogue key is not portable");
+  assert.equal(isPortableKey("tvmaze:169"), false);
+  assert.equal(isPortableKey("nonsense"), false, "and something with no colon is not a key");
+  assert.equal(isPortableKey(""), false);
+  assert.deepEqual(parseShowKey("imdb:tt0903747"), { src: "imdb", ref: "tt0903747" });
+  assert.ok(!PORTABLE_SRC.has("tmdb"), "no catalogue is ever treated as portable");
+});
+
+test("a portable address routes like any other show", () => {
+  assert.deepEqual(parseRoute("/show", "#imdb:tt0903747"), { name: "show", arg: "imdb:tt0903747" });
+  assert.equal(pathFor("show", "imdb:tt0903747"), "/show#imdb:tt0903747",
+    "and the colon stays readable");
+});
+
+test("the share button prefers a portable id and falls back to the key it has", async () => {
+  const { portableKey } = await import("../public/js/domain/constants.js");
+  assert.equal(portableKey("tmdb:1396", { imdb: "tt0903747", tvdb: 81189 }), "imdb:tt0903747");
+  assert.equal(portableKey("tmdb:1396", { imdb: null, tvdb: 81189 }), "tvdb:81189");
+  assert.equal(portableKey("tmdb:1396", { imdb: null, tvdb: null }), "tmdb:1396");
+  assert.equal(portableKey("tvmaze:169", null), "tvmaze:169");
+});

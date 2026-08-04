@@ -7,6 +7,7 @@
 import { h, mount, setSync, toast, onInstallStateChange, isStandalone, watchTitlebar } from "./ui/dom.js";
 import { renderNav, renderTopbar, renderTitlebar } from "./ui/shell.js";
 import { renderGate } from "./ui/gate.js";
+import { signedOut } from "./ui/anon.js";
 import { renderUpNext } from "./ui/upnext.js";
 import { renderLibrary, stopIndexWatch } from "./ui/library.js";
 import { closeOverlays, popOverlay } from "./ui/overlay.js";
@@ -188,7 +189,12 @@ addEventListener("popstate", () => {
 /* ---- render ---- */
 
 function render() {
-  if (!keysReady()) return;
+  /* No keys means one of two things and they need opposite treatment. Signing in has not
+     finished, in which case painting a screen from an empty store would show an empty library
+     that is about to be replaced. Or there is no vault at all because somebody followed a
+     shared link, in which case there will never be keys and refusing to paint leaves them
+     looking at nothing for ever — which is exactly what it did. */
+  if (!keysReady() && !signedOut()) return;
 
   const waiting = upNextList(state.shows, cache.getMeta, opts()).length;
   /* A feed's name is the row it came from. Put here rather than drawn on the page so it lands
@@ -336,6 +342,25 @@ async function openShared() {
 
 /* ---- boot ---- */
 
+/* The screens worth opening without an account, listed rather than derived. DETAIL would have
+   been the tempting test and it answers a different question — it means "names a thing in the
+   fragment", which is also true of a discovery feed. What matters here is whether a screen
+   makes sense to a stranger and needs nothing of theirs to draw. */
+const SHAREABLE = new Set(["show", "person", "season", "episode"]);
+
+/* Signed out, looking at one thing. The subset of sign-in that does not involve a key: the
+   metadata cache so artwork survives a reload, the theme so it does not flash, and a render. No
+   token is remembered, no keys are derived, and no vault is opened or created. */
+async function browse(r) {
+  applyTheme(readTheme());
+  await cache.loadAll();
+  document.body.classList.add("is-anon");
+  route = r;
+  setRepaint(render);
+  render();
+}
+
+
 async function signIn(token) {
   rememberToken(token);
   await deriveKeys(token);
@@ -373,6 +398,17 @@ async function boot() {
 
   const token = rememberedToken();
   if (!token) {
+    /* A link somebody sent opens the thing they sent, not a sign-up form.
+   
+       None of these four screens needs a vault: what they draw comes from the catalogue, which
+       is fetched here in the browser. Demanding an account first would make a shared link a
+       dead end and make the sender look like they had forwarded an advert — and it would waste
+       the one moment when somebody is looking at the app because a friend told them to.
+   
+       Everything that writes is off. There is nowhere to write to. */
+    const shared = parseRoute(location.pathname, location.hash);
+    if (SHAREABLE.has(shared.name)) return browse(shared);
+
     applyTheme("auto");
     return renderGate(app, {
       onSignIn: async (t) => {

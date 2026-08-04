@@ -24,6 +24,38 @@ export const DEFAULT_STATUS = "planned";
    which numbering its marks belong to. */
 export const showKey = (src, ref) => `${src}:${ref}`;
 
+/* A portable show key: "imdb:tt0903747".
+ *
+ * Only ever an address, never a stored one. A show in the vault is keyed by the catalogue whose
+ * episode numbering its marks were recorded against, and that cannot be a portable id — two
+ * catalogues number the same series differently, so a mark filed under an IMDb id would not
+ * know which numbering it meant.
+ *
+ * What this is for is links. A key like "tmdb:1396" is a number only TMDB can read, and a
+ * stranger given one without a TMDB key has nothing to look it up with. An IMDb id is readable
+ * by every catalogue, which is the same reason the export carries one. A link that arrives
+ * portable is resolved to whichever catalogue this device uses and the address is rewritten. */
+export const PORTABLE_SRC = new Set(["imdb", "tvdb"]);
+
+export const isPortableKey = (key) => {
+  const p = parseShowKey(key);
+  return !!p && PORTABLE_SRC.has(p.src);
+};
+
+/* The most portable address this show has.
+ *
+ * A catalogue key is a number only that catalogue can read: a stranger sent "tmdb:1396"
+ * without a TMDB key has nothing to look it up with, and the page they open never resolves.
+ * An IMDb id is readable by every catalogue, which is the same reason the export carries one.
+ *
+ * Falls back to the catalogue key when there is no portable id, which is rare and is still
+ * better than not offering to share at all — it works for anyone using the same catalogue. */
+export function portableKey(id, ids) {
+  if (ids && ids.imdb) return `imdb:${ids.imdb}`;
+  if (ids && ids.tvdb) return `tvdb:${ids.tvdb}`;
+  return id;
+}
+
 export function parseShowKey(key) {
   const i = String(key || "").indexOf(":");
   if (i < 1) return null;

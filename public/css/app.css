@@ -164,6 +164,9 @@
  * same height everywhere. Otherwise the one screen with buttons in it has a taller bar than
  * the rest and the app appears to shift as you move between them. */
 .topbar-inner {
+  /* Declared here as well as on .topbar-inner, because the show page has a bar of its own
+     and a control inside it was inheriting nothing — min-width and height both resolved to an
+     invalid value, so the button collapsed to whatever its padding made it. */
   --bar-control: 44px;
   display: flex;
   align-items: center;
@@ -1143,6 +1146,50 @@ div.bar-row {
   }
 }
 
+/* ---------- sharing, and looking without an account ---------- */
+
+/* Only its position. The size and shape come from .lib-btn, the same as the sort and search
+   buttons, so a bar control is one thing everywhere rather than one thing per screen. */
+.show-bar-share {
+  margin-left: auto;
+}
+
+/* Under the page rather than over it. Somebody who followed a link came to look at the thing;
+   covering it to ask for a signup is how that visit ends. */
+.anon-bar {
+  position: sticky;
+  bottom: 0;
+  margin-top: 28px;
+  padding: 14px 0 calc(14px + var(--edge-b));
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
+}
+
+.anon-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 0 var(--edge-l) 0 var(--edge-r);
+}
+
+.anon-text { min-width: 0; }
+
+.anon-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.anon-sub {
+  color: var(--dim);
+  font-size: 12.5px;
+  margin-top: 2px;
+}
+
+.anon-bar .btn { flex: none; margin-left: auto; }
+
 /* ---------- see more, and the whole feed behind it ---------- */
 
 /* Shaped like the cards beside it so the row keeps its rhythm, and outlined rather than filled
@@ -1851,6 +1898,7 @@ div.bar-row {
 /* The row inside, held to the same width as the rest of the page so the back arrow sits
  * above the poster rather than out at the window's edge. */
 .show-bar-inner {
+  --bar-control: 44px;
   max-width: var(--wrap);
   height: 100%;
   margin: 0 auto;
