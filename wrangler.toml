@@ -46,3 +46,39 @@ html_handling = "none"
 binding = "DB"
 database_name = "nextly-db"
 database_id = "826b65bb-93df-4811-a83a-fbaafcd52885"
+
+# ---- previews ----
+#
+# A named environment, which is to say a second Worker: nextly-tv-preview. That is the whole
+# point. A version uploaded against the configuration above carries a binding to the live vault
+# database, so any code that ran as a preview — publicly reachable, since preview URLs are — held
+# SELECT and DELETE over real rows. The blobs are ciphertext and stay unreadable, but enumerating
+# account hashes and deleting rows is not nothing, and it needed no more than the ability to push
+# a branch.
+#
+# This one binds a database of its own with the same schema and no data anyone owns. It declares
+# no routes, so it cannot take nextly.tv or app.nextly.tv however it is deployed, and it answers
+# on workers.dev alone.
+#
+# The empty routes list is the load-bearing line, and it is not obvious: routes ARE inherited by
+# a named environment. Without it, `deploy --env preview` reassigns nextly.tv and app.nextly.tv
+# to the preview Worker — the same fault this file has already been bitten by once, wearing a
+# different hat. Wrangler warns about it on a dry run, which is how it was caught here.
+#
+# d1_databases and assets are the other way round: not inherited, so each is repeated. An
+# environment that forgot the assets block would serve the API and no app; one that forgot the
+# database would answer every vault request with an error.
+[env.preview]
+workers_dev = true
+routes = []
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "nextly-db-preview"
+database_id = "9201bb12-4ab4-47e7-865a-cde2b73f639e"
+
+[env.preview.assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "none"
