@@ -13,6 +13,8 @@
     "deploy": "wrangler deploy",
     "db:create": "wrangler d1 create nextly-db",
     "db:init": "wrangler d1 execute nextly-db --file=./schema.sql --remote",
+    "db:create:preview": "wrangler d1 create nextly-db-preview",
+    "db:init:preview": "wrangler d1 execute nextly-db-preview --file=./schema.sql --remote",
     "sync-version": "node scripts/sync-version.mjs",
     "version": "node scripts/sync-version.mjs && git add public/sw.js public/js/version.js src/inline-hashes.js",
     "gen-icons": "python3 scripts/gen-icons.py",
