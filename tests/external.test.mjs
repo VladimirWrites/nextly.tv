@@ -85,6 +85,35 @@ test("an import never removes a mark this library holds and the feed does not", 
   assert.equal(sh.entries.length, 2, "9x9 is untouched — the feed not knowing is not evidence");
 });
 
+/* Trakt offers "I don't know when" when you mark something watched, and exports that choice as
+   the Unix epoch rather than as an absent field. Sixteen of them turned up in one real export.
+   It has to arrive as a mark with no date at all: the episode was watched, and stamping it 1970
+   would put a spike at the left edge of every chart in the app. */
+test("an episode watched at a time nobody recorded is marked, without a date", () => {
+  const sh = show({ entries: [] });
+  const plan = planMarks(sh, [{ s: 1, e: 1, at: 0 }, { s: 1, e: 2, at: Date.parse("1970-01-01T00:00:00.000Z") }], NOW);
+  assert.equal(plan.add.length, 2, "both are watched");
+  for (const mark of plan.add) {
+    assert.ok(!("w" in mark), "and neither claims to know when");
+    assert.equal(mark.m, NOW, "m is when this device recorded it, which it does know");
+  }
+});
+
+/* And it never counts as something an import would improve. A mark already held keeps whatever
+   it has, and the count shown before importing does not promise a date it cannot supply. */
+test("an undated play neither overwrites a date nor is offered as one", () => {
+  const sh = show({ entries: [
+    { id: "1x1", m: NOW - DAY, w: NOW - 100 * DAY },
+    { id: "1x2", m: NOW - DAY },
+  ] });
+  const plan = planMarks(sh, [{ s: 1, e: 1, at: 0 }, { s: 1, e: 2, at: 0 }], NOW);
+  assert.deepEqual(plan.add, []);
+  assert.deepEqual(plan.raise, [], "nothing to raise: an unknown date improves neither of them");
+  applyMarks(sh, plan, NOW);
+  assert.equal(sh.entries[0].w, NOW - 100 * DAY, "the date it had is untouched");
+  assert.ok(!("w" in sh.entries[1]), "and the one without one still has none");
+});
+
 test("a date fills a mark that has none, and never overwrites one that has", () => {
   const sh = show({ entries: [
     { id: "1x1", m: NOW - DAY },
