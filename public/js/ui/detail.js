@@ -12,7 +12,7 @@ import { h, svg, ICON, mount, keepMedia } from "./dom.js";
 import { state } from "../domain/store.js";
 import { findShow } from "../domain/schema.js";
 import { shareButton } from "./share-button.js";
-import { anonBar } from "./anon.js";
+import { anonBar, canGoBack } from "./anon.js";
 import { seasonProgress, levelMap, passOf } from "../domain/progress.js";
 import { epKey, epCode, fmtScore, fmtDuration, airsLabel, portableKey} from "../domain/constants.js";
 import { fmtDate, fmtDay, seasonYears, hasAired, isUpcoming } from "../domain/dates.js";
@@ -82,11 +82,11 @@ function record(root, arg, { top }) {
 // history, to the show or the season you came from.
 function lead(top, back) {
   if (!top) return;
-  top.lead.replaceChildren(h("button.topbar-back", {
+  top.lead.replaceChildren(...(canGoBack() ? [h("button.topbar-back", {
     type: "button",
     "aria-label": "Back",
     onclick: () => back("library"),
-  }, [svg(ICON.back)]));
+  }, [svg(ICON.back)])] : []));
 }
 
 /* ---------- a season ---------- */

@@ -5,6 +5,7 @@
 // differs is whether anything can be marked. Keeping the shared half here is what lets the
 // two renderers read as the difference between them rather than as two copies with edits.
 import { h, svg, ICON, posterFallback, shelfScroller, keepMedia, poster } from "./dom.js";
+import { canGoBack } from "./anon.js";
 import { state } from "../domain/store.js";
 import { findShow } from "../domain/schema.js";
 import { passOf } from "../domain/progress.js";
@@ -48,11 +49,13 @@ export function stickyBar(show, back) {
          reached from the library, from search, from an actor's page, or from another show's
          cast. Only where there is nothing behind it does the label's old guess apply — a
          tracked show belongs to the library, an untracked one to the search that found it. */
-      h("button.show-bar-back", {
-        type: "button",
-        "aria-label": "Back",
-        onclick: () => back(findShow(state, show.id) ? "library" : "search"),
-      }, [svg(ICON.back)]),
+      canGoBack()
+        ? h("button.show-bar-back", {
+            type: "button",
+            "aria-label": "Back",
+            onclick: () => back(findShow(state, show.id) ? "library" : "search"),
+          }, [svg(ICON.back)])
+        : null,
       title,
       // Pushed to the far end by the title growing, so it sits where a bar's action always is.
       shareButton(show.name, "show", portableKey(show.id, show), "btn.lib-btn.show-bar-share"),

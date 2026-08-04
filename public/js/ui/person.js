@@ -6,7 +6,7 @@
 // track and one you don't.
 import { h, svg, ICON, mount, posterFallback, shelfScroller, keepMedia, poster } from "./dom.js";
 import { shareButton } from "./share-button.js";
-import { anonBar } from "./anon.js";
+import { anonBar, canGoBack } from "./anon.js";
 import * as meta from "../io/meta.js";
 import { fmtDate } from "../domain/dates.js";
 import { empty } from "./upnext.js";
@@ -28,13 +28,13 @@ export function renderPerson(root, key, { go, back, top }) {
     /* This screen is only ever arrived at from a show, so it is the one place in the app that
        needs a way out that isn't the nav: the show you were reading is not on the nav, and
        finding your way back to it through the library is absurd. */
-    top.lead.replaceChildren(h("button.topbar-back", {
+    top.lead.replaceChildren(...(canGoBack() ? [h("button.topbar-back", {
       type: "button",
       "aria-label": "Back",
       // Wrapped, not passed: back() takes where to go when there is nothing behind this
       // screen, and handing it a click event would send it there.
       onclick: () => back("library"),
-    }, [svg(ICON.back)]));
+    }, [svg(ICON.back)])] : []));
   }
 
   const have = seen.get(key);
