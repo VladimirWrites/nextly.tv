@@ -16,6 +16,7 @@
 // `at` is epoch milliseconds and may be 0 when the service does not say. `plays` is how many
 // times that service thinks the episode has been seen, and may be absent.
 import { findSameShow, findShow } from "./schema.js";
+import { start } from "./model.js";
 import { epKey, parseEpKey, levelOf } from "./constants.js";
 
 // Absent is not zero. Only something that is actually a number counts as one.
@@ -107,6 +108,10 @@ export function applyMarks(show, plan, now) {
     e.m = now;
     changed++;
   }
+  /* Marks arrived, so this is something being watched rather than something planned. The same
+     rule the app applies to a tap, applied to a thousand of them: only from planned, so a show
+     somebody paused or dropped is not dragged back into Up next by an import. */
+  if (changed) start(show, now);
   if (changed) show.m = now;
   return changed;
 }

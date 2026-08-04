@@ -228,3 +228,43 @@ test("a feed that is missing or malformed is survived rather than thrown at", ()
   assert.deepEqual(planPush(state, null), []);
   assert.equal(summarize(state, undefined, NOW).seen, 0);
 });
+
+/* ---- what an import leaves behind ----
+
+   All three of these were wrong at once, and each one alone was enough to make an import look
+   like it had silently failed: the library showed rows with no artwork and no scores, and the
+   screen the app opens on showed nothing at all. */
+
+test("a planned show that gains marks has been started", () => {
+  const sh = show({ st: "planned", entries: [] });
+  applyMarks(sh, planMarks(sh, [{ s: 1, e: 1, at: NOW - DAY }], NOW), NOW);
+  assert.equal(sh.st, "active", "which is the only status Up next looks at");
+});
+
+/* The same rule a tap follows. Somebody who paused or dropped a series and then imports a
+   history should not find it back on the front page — that was a decision, and an import is
+   not an argument against it. */
+test("a paused or dropped show is not dragged back by an import", () => {
+  for (const st of ["paused", "dropped"]) {
+    const sh = show({ st, entries: [] });
+    applyMarks(sh, planMarks(sh, [{ s: 1, e: 1, at: NOW - DAY }], NOW), NOW);
+    assert.equal(sh.st, st, `${st} stays ${st}`);
+  }
+});
+
+test("a show already active stays active", () => {
+  const sh = show({ st: "active", entries: [] });
+  applyMarks(sh, planMarks(sh, [{ s: 1, e: 1, at: NOW - DAY }], NOW), NOW);
+  assert.equal(sh.st, "active");
+});
+
+/* Nothing changed means nothing changed. An import that finds every mark already present must
+   not promote anything, or re-importing the same file would revive a dropped show. */
+test("an import that adds nothing promotes nothing", () => {
+  const sh = show({ st: "planned", entries: [{ id: "1x1", m: NOW - DAY, w: NOW - DAY }] });
+  const plan = planMarks(sh, [{ s: 1, e: 1, at: NOW - DAY }], NOW);
+  assert.deepEqual(plan.add, []);
+  assert.deepEqual(plan.raise, []);
+  applyMarks(sh, plan, NOW);
+  assert.equal(sh.st, "planned", "untouched, because nothing was written");
+});

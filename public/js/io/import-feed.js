@@ -11,6 +11,7 @@ import { state } from "../domain/store.js";
 import { addShow } from "../domain/model.js";
 import { matchFeed, planMarks, applyMarks, summarize } from "../domain/external.js";
 import { activeProvider } from "./meta.js";
+import * as cache from "./cache.js";
 import { scheduleSync } from "./storage.js";
 
 // What an import would do, without doing any of it.
@@ -39,6 +40,11 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
       try {
         const meta = await activeProvider().lookup({ imdb: row.imdb, tvdb: row.tvdb });
         if (meta) {
+          /* Kept, not just used. The lookup returns the whole record — episodes, artwork,
+             scores — and dropping it meant every imported show arrived blank: no poster in the
+             library, no scores, and nothing on Up next, because what Up next ranks is episodes
+             this never wrote down. The request has already been paid for. */
+          await cache.putMeta(meta);
           const show = addShow(state, meta, now);
           added++;
           marks += applyMarks(show, planMarks(show, row.episodes, now), now);

@@ -13,6 +13,7 @@ import { h, toast } from "./dom.js";
 import { readJSONZip } from "../io/zip.js";
 import { readExport, HISTORY_FILE } from "../domain/trakt-export.js";
 import { importFeed, previewFeed } from "../io/import-feed.js";
+import { hydrateLibrary } from "./actions.js";
 
 /* Matched rather than listed: a long history is split across watched-history-1.json and its
    numbered siblings, and how many there are is only known once the zip is open. */
@@ -115,6 +116,11 @@ async function run(feed, addMissing, out, repaint) {
         + (r.skipped ? `, ${fmtInt(r.skipped)} untracked shows left alone` : "") + ".",
     }));
     repaint();
+    /* And fill in whatever is still bare. Shows added here arrive with the record their lookup
+       returned, but a show that was already tracked and never opened has none — importing
+       marks against it is exactly the moment its episodes start mattering. Runs behind the
+       paint, with its own progress bar, and repaints as each one lands. */
+    hydrateLibrary();
   } catch (e) {
     out.replaceChildren(h("span", { text: e.message }));
   }
