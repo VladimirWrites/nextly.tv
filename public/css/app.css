@@ -3741,7 +3741,11 @@ button.score {
  *
  * Stepped rather than smooth, and that is the whole idea: a tick is an episode, and episodes
  * do not arrive by halves. It is also honest about what it does not know — nothing here can
- * say how far along the download is, so this repeats rather than pretending to measure. */
+ * say how far along the download is, so this repeats rather than pretending to measure.
+ *
+ * Used twice: while a new build downloads, and while a shared link is being placed in the
+ * reader's catalogue. Both are waits of unknown length with nothing to count, and the app
+ * should look like itself in both rather than inventing a second way to say "hold on". */
 .updating-bar {
   --pitch: 7px;
   --tick-w: 4px;
@@ -3782,6 +3786,46 @@ button.score {
 
 @keyframes updating-next {
   to { left: calc(var(--ticks) * var(--pitch)); }
+}
+
+
+/* ---- placing a shared link ----
+ * The wait between opening somebody's link and knowing which show it names. A sentence on its
+ * own read like an error; this is the update screen's furniture — the mark, the strip, one dim
+ * line — laid into the page rather than fixed over it, because the bar and the back button
+ * belong to the screen that is coming and should not be covered by the wait for it. */
+.finding {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  min-height: 70vh;
+  padding: 0 var(--edge-r) 0 var(--edge-l);
+  text-align: center;
+}
+
+.finding-text {
+  font-size: 14px;
+  color: var(--dim);
+}
+
+/* Said once the strip has run a while: the link is being looked for in more than one
+   catalogue, and a reader who waited deserves to know that rather than watch a bar. */
+.finding-more {
+  font-size: 13px;
+  color: var(--dim);
+  opacity: 0;
+  max-width: 34ch;
+  line-height: 1.5;
+  animation: finding-more 260ms ease-out 2.4s forwards;
+}
+
+@keyframes finding-more {
+  to { opacity: 0.75; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .finding-more { animation: none; opacity: 0.75; }
 }
 
 /* Asked for less motion: the strip stands still, half filled, and the words carry it. */

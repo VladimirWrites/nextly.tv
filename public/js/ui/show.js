@@ -181,7 +181,19 @@ function openPortable(root, key, { go, back }) {
   })();
 }
 
-const resolving = () => h("div.empty", [h("p", { text: "Finding this show…" })]);
+/* The same furniture the app puts up while a new build downloads: the mark, the barcode strip,
+   one dim line. Both are waits of unknown length with nothing to count, and a reader who
+   arrived from somebody else's link is meeting the app for the first time here — a bare
+   sentence on an empty page is a poor first thing to see, and reads like a failure.
+
+   The second line arrives only if the wait runs long. Saying "checking other catalogues"
+   immediately would be a lie in the common case, where the first one answers. */
+const resolving = () => h("div.finding", [
+  h("div.brand", [h("i.brand-lamp.is-sync"), "nextly"]),
+  h("div.updating-bar", { "aria-hidden": "true" }),
+  h("div.finding-text", { role: "status", text: "Finding this show…" }),
+  h("div.finding-more", { text: "The link doesn't name a catalogue, so it's being looked for in each one this device can reach." }),
+]);
 
 /* A catalogue that has never heard of it. Said plainly rather than left as an empty page,
    because the reader did nothing wrong — they followed a link, and the show simply is not in
