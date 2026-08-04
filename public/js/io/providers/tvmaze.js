@@ -160,6 +160,16 @@ export async function ratingByImdb(imdbId) {
   return { source: "TVmaze", score, max: 10, url: d.url || null };
 }
 
+/* Just this catalogue's episode scores for one season, for a show numbered by another one.
+   Scores and episode numbers, nothing else: the record in hand already has the names, the
+   dates and the stills, and they belong to the catalogue that issued the numbering. */
+export async function seasonScores(ref, n) {
+  const eps = await get(`/shows/${encodeURIComponent(ref)}/episodes?specials=1`);
+  return (eps || [])
+    .filter((ep) => ep.season === n)
+    .map((ep) => ({ e: ep.number, score: (ep.rating && ep.rating.average) || null }));
+}
+
 export async function fetchShow(ref) {
   const d = await get(`/shows/${encodeURIComponent(ref)}?embed=episodes`);
   return normalize(d);

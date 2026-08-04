@@ -20,7 +20,7 @@ import { avgScore, bestScored, scoredCount } from "../domain/scores.js";
 import { chartInto, chartCaption } from "./chart.js";
 import * as cache from "../io/cache.js";
 import { trailerLink } from "./show-parts.js";
-import { sourceOf } from "../io/meta.js";
+import { scoresFor, scoreSourceOf, ensureScores } from "../io/meta.js";
 import { toggleEpisode, ensureMeta, opts } from "./actions.js";
 import { empty } from "./upnext.js";
 
@@ -70,12 +70,21 @@ function record(root, arg, { top }) {
     return null;
   }
 
-  const se = (meta.seasons || []).find((s) => s.n === at.n);
-  if (!se) {
+  const raw = (meta.seasons || []).find((s) => s.n === at.n);
+  if (!raw) {
     mount(root, empty("No such season", `${name || "This show"} has no season ${at.n}.`));
     return null;
   }
-  return { at, show, meta, se, name };
+
+  /* The scores the reader chose, over the numbering the marks were recorded against. An
+     episode the chosen catalogue does not list keeps no score at all rather than falling back
+     to the other one's — the panel says whose numbers these are, and that has to be true of
+     every number under the label, not most of them. */
+  const over = scoresFor(meta, at.n);
+  const se = over
+    ? { ...raw, episodes: (raw.episodes || []).map((ep) => ({ ...ep, score: over.has(ep.e) ? over.get(ep.e) : null })) }
+    : raw;
+  return { at, show, meta, se, name, from: scoreSourceOf(meta, at.n) };
 }
 
 // The way out. The nav can't reach these pages, so the arrow is the only route back — through
@@ -91,18 +100,18 @@ function lead(top, back) {
 
 /* ---------- a season ---------- */
 
-export function renderSeason(root, arg, { go, back, top }) {
+export function renderSeason(root, arg, { go, back, top, repaint }) {
   lead(top, back);
   const found = record(root, arg, { top });
   if (!found) return;
-  const { at, show, meta, se, name } = found;
+  const { at, show, meta, se, from } = found;
+  ensureScores(meta, at.n).then((landed) => { if (landed) repaint(); });
 
   const eps = (se.episodes || []).filter((ep) => opts().specials || !ep.special);
   const p = show ? seasonProgress(show, se, opts()) : null;
   const avg = avgScore(eps);
   const best = bestScored(eps);
   const scored = scoredCount(eps);
-  const from = sourceOf(meta);
   const heading = se.n === 0 ? "Specials" : `Season ${se.n}`;
 
   /* The shape of the season: one point per scored episode, joined. Two scored episodes is the
@@ -214,11 +223,12 @@ function episodeLine(id, se, ep, show, go, from) {
 
 /* ---------- one episode ---------- */
 
-export function renderEpisode(root, arg, { go, back, top }) {
+export function renderEpisode(root, arg, { go, back, top, repaint }) {
   lead(top, back);
   const found = record(root, arg, { top });
   if (!found) return;
-  const { at, show, meta, se } = found;
+  const { at, show, meta, se, from } = found;
+  ensureScores(meta, at.n).then((landed) => { if (landed) repaint(); });
 
   const ep = (se.episodes || []).find((e) => e.e === at.e);
   if (!ep) {
@@ -248,7 +258,7 @@ export function renderEpisode(root, arg, { go, back, top }) {
     h("div.show-facts.sep-row", { style: { marginTop: "10px" } }, [
       ...facts.map((f) => h("span.sep-item", { text: f })),
       // "8.4 on TVmaze", not a bare 8.4: whose eight-point-four matters.
-      ep.score ? h("span.sep-item.detail-score", { text: `${fmtScore(ep.score)} on ${sourceOf(meta)}` }) : null,
+      ep.score ? h("span.sep-item.detail-score", { text: `${fmtScore(ep.score)} on ${from}` }) : null,
     ]),
 
     ep.overview ? h("p.show-overview", { text: ep.overview }) : null,

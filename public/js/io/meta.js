@@ -161,6 +161,74 @@ export function sourceOf(m) {
   return at ? provider(at.src).label : "";
 }
 
+/* ---- episode scores, from the catalogue in use ----
+
+   The same rule the cast follows, for the same reason. A show tracked from TVmaze keeps its
+   TVmaze key forever, because that is what its marks are recorded against — but the numbering
+   is the only part of that which has to stay. Reading the scores out of the record meant a
+   reader who had chosen TMDB, and given it a key, was shown TVmaze's numbers on every episode
+   page and every season average, however plainly TMDB was selected.
+
+   Held for the session and never written to the durable cache, exactly as the cast is: these
+   are not the record, they are what one catalogue currently thinks, and a cache that outlived
+   a change of catalogue would serve the wrong crowd's numbers after the setting had changed.
+
+   Matched by episode number within the season, which is the part worth being plain about: the
+   two catalogues do not always split a season the same way, and an episode the chosen
+   catalogue does not list gets no score rather than keeping the other one's. A number labelled
+   TMDB has to be TMDB's. */
+const overlays = new Map();
+
+const overlayKey = (m, n) => {
+  const own = answeredFor(m);
+  return own ? `scores:${activeProvider().id}:${own.src}:${own.ref}:s${n}` : null;
+};
+
+/* Whether the catalogue in use is already the one that answered. When it is, the record's own
+   scores are that catalogue's and there is nothing to fetch or to overlay. */
+const ownScores = (m) => {
+  const own = answeredFor(m);
+  return !!own && activeProvider().id === own.src;
+};
+
+/* What has already arrived, as a Map of episode number to score, or null. Synchronous, so a
+   render can consult it without becoming asynchronous itself. */
+export function scoresFor(m, n) {
+  if (!m || ownScores(m)) return null;
+  const key = overlayKey(m, n);
+  const got = key && overlays.get(key);
+  return got instanceof Map ? got : null;
+}
+
+// Which crowd the scores on screen belong to, which is the catalogue in use once one has been
+// borrowed from and the record's own until then.
+export function scoreSourceOf(m, n) {
+  return scoresFor(m, n) ? activeProvider().label : sourceOf(m);
+}
+
+/* Fetch them if they are wanted and not already here. Resolves true when something arrived
+   that was not on screen, which is a caller's cue to repaint and nothing more. */
+export function ensureScores(m, n) {
+  if (!m || ownScores(m) || !Number.isFinite(n)) return Promise.resolve(false);
+  const key = overlayKey(m, n);
+  if (!key || overlays.has(key)) return Promise.resolve(false);
+
+  overlays.set(key, "asking");          // so a repaint mid-flight does not ask again
+  return once(key, async () => {
+    const at = await castFrom(m);       // the catalogue in use, by its own id for this show
+    if (!at || at.p.id !== activeProvider().id || !at.p.seasonScores || !usable(at.p.id)) return null;
+    return at.p.seasonScores(at.ref, n);
+  }).then((rows) => {
+    if (!rows || !rows.length) { overlays.set(key, null); return false; }
+    overlays.set(key, new Map(rows.map((r) => [r.e, r.score])));
+    return true;
+  }).catch(() => {
+    // A catalogue that will not answer is not an error worth showing; the record's own stand.
+    overlays.set(key, null);
+    return false;
+  });
+}
+
 /* Cast comes from the catalogue in use, not from the one the show happens to be numbered by.
 
    A show tracked from TVmaze keeps its TVmaze key forever — that is what its marks are recorded

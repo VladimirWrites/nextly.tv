@@ -172,6 +172,14 @@ export async function ratingOf(ref) {
   };
 }
 
+/* Just this catalogue's episode scores for one season, for a show numbered by another one.
+   Scores and episode numbers, nothing else: the record in hand already has the names, the
+   dates and the stills, and they belong to the catalogue that issued the numbering. */
+export async function seasonScores(ref, n) {
+  const d = await get(`/tv/${encodeURIComponent(ref)}/season/${encodeURIComponent(n)}`);
+  return ((d && d.episodes) || []).map((ep) => ({ e: ep.episode_number, score: ep.vote_average || null }));
+}
+
 export async function topRated(page = 1) {
   return paged(await get("/tv/top_rated", { page }));
 }
