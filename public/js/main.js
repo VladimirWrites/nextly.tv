@@ -98,6 +98,31 @@ function restoreScroll(y) {
   tryOnce();
 }
 
+/* The tab bar, which is not quite the same as going somewhere.
+
+   The four tabs are places you switch between rather than places you go into, so walking back
+   through every tab you happened to visit would be wrong — three taps around the bar should
+   not cost three presses of Back to get out. They used to replace for exactly that reason, and
+   the cost was that Back from anywhere in the app closed it, with Up next never reachable that
+   way.
+
+   One entry, not none. The first step away from Up next is pushed; moving between the other
+   tabs replaces, so there is never more than one of them on the stack. Back from Library,
+   Search or You lands on Up next, and Back from there leaves — which is what Back does
+   everywhere else on the platform.
+
+   Going the other way is a step back rather than a third entry, or Up next would be reachable
+   by Back and then still be sitting on top of the tab it was reached from. Only from a tab: a
+   show page has its own trail behind it and popping that would land somewhere unrelated. */
+const SIDE_TABS = ["library", "search", "you"];
+
+function goTab(name) {
+  const depth = (history.state && history.state.depth) || 0;
+  if (name === "next" && SIDE_TABS.includes(route.name) && depth > 0) return history.back();
+  // Deep-linked straight into a tab, so there is no Up next underneath to go back to.
+  go(name, null, { replace: route.name !== "next" });
+}
+
 function go(name, arg = null, { replace = false } = {}) {
   const path = pathFor(name, arg);
   // Compared against the fragment as well, or every move between two shows would look like
@@ -186,13 +211,9 @@ function render() {
   document.body.classList.toggle("no-nav", ["show", "person", "season", "episode", "stats", "feed"].includes(route.name));
 
   mount(app, renderTitlebar(), h("div.shell", [
-    /* The nav replaces rather than pushes. Its four screens are places you switch between, not
-       places you go into: pressing back after three taps should leave the app, the way it does
-       on a phone, rather than walking backwards through the tabs you happened to visit. Only
-       going *into* something — a show, an actor, a season — is worth an entry. */
     renderNav(["show", "person", "season", "episode"].includes(route.name) ? "library"
       : route.name === "stats" ? "you" : route.name === "feed" ? "search" : route.name,
-    (name) => go(name, null, { replace: true }), waiting),
+    goTab, waiting),
     h("div.shell-main", [top ? top.bar : null, body]),
   ]));
 
