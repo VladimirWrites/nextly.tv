@@ -3350,6 +3350,31 @@ button.score {
   cursor: pointer;
 }
 
+/* A second group needs air above its heading, or the label reads as a caption on the option
+   above it rather than as the start of something new. */
+.sheet-list + .sheet-title {
+  margin-top: 18px;
+}
+
+/* The count beside an option, so a filter that would come back empty says so before it is
+   chosen. Tabular figures, or the numbers jitter as the list changes underneath. */
+.sheet-opt-count {
+  margin-left: auto;
+  margin-right: 10px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+}
+
+/* The sheet stays open while two axes are set, so it needs a way out that is not the scrim. */
+.sheet-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 4px 2px;
+}
+
+
 .sheet-opt:hover {
   background: var(--panel-2);
 }

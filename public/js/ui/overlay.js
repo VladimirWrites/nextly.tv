@@ -157,6 +157,50 @@ export function chooser({ title, options, value }) {
   ]), { onCancel: null });
 }
 
+/* ---- filtering, on more than one axis ----
+
+   Two questions — what kind of thing, and where it stands — so two groups in one sheet rather
+   than two sheets or a row of chips eating the top of the screen.
+
+   It stays open and applies as you go, which is the difference from chooser: that answers one
+   question and closes, while this one is usually two taps and the list behind is the feedback.
+   Each option carries its count, because a filter that turns out to be empty is worth knowing
+   about before it is chosen rather than after. */
+export function filterSheet({ title = "Filter", groups, onPick }) {
+  return present((close) => {
+    const body = h("div.sheet", { role: "dialog", "aria-modal": "true", "aria-label": title }, [
+      h("div.sheet-grip", { "aria-hidden": "true" }),
+    ]);
+
+    const draw = () => {
+      body.replaceChildren(h("div.sheet-grip", { "aria-hidden": "true" }));
+      for (const g of groups()) {
+        body.append(h("div.sheet-title.t-label", { text: g.title }));
+        body.append(h("div.sheet-list", { role: "listbox" }, g.options.map((o) => {
+          const on = o.value === g.value;
+          return h("button.sheet-opt", {
+            type: "button",
+            role: "option",
+            "aria-selected": on ? "true" : "false",
+            class: on ? "is-on" : null,
+            onclick: () => { onPick(g.id, o.value); draw(); },
+          }, [
+            h("span.sheet-opt-label", { text: o.label }),
+            o.count != null ? h("span.sheet-opt-count", { text: String(o.count) }) : null,
+            on ? svg(ICON.check, "sheet-opt-check") : null,
+          ]);
+        })));
+      }
+      body.append(h("div.sheet-actions", [
+        h("button.btn.btn-sm.btn-primary", { type: "button", text: "Done", onclick: () => close(null) }),
+      ]));
+    };
+
+    draw();
+    return body;
+  }, { onCancel: null });
+}
+
 /* ---- picking a date, or two ----
    For correcting an imported history, where the question is "between when and when". The
    platform's own date field, because a calendar is one of the few controls a phone does better
