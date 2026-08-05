@@ -51,6 +51,11 @@ export function makeShow(meta, now = Date.now()) {
     year: meta.year || null,
     imdb: meta.imdb || null,  // the portable ids: what re-resolves this show elsewhere
     tvdb: meta.tvdb || null,
+    /* TMDB's id, kept because for a movie it is the only bridge there is. TMDB's movie search
+       returns no IMDb id, so a film added from Cinemeta — which does carry TMDB's id — could
+       not be recognised as the same film in a TMDB search result, and the row offered to add
+       something the library already held. */
+    ...(meta.tmdb ? { tmdb: +meta.tmdb || null } : {}),
     st: DEFAULT_STATUS,
     added: now,
     m: now,
@@ -75,6 +80,7 @@ export function normShow(sh) {
   if (sh.year != null) sh.year = +sh.year || null;
   if (sh.imdb === undefined) sh.imdb = null;
   if (sh.tvdb === undefined) sh.tvdb = null;
+  if (sh.tmdb != null) sh.tmdb = +sh.tmdb || null;
   if (!Array.isArray(sh.alt)) sh.alt = [];
   if (!SHOW_STATUS.includes(sh.st)) sh.st = DEFAULT_STATUS;
   if (!sh.added) sh.added = 0;
@@ -188,11 +194,19 @@ export function findSameShow(state, meta) {
   const same = (x) => (x.kind === "movie" ? "movie" : undefined) === kind;
   const of = (fn) => shows.filter(same).find(fn);
 
+  /* A search result from TMDB carries no IMDb id — the endpoint does not return one — so its
+     own id has to count as an identity too. Taken from the record where it has one and from
+     the key otherwise, which is what a bare search row is. */
+  const tmdb = meta.tmdb
+    || (meta.src === "tmdb" && String(meta.ref || "").replace(/^m/, ""))
+    || null;
+
   return (key && of((x) => x.id === String(key)))
     // Learned last time: the other catalogue's key for this same series.
     || (key && of((x) => (x.alt || []).includes(String(key))))
     || (meta.imdb && of((x) => x.imdb && x.imdb === meta.imdb))
     || (meta.tvdb && of((x) => x.tvdb && String(x.tvdb) === String(meta.tvdb)))
+    || (tmdb && of((x) => x.tmdb && String(x.tmdb) === String(tmdb)))
     || null;
 }
 

@@ -28,28 +28,27 @@ const isFilm = (r) => r.kind === "movie";
    Kind is the segmented control above; the chips below filter within it. And the chips differ
    by kind on purpose — "Waiting" and "Caught up" are about having episodes left, which a movie
    never has, so a movie has two states and a show has five. */
-const SHOW_FILTERS = [
-  { id: "all", label: "All", test: () => true },
-  { id: "waiting", label: "Waiting", test: (r) => r.st === "active" && r.progress.remaining > 0 },
-  { id: "caught", label: "Caught up", test: (r) => r.st === "active" && r.progress.remaining === 0 },
-  { id: "planned", label: "Planned", test: (r) => r.st === "planned" },
-  { id: "paused", label: "Paused", test: (r) => r.st === "paused" },
-  { id: "dropped", label: "Dropped", test: (r) => r.st === "dropped" },
-];
+/* One set of chips for both kinds, because a movie's two states are the same two questions the
+   show states already ask: is there anything left to watch, and have you started.
 
-const MOVIE_FILTERS = [
+   Seen is Caught up — nothing left. Not seen is Planned — meaning to, haven't. Waiting, Paused
+   and Dropped are about being partway through something and a movie never is, so a movie simply
+   never matches them rather than needing chips of its own. Which is what makes "All" work: with
+   two kinds on screen every chip means something for both. */
+const FILTERS = [
   { id: "all", label: "All", test: () => true },
-  { id: "seen", label: "Seen", test: (r) => r.watched },
-  { id: "unseen", label: "Not seen", test: (r) => !r.watched },
+  { id: "waiting", label: "Waiting", test: (r) => !isFilm(r) && r.st === "active" && r.progress.remaining > 0 },
+  { id: "caught", label: "Caught up", test: (r) => (isFilm(r) ? r.watched : r.st === "active" && r.progress.remaining === 0) },
+  { id: "planned", label: "Planned", test: (r) => (isFilm(r) ? !r.watched : r.st === "planned") },
+  { id: "paused", label: "Paused", test: (r) => !isFilm(r) && r.st === "paused" },
+  { id: "dropped", label: "Dropped", test: (r) => !isFilm(r) && r.st === "dropped" },
 ];
 
 const KINDS = [["all", "All"], ["shows", "Shows"], ["movies", "Movies"]];
 
 const inKind = (r, k) => k === "all" || (k === "movies" ? isFilm(r) : !isFilm(r));
 
-// Which chips make sense depends on what is being looked at. A mixed list gets the show ones,
-// since that is what most of a mixed library is.
-const filtersFor = (k) => (k === "movies" ? MOVIE_FILTERS : SHOW_FILTERS);
+
 
 let filter = "all";
 let kind = "all";
@@ -103,8 +102,6 @@ export function renderLibrary(root, { go, top }) {
     };
   });
 
-  const FILTERS = filtersFor(kind);
-  // A chip that does not exist for this kind falls back to All rather than showing nothing.
   const chosen = FILTERS.find((f) => f.id === filter) || FILTERS[0];
   const ofKind = rows.filter((r) => inKind(r, kind));
   const shown = ofKind.filter(chosen.test)
@@ -115,14 +112,14 @@ export function renderLibrary(root, { go, top }) {
      was before movies existed. */
   const anyFilm = rows.some(isFilm);
   const kinds = anyFilm
-    ? segmented(KINDS.map(([v, l]) => [v, l]), kind, (v) => {
-        kind = v;
-        if (!filtersFor(kind).some((f) => f.id === filter)) filter = "all";
-        again();
-      })
+    ? segmented(KINDS.map(([v, l]) => [v, l]), kind, (v) => { kind = v; again(); })
     : null;
 
-  const chips = h("div.row-gap", FILTERS.map((f) => {
+  /* A chip that cannot match anything in the kind being viewed is furniture. With Movies
+     chosen that removes Waiting, Paused and Dropped, which leaves exactly the two states a
+     movie has — under the names the rest of the library already uses. */
+  const usable = FILTERS.filter((f) => f.id === "all" || ofKind.some(f.test) || filter === f.id);
+  const chips = h("div.row-gap", usable.map((f) => {
     const n = ofKind.filter(f.test).length;
     return h("button.chip", {
       type: "button",

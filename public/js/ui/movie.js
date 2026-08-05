@@ -9,7 +9,7 @@
 // one mark, keyed so it can never collide with an episode.
 import { h, svg, ICON, mount, keepMedia, poster, posterFallback } from "./dom.js";
 import { state } from "../domain/store.js";
-import { findShow } from "../domain/schema.js";
+import { findShow, findSameShow } from "../domain/schema.js";
 import { movieWatched, moviePlays } from "../domain/model.js";
 import { fmtScore, fmtDuration, movieKey } from "../domain/constants.js";
 import { fmtDate } from "../domain/dates.js";
@@ -31,7 +31,12 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
     top.bar.classList.add("has-actions");
   }
 
-  const held = findShow(state, key);
+  /* The same film under either catalogue's key. A record added from Cinemeta is keyed by its
+     IMDb id and a TMDB link names a number, so an exact-key lookup finds nothing and the page
+     offers to add a film the library already holds. findSameShow knows the ids are the same
+     film; the key alone is enough for it, since a movie key carries the catalogue's own id. */
+  const held = findShow(state, key)
+    || findSameShow(state, { ...(cache.getMeta(key) || {}), key, kind: "movie" });
   const m = cache.getMeta(key) || cache.getHint(key);
   const name = (held && held.name) || (m && m.name) || "";
 

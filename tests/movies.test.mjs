@@ -260,3 +260,64 @@ test("a movie row is placed by the movie catalogue, a show row by the show one",
   assert.equal(state.shows.length, 2);
   assert.ok(state.shows.some((x) => x.kind === "movie"), "and the film was added as one");
 });
+
+/* ---- the same movie, found in the other catalogue ----
+
+   A film added from Cinemeta is keyed by its IMDb id. Switch to TMDB and search for it again
+   and the result carries TMDB's id and no IMDb id at all — that endpoint does not return one.
+   With nothing in common the row offered to add a film the library already held, and pressing
+   it said "already in your library", which is a fine way to make somebody distrust both. */
+
+test("a TMDB search result matches the same movie added from Cinemeta", () => {
+  const held = normShow(makeShow({
+    key: "cinemeta:mtt0111161", src: "cinemeta", ref: "mtt0111161", kind: "movie",
+    name: "The Shawshank Redemption", year: 1994, imdb: "tt0111161", tmdb: 278,
+  }, NOW));
+  assert.equal(held.tmdb, 278, "TMDB's id is kept, because for a film it is the only bridge");
+
+  const state = { shows: [held] };
+  // Exactly what tmdb.searchMovies returns: an id, and no imdb.
+  const row = { key: "tmdb:m278", src: "tmdb", ref: "m278", kind: "movie",
+                name: "The Shawshank Redemption", year: 1994 };
+  assert.equal(findSameShow(state, row), held);
+  assert.equal(findLikeShow(state, row), held);
+});
+
+test("and the other way round: a Cinemeta result matches one added from TMDB", () => {
+  const held = normShow(makeShow({
+    key: "tmdb:m278", src: "tmdb", ref: "m278", kind: "movie",
+    name: "The Shawshank Redemption", year: 1994, imdb: "tt0111161", tmdb: 278,
+  }, NOW));
+  const state = { shows: [held] };
+  const row = { key: "cinemeta:mtt0111161", src: "cinemeta", ref: "mtt0111161", kind: "movie",
+                name: "The Shawshank Redemption", year: 1994, imdb: "tt0111161" };
+  assert.equal(findSameShow(state, row), held);
+});
+
+test("a TMDB id survives being read back", () => {
+  const sh = normShow(JSON.parse(JSON.stringify(normShow(makeShow({
+    key: "cinemeta:mtt0111161", src: "cinemeta", ref: "mtt0111161", kind: "movie",
+    name: "The Shawshank Redemption", year: 1994, imdb: "tt0111161", tmdb: 278,
+  }, NOW)))));
+  assert.equal(sh.tmdb, 278);
+});
+
+/* Two different films must not fold together just because both are on TMDB. */
+test("different TMDB ids stay different movies", () => {
+  const state = { shows: [normShow(makeShow({
+    key: "cinemeta:mtt0111161", src: "cinemeta", ref: "mtt0111161", kind: "movie",
+    name: "The Shawshank Redemption", year: 1994, imdb: "tt0111161", tmdb: 278,
+  }, NOW))] };
+  const other = { key: "tmdb:m279", src: "tmdb", ref: "m279", kind: "movie", name: "Something Else", year: 1994 };
+  assert.equal(findSameShow(state, other), null);
+});
+
+/* And a film's TMDB id must never match a series carrying the same number — the two spaces are
+   numbered separately, and the kind guard is what keeps them apart. */
+test("a movie never matches a show on a shared TMDB number", () => {
+  const state = { shows: [normShow(makeShow({
+    key: "tvmaze:169", src: "tvmaze", ref: 169, name: "Breaking Bad", year: 2008, tmdb: 278,
+  }, NOW))] };
+  const row = { key: "tmdb:m278", src: "tmdb", ref: "m278", kind: "movie", name: "Shawshank", year: 1994 };
+  assert.equal(findSameShow(state, row), null);
+});
