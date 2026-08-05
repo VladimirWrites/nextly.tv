@@ -3,7 +3,7 @@
 // Each card carries a mini barcode, so the grid shows the shape of your progress rather
 // than a wall of identical artwork: where you are in each show is readable without opening
 // anything.
-import { h, svg, ICON, mount, posterFallback, poster } from "./dom.js";
+import { h, svg, ICON, mount, posterFallback, poster, shelfScroller } from "./dom.js";
 import { state } from "../domain/store.js";
 import { showProgress, nextUp } from "../domain/progress.js";
 import { movieWatched, moviePlays } from "../domain/model.js";
@@ -125,7 +125,10 @@ export function renderLibrary(root, { go, top }) {
     onclick: act,
   });
 
-  const bar = h("div.filter-bar", { role: "group", "aria-label": "Filter library" }, [
+  /* Through the same scroller every other horizontal strip in the app uses, so it drags with a
+     mouse and fades at an end that has more past it. An overflow box scrolls on a phone and
+     sits there on a laptop, which is what this row was doing. */
+  const bar = shelfScroller(h("div.filter-bar", { role: "group", "aria-label": "Filter library" }, [
     ...(anyFilm ? KINDS.map(([v, l]) =>
       chip(l, rows.filter((r) => inKind(r, v)).length, kind === v, () => { kind = v; again(); })) : []),
     anyFilm ? h("span.filter-sep", { "aria-hidden": "true" }) : null,
@@ -134,7 +137,7 @@ export function renderLibrary(root, { go, top }) {
     ...FILTERS
       .filter((f) => f.id === "all" || of.some(f.test) || filter === f.id)
       .map((f) => chip(f.label, of.filter(f.test).length, filter === f.id, () => { filter = f.id; again(); })),
-  ]);
+  ]));
 
   /* A button, not a <select>. The native control renders as a system picker that belongs to a
      different app — on Android a full-screen grey list with none of this app's type.

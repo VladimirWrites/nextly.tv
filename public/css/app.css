@@ -2664,7 +2664,8 @@ button.score {
  * A horizontal strip of posters. Scrolls rather than wraps: a shelf that reflows into a grid
  * stops reading as "a few suggestions" and starts reading as "a catalogue to get through". */
 
-.shelf {
+.shelf,
+.filter-bar {
   display: flex;
   /* Cards size to their own content and hang from a shared top line. Stretching them to a
    * common height lets a two-line title drag its poster out of alignment with the rest,
@@ -2692,25 +2693,30 @@ button.score {
     #000 calc(100% - var(--fade-r)), transparent 100%);
 }
 
-.shelf::-webkit-scrollbar {
+.shelf::-webkit-scrollbar,
+.filter-bar::-webkit-scrollbar {
   display: none;
 }
 
 /* Says the row can be pulled, which is otherwise invisible with a mouse. */
 .shelf,
+.filter-bar,
 .bc-full {
   cursor: grab;
 }
 
 .shelf.is-dragging,
+.filter-bar.is-dragging,
 .bc-full.is-dragging {
   cursor: grabbing;
   /* Nothing is selected while dragging a row of posters across. */
   user-select: none;
 }
 
-.shelf.has-start { --fade-l: 9px; }
-.shelf.has-end { --fade-r: 12px; }
+.shelf.has-start,
+.filter-bar.has-start { --fade-l: 9px; }
+.shelf.has-end,
+.filter-bar.has-end { --fade-r: 12px; }
 
 .shelf-card {
   flex: none;
@@ -3888,21 +3894,18 @@ button.score {
 }
 
 /* ---- the library's filter row ----
- * One line that scrolls rather than a block that wraps: two axes of chips came to three rows on
- * a phone and pushed the first posters below the fold. Bled to the screen edges so the last
- * chip is visibly cut rather than sitting flush, which is what says there is more to the right.
+ * A shelf, in everything that makes a horizontal strip work: it runs to the screen edge, fades
+ * at whichever end has more past it, and can be dragged with a mouse — which an overflow box
+ * cannot, and which is why this row felt broken on a laptop and fine on a phone.
+ *
+ * What differs from a shelf of posters is only the spacing: chips sit on one line and are
+ * centred against each other rather than hung from a shared top edge.
  */
 .filter-bar {
-  display: flex;
-  gap: 8px;
   align-items: center;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding: 0 var(--edge-r) 12px var(--edge-l);
-  margin: 0 calc(-1 * var(--edge-r)) 0 calc(-1 * var(--edge-l));
+  gap: 8px;
+  padding-bottom: 12px;
 }
-
-.filter-bar::-webkit-scrollbar { display: none; }
 
 /* Chips must not squeeze to fit — a row that shrinks its contents to avoid scrolling is a row
    nobody realises scrolls. */
