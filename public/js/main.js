@@ -201,10 +201,12 @@ function render() {
   /* A feed's name is the row it came from. Put here rather than drawn on the page so it lands
      in the bar with every other screen's, and so the document title says which feed too. */
   const feed = route.name === "feed" ? feedById(route.arg) : null;
-  const titles = { next: "Up next", library: "Library", search: "Search", you: "You", stats: "Your year", show: "", person: "", season: "", episode: "", feed: feed ? feed.title : "" };
-  // The show page bleeds its bar and cover to the edges of the column, so it caps its own
-  // children instead of being capped as a whole.
-  const body = h("main.main", { class: route.name === "show" ? "is-show" : null });
+  const titles = { next: "Up next", library: "Library", search: "Search", you: "You", stats: "Your year", show: "", movie: "", person: "", season: "", episode: "", feed: feed ? feed.title : "" };
+  /* The show and film pages bleed their cover to the edges of the column, so they cap their own
+     children instead of being capped as a whole. A film's cover is the same cover — it was left
+     out of this and sat inset by the page gutter with bands either side, which reads as a bug
+     rather than as a design. */
+  const body = h("main.main", { class: ["show", "movie"].includes(route.name) ? "is-show" : null });
 
   setDocumentTitle(titles);
 
