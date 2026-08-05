@@ -321,3 +321,32 @@ test("a movie never matches a show on a shared TMDB number", () => {
   const row = { key: "tmdb:m278", src: "tmdb", ref: "m278", kind: "movie", name: "Shawshank", year: 1994 };
   assert.equal(findSameShow(state, row), null);
 });
+
+/* ---- which catalogue a movie comes from ----
+
+   It follows the catalogue that has been chosen, which it did not: reading the TMDB key alone
+   meant somebody who had entered one and then deliberately picked TVmaze still had every film
+   come from TMDB and be stored under a TMDB key. */
+test("choosing TVmaze means films come from Cinemeta, key or no key", async () => {
+  const { movieProvider } = await import("../public/js/io/meta.js");
+  const { state } = await import("../public/js/domain/store.js");
+
+  state.settings = { provider: "tvmaze", tmdbKey: "KEY" };
+  assert.equal(movieProvider().id, "cinemeta", "TVmaze has no films, and TVmaze is what was asked for");
+
+  state.settings = { provider: "tvmaze" };
+  assert.equal(movieProvider().id, "cinemeta");
+});
+
+test("choosing TMDB means films come from TMDB, when the key works", async () => {
+  const { movieProvider } = await import("../public/js/io/meta.js");
+  const { state } = await import("../public/js/domain/store.js");
+
+  state.settings = { provider: "tmdb", tmdbKey: "KEY" };
+  assert.equal(movieProvider().id, "tmdb");
+
+  /* Chosen but unusable falls back to TVmaze for television, and there is only one thing left
+     that can answer for a film. */
+  state.settings = { provider: "tmdb" };
+  assert.equal(movieProvider().id, "cinemeta");
+});

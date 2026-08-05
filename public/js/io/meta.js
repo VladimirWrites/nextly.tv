@@ -33,17 +33,25 @@ export const search = (query) => activeProvider().search(query);
 
 /* ---- films ----
 
-   A separate choice from the catalogue, because the answer is different: TVmaze has no films at
-   all, so the provider that costs nothing for television cannot serve them.
+   Which catalogue answers for a film follows the one that has been chosen, the same as
+   everything else — it just cannot be TVmaze, which has no films at all.
 
-   TMDB where there is a key, Cinemeta otherwise. Preferring TMDB is not only about quality —
-   it is the one with terms and artwork sized to the request, and it means a reader who has
-   done the work of getting a key never depends on a service that publishes no promises.
-   Cinemeta is what makes the feature available to everyone else at all. */
+   So: TMDB when TMDB is the catalogue in use, and Cinemeta otherwise. Reading the key alone
+   was wrong and surprising with it: somebody who had entered a TMDB key and then deliberately
+   chosen TVmaze still had every film come from TMDB and be stored under a TMDB key, which is
+   not what picking a catalogue is for.
+
+   activeProvider already says both things at once — it answers TMDB only when TMDB is chosen
+   and its key works, and falls back to TVmaze when the key is missing, where Cinemeta is the
+   only thing that can answer anyway.
+
+   What does not follow the setting is the extra a film page asks for on top: cast and
+   recommendations come from TMDB wherever there is a key, because Cinemeta publishes neither
+   and a reader who has a key should not lose them for preferring TVmaze's numbering. */
 export const MOVIE_PROVIDERS = { tmdb, cinemeta };
 
 export function movieProvider() {
-  return tmdb.hasKey() ? tmdb : cinemeta;
+  return activeProvider().id === "tmdb" ? tmdb : cinemeta;
 }
 
 export const movieProviderOf = (srcId) => MOVIE_PROVIDERS[srcId] || cinemeta;
