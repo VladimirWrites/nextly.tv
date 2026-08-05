@@ -1,6 +1,6 @@
 {
   "name": "nextly",
-  "version": "1.4.5",
+  "version": "1.5.12",
   "description": "A private, zero-knowledge TV show tracker. Encrypted in your browser; no email, no password, no tracking.",
   "license": "Apache-2.0",
   "author": "Vladimir Jovanovic",

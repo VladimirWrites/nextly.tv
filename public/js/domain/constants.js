@@ -62,6 +62,40 @@ export function parseShowKey(key) {
   return { src: key.slice(0, i), ref: key.slice(i + 1) };
 }
 
+/* ---- films ----
+
+   A film is a show with one episode and no seasons, and the cheapest honest way to hold one is
+   the record that already exists. Everything hard in this app — the merge between two devices,
+   the fold of the same title found in two catalogues, the export, the import, the vault schema
+   — is written once against `state.shows`, and a parallel `movies` array would need every one
+   of them written a second time. The second copy is where the bug lives.
+
+   So: the same record, with `kind` saying which it is. Absent means show, because every record
+   written before this existed is one.
+
+   The key carries an "m" after the colon — `tmdb:m76600` — because TMDB numbers films and
+   series separately and 76600 means a different thing in each. Cinemeta keys by IMDb id
+   directly, so a film from there is `cinemeta:mtt1630029`, which is ugly and unambiguous. */
+export const MOVIE_MARK = "m";
+
+export const movieKey = (src, ref) => `${src}:m${ref}`;
+
+export const isMovieKey = (key) => {
+  const at = parseShowKey(key);
+  return !!at && at.ref.startsWith("m");
+};
+
+// The catalogue's own id, without the marker this app added.
+export const movieRef = (key) => {
+  const at = parseShowKey(key);
+  return at && at.ref.startsWith("m") ? at.ref.slice(1) : null;
+};
+
+/* Whether a record is a film. Read off the record rather than off the key, because the record
+   is what the rest of the app has in hand — but the two must agree, and the key is what a
+   cold link arrives as. */
+export const isMovie = (rec) => !!rec && (rec.kind === "movie" || isMovieKey(rec.id || rec.key || ""));
+
 // Episode key: "<season>x<episode>". Human-readable on purpose — a raw export stays legible
 // without any catalogue, and it survives the provider going away.
 export const epKey = (s, e) => `${s}x${e}`;

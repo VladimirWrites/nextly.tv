@@ -35,11 +35,16 @@ export function tookArrival(id) {
    The show page had no persistent bar of any kind — the app's topbar is skipped for this
    route — so scrolling into a long episode list left nothing saying which show you were in
    or how to get out.
+
+   Shared with the film page, which skips the topbar for the same reason: the cover has to run
+   from the very top of the screen, and a bar above it puts the artwork in a box. What differs
+   between the two is only where the back arrow falls back to and what the share button
+   addresses, so both are arguments.
    The bar is always present for the back button; the name appears only once the big title
    has scrolled past, so the same words are never on screen twice. */
 let detachBar = null;
 
-export function stickyBar(show, back) {
+export function stickyBar(show, back, { route = "show", shareKey = null } = {}) {
   const title = h("div.show-bar-title.t-title", { text: show.name });
   // The bar itself spans the whole column so its backdrop reaches both edges; the row inside
   // is capped, so the arrow and the name line up with everything below them.
@@ -58,7 +63,7 @@ export function stickyBar(show, back) {
         : null,
       title,
       // Pushed to the far end by the title growing, so it sits where a bar's action always is.
-      shareButton(show.name, "show", portableKey(show.id, show), "btn.lib-btn.show-bar-share"),
+      shareButton(show.name, route, shareKey || portableKey(show.id, show), "btn.lib-btn.show-bar-share"),
     ]),
   ]);
 }
@@ -277,11 +282,15 @@ export function hintRatings(hint) {
    Who is in it. Fetched from whichever catalogue answered for this show, held for the session
    only, and dropped from the page entirely when there is nothing to show — an empty shelf under
    a heading is worse than neither. */
-export function castSection(m, go) {
+/* Shared with the film page, which is why the fetch is an argument: a series asks the
+   catalogue for its cast by the show's id, a film by the film's, and everything after that —
+   the round faces, the character underneath, dropping the section when there is nobody to show
+   — is the same section and should stay the same section. */
+export function castSection(m, go, fetch = meta.credits) {
   const strip = shelfScroller(h("div.shelf"), `cast:${m.key}`);
   const section = h("div", [h("div.sect", [h("h2.t-label", { text: "Cast" })]), strip]);
 
-  meta.credits(m).then((cast) => {
+  fetch(m).then((cast) => {
     if (!cast.length) return section.remove();
     strip.replaceChildren(...cast.slice(0, 24).map((c) => h("button.shelf-card.is-face", {
       type: "button",

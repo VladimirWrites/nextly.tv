@@ -10,7 +10,7 @@
 import { state } from "../domain/store.js";
 import { addShow } from "../domain/model.js";
 import { matchFeed, planMarks, applyMarks, summarize } from "../domain/external.js";
-import { activeProvider } from "./meta.js";
+import { activeProvider, movieProvider } from "./meta.js";
 import * as cache from "./cache.js";
 import { scheduleSync } from "./storage.js";
 
@@ -27,14 +27,25 @@ export const previewFeed = (feed, now = Date.now()) => summarize(state, feed, no
    cheap half, and people imported a Trakt library and got a handful of marks. It stays an
    option here because it is a real distinction and the io layer is not the place to decide it
    is uninteresting; every caller today passes true. */
-export async function importFeed(feed, { addMissing = false, onProgress = () => {}, now = Date.now() } = {}) {
+/* Which catalogue can place a row this library has never seen.
+
+   Not the same one for both: TVmaze has no films at all, so asking the television catalogue to
+   find a film by its IMDb id gets a 404 and the row is written off as one nothing could place.
+   That is what happened to every one of five hundred imported films — they were read out of the
+   export correctly, looked up against the wrong catalogue, and counted as missing.
+
+   Injectable so the choice can be tested without a network. */
+export const lookupFor = (row) =>
+  (row && row.kind === "movie" ? movieProvider() : activeProvider());
+
+export async function importFeed(feed, { addMissing = false, onProgress = () => {}, now = Date.now(), pick = lookupFor } = {}) {
   const { known, unknown } = matchFeed(state, feed);
   let marks = 0;
   let added = 0;
   let missed = 0;
 
   for (const { show, row } of known) {
-    marks += applyMarks(show, planMarks(show, row.episodes, now), now);
+    marks += applyMarks(show, planMarks(show, row.episodes, now, row), now);
   }
   onProgress({ phase: "matched", done: known.length, total: known.length });
 
@@ -42,7 +53,7 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
     let done = 0;
     await pool(unknown, async (row) => {
       try {
-        const meta = await activeProvider().lookup({ imdb: row.imdb, tvdb: row.tvdb });
+        const meta = await pick(row).lookup({ imdb: row.imdb, tvdb: row.tvdb });
         if (meta) {
           /* Kept, not just used. The lookup returns the whole record — episodes, artwork,
              scores — and dropping it meant every imported show arrived blank: no poster in the
@@ -51,7 +62,7 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
           await cache.putMeta(meta);
           const show = addShow(state, meta, now);
           added++;
-          marks += applyMarks(show, planMarks(show, row.episodes, now), now);
+          marks += applyMarks(show, planMarks(show, row.episodes, now, row), now);
         } else missed++;
       } catch (e) {
         // One show the catalogue cannot place must not abandon the other nine hundred.

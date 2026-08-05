@@ -3,11 +3,12 @@
 // Each card carries a mini barcode, so the grid shows the shape of your progress rather
 // than a wall of identical artwork: where you are in each show is readable without opening
 // anything.
-import { h, svg, ICON, mount, posterFallback, poster } from "./dom.js";
+import { h, svg, ICON, mount, posterFallback, poster, shelfScroller } from "./dom.js";
 import { state } from "../domain/store.js";
 import { showProgress, nextUp } from "../domain/progress.js";
+import { movieWatched, moviePlays } from "../domain/model.js";
 import { returnsIn } from "../domain/schedule.js";
-import { ordinal, fold, sortKey, indexLetter, SHOW_STATUS } from "../domain/constants.js";
+import { ordinal, fold, sortKey, indexLetter, SHOW_STATUS, fmtDuration } from "../domain/constants.js";
 import { lifePill, cardLine } from "../domain/labels.js";
 import * as cache from "../io/cache.js";
 import { readView, writeView } from "../io/storage.js";
@@ -18,16 +19,40 @@ import { empty } from "./upnext.js";
 
 // Filters name states you'd actually go looking for, not the raw status field. "Waiting"
 // is the one that matters day to day: tracked, aired, unwatched.
+const isFilm = (r) => r.kind === "movie";
+
+/* Two axes, two controls, because they answer different questions: what kind of thing, and
+   where it stands. Folding both into one row of chips gave nine of them over three lines with
+   "Movies" ninth, which is not a filter anybody finds.
+
+   Both live in the filter sheet behind the funnel. The status options differ by kind on purpose — "Waiting" and "Caught up" are about having episodes left, which a movie
+   never has, so a movie has two states and a show has five. */
+/* One set of chips for both kinds, because a movie's two states are the same two questions the
+   show states already ask: is there anything left to watch, and have you started.
+
+   Seen is Caught up — nothing left. Not seen is Planned — meaning to, haven't. Waiting, Paused
+   and Dropped are about being partway through something and a movie never is, so a movie simply
+   never matches them rather than needing chips of its own. Which is what makes "All" work: with
+   two kinds on screen every chip means something for both. */
 const FILTERS = [
   { id: "all", label: "All", test: () => true },
-  { id: "waiting", label: "Waiting", test: (r) => r.st === "active" && r.progress.remaining > 0 },
-  { id: "caught", label: "Caught up", test: (r) => r.st === "active" && r.progress.remaining === 0 },
-  { id: "planned", label: "Planned", test: (r) => r.st === "planned" },
-  { id: "paused", label: "Paused", test: (r) => r.st === "paused" },
-  { id: "dropped", label: "Dropped", test: (r) => r.st === "dropped" },
+  { id: "waiting", label: "Waiting", test: (r) => !isFilm(r) && r.st === "active" && r.progress.remaining > 0 },
+  { id: "caught", label: "Caught up", test: (r) => (isFilm(r) ? r.watched : r.st === "active" && r.progress.remaining === 0) },
+  { id: "planned", label: "Planned", test: (r) => (isFilm(r) ? !r.watched : r.st === "planned") },
+  { id: "paused", label: "Paused", test: (r) => !isFilm(r) && r.st === "paused" },
+  { id: "dropped", label: "Dropped", test: (r) => !isFilm(r) && r.st === "dropped" },
 ];
 
+const KINDS = [["all", "All"], ["shows", "Shows"], ["movies", "Movies"]];
+
+const inKind = (r, k) => k === "all" || (k === "movies" ? isFilm(r) : !isFilm(r));
+
+
+
 let filter = "all";
+let kind = "all";
+// Which chip was last pressed, so the repaint it causes can keep it under the finger.
+let pressed = null;
 let sort = "recent";
 let query = "";
 let searching = false;     // the field is a button until you ask for it
@@ -59,7 +84,10 @@ export function renderLibrary(root, { go, top }) {
     ));
   }
 
-  const rows = state.shows.map((show) => {
+  /* Films are hidden rather than removed when the setting is off, so switching it back on finds
+     them where they were. The vault is not edited by a preference. */
+  const wantFilms = !!(state.settings || {}).movies;
+  const rows = state.shows.filter((sh) => wantFilms || sh.kind !== "movie").map((show) => {
     const meta = cache.getMeta(show.id);
     const progress = meta ? showProgress(show, meta, opts()) : { remaining: 0, watched: 0, aired: 0, pct: 0 };
     return {
@@ -67,24 +95,63 @@ export function renderLibrary(root, { go, top }) {
       meta,
       progress,
       st: show.st,
+      kind: show.kind,
+      watched: movieWatched(show),
       name: show.name,
       added: show.added || 0,
       last: (show.entries || []).reduce((m, e) => Math.max(m, +e.m || 0), 0),
     };
   });
 
-  const shown = rows.filter((FILTERS.find((f) => f.id === filter) || FILTERS[0]).test)
+  const chosen = FILTERS.find((f) => f.id === filter) || FILTERS[0];
+  const ofKind = rows.filter((r) => inKind(r, kind));
+  const shown = ofKind.filter(chosen.test)
     .sort((SORTS.find((s) => s.id === sort) || SORTS[0]).cmp);
 
-  const chips = h("div.row-gap", FILTERS.map((f) => {
-    const n = rows.filter(f.test).length;
-    return h("button.chip", {
-      type: "button",
-      class: f.id === filter ? "is-on" : null,
-      text: `${f.label} ${n}`,
-      onclick: () => { filter = f.id; again(); },
-    });
-  }));
+  const anyFilm = rows.some(isFilm);
+
+  /* One line that scrolls, rather than a block that wraps or a sheet that hides.
+
+     Chips are the right control here — visibly pressable, and they show what is on without
+     anything being opened first. What was wrong was the amount of them: two axes wrapped to
+     three rows and pushed the first posters off the fold. On one scrolling line it costs a row.
+
+     Kind first, then a hairline, then status. The separator is doing real work: without it the
+     two "All" chips read as one list where pressing either does the same thing. */
+  const of = rows.filter((r) => inKind(r, kind));
+  const chip = (id, label, n, on, act) => h("button.chip", {
+    type: "button",
+    class: on ? "is-on" : null,
+    "aria-pressed": on ? "true" : "false",
+    "data-chip": id,
+    text: n == null ? label : `${label} ${n}`,
+    onclick: () => { pressed = id; act(); },
+  });
+
+  /* Through the same scroller every other horizontal strip in the app uses, so it drags with a
+     mouse and fades at an end that has more past it. An overflow box scrolls on a phone and
+     sits there on a laptop, which is what this row was doing.
+
+     Keyed, so a row scrolled along and left is where it was when you come back to the tab.
+
+     But a key alone does not fix pressing a chip, and this took two goes to see: choosing one
+     repaints the library, a repaint builds a new row, and restoring a pixel offset onto it is
+     only right while the row is the same length. It is often not — choosing Movies drops
+     Waiting, Paused and Dropped — so the offset clamps, and on a shortened row it clamps to
+     nought. Which looks exactly like the row jumping back to the beginning.
+
+     What has to survive is not the offset but the chip: whichever was last pressed is brought
+     back into view after the repaint, at whatever offset that turns out to need. */
+  const bar = shelfScroller(h("div.filter-bar", { role: "group", "aria-label": "Filter library" }, [
+    ...(anyFilm ? KINDS.map(([v, l]) =>
+      chip(`kind:${v}`, l, rows.filter((r) => inKind(r, v)).length, kind === v, () => { kind = v; again(); })) : []),
+    anyFilm ? h("span.filter-sep", { "aria-hidden": "true" }) : null,
+    /* A status that cannot match anything in the kind on screen is not offered — which is what
+       leaves a movie exactly the two it has, under the names shows already use. */
+    ...FILTERS
+      .filter((f) => f.id === "all" || of.some(f.test) || filter === f.id)
+      .map((f) => chip(`st:${f.id}`, f.label, of.filter(f.test).length, filter === f.id, () => { filter = f.id; again(); })),
+  ]), "library-filter");
 
   /* A button, not a <select>. The native control renders as a system picker that belongs to a
      different app — on Android a full-screen grey list with none of this app's type.
@@ -166,9 +233,13 @@ export function renderLibrary(root, { go, top }) {
   function fill() {
     const q = fold(query.trim());
     const list = q ? shown.filter((r) => fold(r.name).includes(q)) : shown;
-    count.textContent = q || filter !== "all"
-      ? `${list.length} of ${state.shows.length}`
-      : `${state.shows.length} shows`;
+    /* Counted against what is on screen rather than against the vault: with Movies chosen,
+       "3 of 604" is a comparison nobody asked for, and calling four things "4 shows" when
+       three of them are films was simply wrong. */
+    const held = rows.length;
+    count.textContent = q || filter !== "all" || kind !== "all"
+      ? `${list.length} of ${held}`
+      : `${held} ${held === 1 ? "title" : "titles"}`;
 
     if (!list.length) {
       return results.replaceChildren(h("div.empty", [
@@ -199,7 +270,16 @@ export function renderLibrary(root, { go, top }) {
     );
   }
 
-  mount(root, chips, results);
+  mount(root, bar, results);
+
+  /* After the mount, because until the row is in the document it has no width to scroll and
+     nothing to scroll it to. `nearest` so a chip already on screen is left alone rather than
+     dragged to an edge. */
+  if (pressed) {
+    const el = bar.querySelector(`[data-chip="${pressed}"]`);
+    if (el) el.scrollIntoView({ inline: "nearest", block: "nearest" });
+    pressed = null;
+  }
 }
 
 /* Builds the grid and, as it goes, records the first card of each letter — that's the row a
@@ -337,6 +417,7 @@ export function stopIndexWatch() {
 
 function card(row, go) {
   const { show, meta, progress } = row;
+  if (show.kind === "movie") return filmCard(row, go);
   const src = meta && (meta.posterSm || meta.poster);
   const next = meta ? nextUp(show, meta, opts()) : null;
   // A caught-up card has room to say when the show is back, which is the only thing left to
@@ -347,7 +428,7 @@ function card(row, go) {
 
   return h("button.card", {
     type: "button",
-    onclick: () => go("show", show.id),
+    onclick: () => go(show.kind === "movie" ? "movie" : "show", show.id),
     /* Long-press, which is what a phone sends as a context menu. Changing where a show stands
        is the one thing people come to the library to do that otherwise costs opening the show,
        reading a page built for something else and coming back. */
@@ -368,11 +449,45 @@ function card(row, go) {
   ]);
 }
 
+/* A film card, which is the show card with everything episode-shaped taken out.
+
+   No barcode: one tick is not a barcode, it is a dot, and a strip of one reads as a rendering
+   fault rather than as progress. No unwatched count and no returning pill either — a film is
+   not partly seen and does not come back in the autumn. What is left is the poster, the title,
+   and the one fact worth carrying: whether you have seen it, and how long it is. */
+function filmCard(row, go) {
+  const { show, meta } = row;
+  const src = meta && (meta.posterSm || meta.poster);
+  const seen = row.watched;
+  const plays = moviePlays(show);
+  const line = [
+    show.year || (meta && meta.year) || null,
+    meta && meta.runtime ? fmtDuration(meta.runtime) : null,
+    seen ? (plays > 1 ? `Seen ${plays}×` : "Seen") : null,
+  ].filter(Boolean).join(" · ");
+
+  return h("button.card", {
+    type: "button",
+    class: seen ? "is-seen" : null,
+    onclick: () => go("movie", show.id),
+    "aria-label": `${show.name}${seen ? ", watched" : ", not watched"}`,
+  }, [
+    h("div.card-art", [
+      src ? poster("card-poster", src) : posterFallback(show.name, "md"),
+      seen ? h("span.card-badge.is-seen", [svg(ICON.check)]) : null,
+    ]),
+    h("div.card-title.t-title", { text: show.name }),
+    h("div.card-sub", { text: line || (seen ? "Seen" : "Not seen yet") }),
+  ]);
+}
+
 const STATUS_LABEL = { active: "Watching", planned: "Planned", paused: "Paused", dropped: "Dropped" };
 
 // The same sheet the show page raises, from the card. Nothing is changed until something is
 // chosen, and choosing what it already is costs nothing.
 async function askStatus(show) {
+  // Watching, paused and dropped are all about being partway through something. A film is not.
+  if (show.kind === "movie") return;
   const picked = await chooser({
     title: show.name,
     value: show.st,

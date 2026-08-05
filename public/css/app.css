@@ -1838,6 +1838,25 @@ div.bar-row {
   text-align: center;
 }
 
+/* A tick, not a number. The rule above centres a digit by giving the badge a line-height, which
+   is exactly what an inline SVG ignores — it sits on the text baseline instead and rides low.
+   A glyph has to be centred as a box. */
+.card-badge.is-seen {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  line-height: 0;
+}
+
+.card-badge.is-seen svg {
+  display: block;
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  fill: none;
+}
+
 .card-title {
   font-size: 13.5px;
   line-height: 1.25;
@@ -2645,7 +2664,8 @@ button.score {
  * A horizontal strip of posters. Scrolls rather than wraps: a shelf that reflows into a grid
  * stops reading as "a few suggestions" and starts reading as "a catalogue to get through". */
 
-.shelf {
+.shelf,
+.filter-bar {
   display: flex;
   /* Cards size to their own content and hang from a shared top line. Stretching them to a
    * common height lets a two-line title drag its poster out of alignment with the rest,
@@ -2673,25 +2693,30 @@ button.score {
     #000 calc(100% - var(--fade-r)), transparent 100%);
 }
 
-.shelf::-webkit-scrollbar {
+.shelf::-webkit-scrollbar,
+.filter-bar::-webkit-scrollbar {
   display: none;
 }
 
 /* Says the row can be pulled, which is otherwise invisible with a mouse. */
 .shelf,
+.filter-bar,
 .bc-full {
   cursor: grab;
 }
 
 .shelf.is-dragging,
+.filter-bar.is-dragging,
 .bc-full.is-dragging {
   cursor: grabbing;
   /* Nothing is selected while dragging a row of posters across. */
   user-select: none;
 }
 
-.shelf.has-start { --fade-l: 9px; }
-.shelf.has-end { --fade-r: 12px; }
+.shelf.has-start,
+.filter-bar.has-start { --fade-l: 9px; }
+.shelf.has-end,
+.filter-bar.has-end { --fade-r: 12px; }
 
 .shelf-card {
   flex: none;
@@ -3331,6 +3356,8 @@ button.score {
   cursor: pointer;
 }
 
+
+
 .sheet-opt:hover {
   background: var(--panel-2);
 }
@@ -3864,4 +3891,31 @@ button.score {
 
 .noscript-note a {
   text-decoration: underline;
+}
+
+/* ---- the library's filter row ----
+ * A shelf, in everything that makes a horizontal strip work: it runs to the screen edge, fades
+ * at whichever end has more past it, and can be dragged with a mouse — which an overflow box
+ * cannot, and which is why this row felt broken on a laptop and fine on a phone.
+ *
+ * What differs from a shelf of posters is only the spacing: chips sit on one line and are
+ * centred against each other rather than hung from a shared top edge.
+ */
+.filter-bar {
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 12px;
+}
+
+/* Chips must not squeeze to fit — a row that shrinks its contents to avoid scrolling is a row
+   nobody realises scrolls. */
+.filter-bar > .chip { flex: none; }
+
+/* Kind from status. Without it the two "All" chips read as one list. */
+.filter-sep {
+  flex: none;
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+  margin: 0 2px;
 }

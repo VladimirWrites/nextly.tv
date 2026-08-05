@@ -58,8 +58,12 @@ const policy = (file, extra = {}) => [
    the alternative — allowing any https image — would leave the one channel that could carry
    something out of the page open for no gain. */
 const CSP_APP = policy("app.html", {
-  connect: "https://api.themoviedb.org https://api.tvmaze.com",
-  img: "https://image.tmdb.org https://static.tvmaze.com",
+  /* Cinemeta is here for films, which TVmaze does not carry at all — it is a television
+     database. Its artwork comes from two hosts it does not serve itself: metahub for its own
+     posters, and Amazon's image CDN for the ones it takes from IMDb. Both have to be named, or
+     the poster is the only part of a film that fails to arrive. */
+  connect: "https://api.themoviedb.org https://api.tvmaze.com https://v3-cinemeta.strem.io",
+  img: "https://image.tmdb.org https://static.tvmaze.com https://images.metahub.space https://m.media-amazon.com",
 });
 
 // The marketing side talks to nobody and shows only its own pictures.
@@ -252,7 +256,7 @@ export default {
    404 as any other unknown path. See the routing note in public/js/domain/routes.js. */
 const APP_ROUTES = new Set([
   "/library", "/search", "/you", "/stats", "/share",
-  "/show", "/person", "/season", "/episode", "/feed",
+  "/show", "/movie", "/person", "/season", "/episode", "/feed",
 ]);
 
 const isAppRoute = (p) => APP_ROUTES.has(p.endsWith("/") && p.length > 1 ? p.slice(0, -1) : p);

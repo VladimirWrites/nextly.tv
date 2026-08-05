@@ -12,6 +12,7 @@ import { renderUpNext } from "./ui/upnext.js";
 import { renderLibrary, stopIndexWatch } from "./ui/library.js";
 import { closeOverlays, popOverlay } from "./ui/overlay.js";
 import { renderShow } from "./ui/show.js";
+import { renderMovie } from "./ui/movie.js";
 import { stopBarWatch } from "./ui/show-parts.js";
 import { renderPerson } from "./ui/person.js";
 import { renderSeason, renderEpisode } from "./ui/detail.js";
@@ -200,24 +201,26 @@ function render() {
   /* A feed's name is the row it came from. Put here rather than drawn on the page so it lands
      in the bar with every other screen's, and so the document title says which feed too. */
   const feed = route.name === "feed" ? feedById(route.arg) : null;
-  const titles = { next: "Up next", library: "Library", search: "Search", you: "You", stats: "Your year", show: "", person: "", season: "", episode: "", feed: feed ? feed.title : "" };
-  // The show page bleeds its bar and cover to the edges of the column, so it caps its own
-  // children instead of being capped as a whole.
-  const body = h("main.main", { class: route.name === "show" ? "is-show" : null });
+  const titles = { next: "Up next", library: "Library", search: "Search", you: "You", stats: "Your year", show: "", movie: "", person: "", season: "", episode: "", feed: feed ? feed.title : "" };
+  /* The show and film pages bleed their cover to the edges of the column, so they cap their own
+     children instead of being capped as a whole. A film's cover is the same cover — it was left
+     out of this and sat inset by the page gutter with bands either side, which reads as a bug
+     rather than as a design. */
+  const body = h("main.main", { class: ["show", "movie"].includes(route.name) ? "is-show" : null });
 
   setDocumentTitle(titles);
 
-  // The show page has its own bar over the cover, so it takes no topbar at all.
-  const top = route.name === "show" ? null : renderTopbar(titles[route.name]);
+  // The show and film pages have their own bar over the cover, so they take no topbar at all.
+  const top = ["show", "movie"].includes(route.name) ? null : renderTopbar(titles[route.name]);
 
   /* A screen tapped into rather than navigated to. On a phone the tab bar comes off these:
      they carry a back button already, so the bar is a second way out of a screen that has
      one, and it costs a permanent 84px band on the longest scroll in the app. The rail stays
      on a desktop, where the room is free either way. */
-  document.body.classList.toggle("no-nav", ["show", "person", "season", "episode", "stats", "feed"].includes(route.name));
+  document.body.classList.toggle("no-nav", ["show", "movie", "person", "season", "episode", "stats", "feed"].includes(route.name));
 
   mount(app, renderTitlebar(), h("div.shell", [
-    renderNav(["show", "person", "season", "episode"].includes(route.name) ? "library"
+    renderNav(["show", "movie", "person", "season", "episode"].includes(route.name) ? "library"
       : route.name === "stats" ? "you" : route.name === "feed" ? "search" : route.name,
     goTab, waiting),
     h("div.shell-main", [top ? top.bar : null, body]),
@@ -241,6 +244,7 @@ function render() {
   else if (route.name === "you") renderSettings(body, ctx);
   else if (route.name === "stats") renderStats(body, ctx);
   else if (route.name === "show") renderShow(body, route.arg, ctx);
+  else if (route.name === "movie") renderMovie(body, route.arg, ctx);
   else if (route.name === "person") renderPerson(body, route.arg, ctx);
   else if (route.name === "season") renderSeason(body, route.arg, ctx);
   else if (route.name === "episode") renderEpisode(body, route.arg, ctx);
@@ -346,7 +350,7 @@ async function openShared() {
    been the tempting test and it answers a different question — it means "names a thing in the
    fragment", which is also true of a discovery feed. What matters here is whether a screen
    makes sense to a stranger and needs nothing of theirs to draw. */
-const SHAREABLE = new Set(["show", "person", "season", "episode"]);
+const SHAREABLE = new Set(["show", "movie", "person", "season", "episode"]);
 
 /* Signed out, looking at one thing. The subset of sign-in that does not involve a key: the
    metadata cache so artwork survives a reload, the theme so it does not flash, and a render. No

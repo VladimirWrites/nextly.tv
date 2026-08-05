@@ -47,7 +47,7 @@ test("both documents stay reachable on one hostname for local development", asyn
 
 test("every in-app route boots the app document, so a hard refresh works", async () => {
   for (const p of ["/library", "/search", "/you", "/stats", "/share",
-                   "/show", "/person", "/season", "/episode"]) {
+                   "/show", "/movie", "/person", "/season", "/episode"]) {
     assert.equal(await served(await get(p)), "/app.html", `${p} should boot the app`);
   }
 });
@@ -146,7 +146,9 @@ test("only documents carry a policy — a policy on a script would say nothing",
 
 test("the app's policy names the catalogues it talks to and nothing else", async () => {
   const csp = (await get("/library")).headers.get("content-security-policy");
-  assert.match(csp, /connect-src 'self' https:\/\/api\.themoviedb\.org https:\/\/api\.tvmaze\.com;/);
+  assert.match(csp, /connect-src 'self' https:\/\/api\.themoviedb\.org https:\/\/api\.tvmaze\.com https:\/\/v3-cinemeta\.strem\.io;/);
+  assert.match(csp, /img-src 'self' data: [^;]*images\.metahub\.space[^;]*m\.media-amazon\.com/,
+    "Cinemeta's posters come from hosts it does not serve itself, and a host not named here is a poster that never loads");
   assert.match(csp, /img-src 'self' data: https:\/\/image\.tmdb\.org https:\/\/static\.tvmaze\.com/);
 });
 

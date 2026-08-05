@@ -5,7 +5,7 @@
 // app's server in the middle of traffic it has no reason to see. So TMDB is opt-in with the
 // user's own key, which travels inside the encrypted vault and goes straight from the
 // browser to TMDB. TVmaze covers everyone who doesn't want to bother.
-import { showKey } from "../../domain/constants.js";
+import { showKey, movieKey } from "../../domain/constants.js";
 import { state } from "../../domain/store.js";
 
 const API = "https://api.themoviedb.org/3";
@@ -121,6 +121,68 @@ export async function fetchShow(ref) {
 /* Is this key actually usable? /configuration is the cheapest authenticated call TMDB has,
    so it answers the question without spending a search. A key that is merely stored tells
    the user nothing — they need to know it works before they rely on it. */
+/* ---- films ----
+
+   The same catalogue, a different half of it. Preferred over Cinemeta wherever a key exists:
+   it is the one with terms, an SLA of sorts, and artwork sized for the screen asking.
+
+   Films are numbered separately from series here, which is why the key carries an "m" — 76600
+   is a film and also, elsewhere in the same catalogue, something else entirely. */
+export async function fetchMovie(ref) {
+  const d = await get(`/movie/${encodeURIComponent(ref)}`, { append_to_response: "external_ids,videos,credits" });
+  return {
+    key: movieKey(id, d.id),
+    src: id,
+    ref: d.id,
+    kind: "movie",
+    name: d.title || d.original_title || "Untitled",
+    year: yearOf(d.release_date),
+    overview: d.overview || "",
+    runtime: d.runtime || null,
+    genres: (d.genres || []).map((g) => g.name),
+    poster: img(d.poster_path, "w500"),
+    posterSm: img(d.poster_path, "w185"),
+    backdrop: img(d.backdrop_path, "w1280"),
+    imdb: (d.external_ids && d.external_ids.imdb_id) || d.imdb_id || null,
+    tmdb: d.id,
+    tvdb: null,
+    ratings: d.vote_average
+      ? [{ source: "TMDB", score: d.vote_average, max: 10, votes: d.vote_count || 0,
+           url: `https://www.themoviedb.org/movie/${d.id}` }]
+      : [],
+    seasons: [],
+    released: d.release_date || null,
+    cast: ((d.credits && d.credits.cast) || []).slice(0, 12).map((c) => c.name),
+    director: ((d.credits && d.credits.crew) || []).filter((c) => c.job === "Director").map((c) => c.name),
+    trailer: bestVideo(d.videos),
+  };
+}
+
+export async function searchMovies(query) {
+  const d = await get("/search/movie", { query, include_adult: false });
+  return (d.results || []).map((r) => ({
+    key: movieKey(id, r.id),
+    src: id,
+    ref: r.id,
+    kind: "movie",
+    name: r.title || r.original_title || "",
+    year: yearOf(r.release_date),
+    overview: r.overview || "",
+    poster: img(r.poster_path, "w185"),
+    rating: r.vote_average || null,
+    ratingSource: "TMDB",
+  }));
+}
+
+/* A film this device holds under another catalogue's key. One request: TMDB's find endpoint
+   takes an IMDb id directly, which is what every record and every Trakt export carries. */
+export async function lookupMovie({ imdb }) {
+  if (!imdb) return null;
+  const d = await get(`/find/${encodeURIComponent(imdb)}`, { external_source: "imdb_id" }).catch(() => null);
+  const hit = d && (d.movie_results || [])[0];
+  return hit ? fetchMovie(hit.id) : null;
+}
+
 export async function verifyKey() {
   await get("/configuration");
   return true;
@@ -268,22 +330,42 @@ export async function credits(ref) {
   return out;
 }
 
+/* combined_credits rather than tv_credits: an actor is not two people, and a page that lists
+   only their television leaves half of most careers out. Each entry says which it is, so the
+   page can send a film to the film screen and a series to the series one.
+
+   Films are listed whether or not the reader has films switched on. The setting decides what
+   this app tracks, not what a person has been in — and a filmography with the films removed is
+   a strange thing to show somebody. */
 export async function person(ref) {
-  const d = await get(`/person/${encodeURIComponent(ref)}`, { append_to_response: "tv_credits" });
+  const d = await get(`/person/${encodeURIComponent(ref)}`, { append_to_response: "combined_credits" });
   const seen = new Set();
   const shows = [];
-  for (const c of ((d.tv_credits || {}).cast) || []) {
-    if (!c.id || seen.has(c.id)) continue;
-    seen.add(c.id);
+  for (const c of ((d.combined_credits || {}).cast) || []) {
+    const film = c.media_type === "movie";
+    if (!c.id || seen.has(`${c.media_type}:${c.id}`)) continue;
+    seen.add(`${c.media_type}:${c.id}`);
     shows.push({
-      key: showKey(id, c.id),
-      name: c.name || c.original_name || "",
-      year: yearOf(c.first_air_date),
+      key: film ? movieKey(id, c.id) : showKey(id, c.id),
+      kind: film ? "movie" : undefined,
+      name: (film ? c.title || c.original_title : c.name || c.original_name) || "",
+      year: yearOf(film ? c.release_date : c.first_air_date),
       poster: img(c.poster_path, "w342"),
       character: c.character || "",
+      // How much of a career an entry represents, so a walk-on does not outrank a lead.
+      weight: film ? (c.popularity || 0) : (c.episode_count || 1) * 2,
     });
   }
-  shows.sort((a, b) => (b.year || 0) - (a.year || 0));
+  /* Newest first among things that exist, and everything unreleased after them.
+
+     Sorting on the year alone put two unannounced Avatar sequels at the head of Sam
+     Worthington's page, ahead of every film he has actually been in. TMDB carries announced
+     projects years ahead, and a filmography that opens with them describes a schedule rather
+     than a career. An undated credit is the same thing with the year missing, so it sorts with
+     them. */
+  const thisYear = new Date().getFullYear();
+  const out = (c) => !c.year || c.year > thisYear;
+  shows.sort((a, b) => (out(a) !== out(b) ? (out(a) ? 1 : -1) : (b.year || 0) - (a.year || 0)));
 
   return {
     key: showKey(id, d.id),
@@ -300,6 +382,45 @@ export async function person(ref) {
     url: `https://www.themoviedb.org/person/${d.id}`,
     shows,
   };
+}
+
+/* What else to watch, from the catalogue's own idea of it. `recommendations` rather than
+   `similar`: TMDB's similar endpoint matches on genre and keywords and returns a lot of
+   loosely-related filler, while recommendations is built from what people actually went on to
+   watch — which is the question being asked. Falls back to similar where a film is obscure
+   enough to have no recommendations at all. */
+export async function similarMovies(ref) {
+  const d = await get(`/movie/${encodeURIComponent(ref)}/recommendations`).catch(() => null)
+    || await get(`/movie/${encodeURIComponent(ref)}/similar`).catch(() => null);
+  return ((d && d.results) || []).slice(0, 20).map((r) => ({
+    key: movieKey(id, r.id),
+    kind: "movie",
+    src: id,
+    ref: r.id,
+    name: r.title || r.original_title || "",
+    year: yearOf(r.release_date),
+    poster: img(r.poster_path, "w342"),
+    rating: r.vote_average || null,
+    ratingSource: "TMDB",
+  }));
+}
+
+// The people in a film, with ids, so each one is a page rather than a name.
+export async function movieCredits(ref) {
+  const d = await get(`/movie/${encodeURIComponent(ref)}/credits`).catch(() => null);
+  const seen = new Set();
+  const out = [];
+  for (const c of ((d && d.cast) || [])) {
+    if (!c.id || seen.has(c.id)) continue;
+    seen.add(c.id);
+    out.push({
+      key: showKey(id, c.id),
+      name: c.name || "",
+      character: c.character || "",
+      image: img(c.profile_path, "w185"),
+    });
+  }
+  return out.slice(0, 20);
 }
 
 // Find this show's TMDB id from an id we already store, so a TVmaze-tracked show can still

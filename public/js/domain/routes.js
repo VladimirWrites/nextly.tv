@@ -26,7 +26,7 @@
    the path would tell the server which one. That it is only ever a word like "trending" today
    is not a reason to build the other shape of address — the next one might be "shows like
    this", and that is a show. */
-export const DETAIL = { show: 1, person: 1, season: 2, episode: 3, feed: 1 };
+export const DETAIL = { show: 1, movie: 1, person: 1, season: 2, episode: 3, feed: 1 };
 
 const TABS = ["library", "search", "you", "stats"];
 
