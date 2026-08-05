@@ -3089,9 +3089,26 @@ button.score {
  * place changed, not an animation to watch. The bars stay put while the page beneath them
  * changes, which is what makes it read as one app rather than a slideshow. */
 @media (prefers-reduced-motion: no-preference) {
+  /* The blend mode is the whole bug. The API's own stylesheet puts `mix-blend-mode:
+     plus-lighter` on both halves, which is exactly right when they are two frames of the same
+     thing: adding a fading-out copy to a fading-in one reconstructs it perfectly, with no dip
+     in the middle. Between two screens that share no layout it does what adding says it does —
+     a film's Score and cast panels come through the library grid, legible, for a tenth of a
+     second, and read as a rendering fault.
+     
+     Normal blending instead: the arriving page sits under the departing one and is revealed as
+     it dissolves. Same duration, same hint that the place changed, nothing ever added on top of
+     anything else. */
   ::view-transition-old(root),
   ::view-transition-new(root) {
+    mix-blend-mode: normal;
     animation-duration: 0.18s;
+  }
+
+  /* The arriving page does not fade at all — it is simply there, under the one being left. */
+  ::view-transition-new(root) {
+    animation: none;
+    opacity: 1;
   }
 
   /* ---- marking an episode on Up next ----
