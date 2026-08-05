@@ -10,7 +10,8 @@
 // and returns metadata in the shape documented in io/cache.js.
 import * as tvmaze from "./providers/tvmaze.js";
 import * as tmdb from "./providers/tmdb.js";
-import { parseShowKey, PORTABLE_SRC} from "../domain/constants.js";
+import * as cinemeta from "./providers/cinemeta.js";
+import { parseShowKey, PORTABLE_SRC, isMovieKey, movieRef } from "../domain/constants.js";
 import { state } from "../domain/store.js";
 
 const PROVIDERS = { tvmaze, tmdb };
@@ -29,6 +30,47 @@ export function activeProvider() {
 }
 
 export const search = (query) => activeProvider().search(query);
+
+/* ---- films ----
+
+   A separate choice from the catalogue, because the answer is different: TVmaze has no films at
+   all, so the provider that costs nothing for television cannot serve them.
+
+   TMDB where there is a key, Cinemeta otherwise. Preferring TMDB is not only about quality —
+   it is the one with terms and artwork sized to the request, and it means a reader who has
+   done the work of getting a key never depends on a service that publishes no promises.
+   Cinemeta is what makes the feature available to everyone else at all. */
+export const MOVIE_PROVIDERS = { tmdb, cinemeta };
+
+export function movieProvider() {
+  return tmdb.hasKey() ? tmdb : cinemeta;
+}
+
+export const movieProviderOf = (srcId) => MOVIE_PROVIDERS[srcId] || cinemeta;
+
+export const searchMovies = (query) => {
+  const p = movieProvider();
+  return (p.searchMovies ? p.searchMovies(query) : p.search(query));
+};
+
+/* One film, from whichever catalogue its key names, falling back the way shows do: a key whose
+   catalogue cannot be reached is still a film with an IMDb id, and the other one can place it. */
+export async function fetchMovie(key) {
+  const at = parseShowKey(key);
+  const ref = movieRef(key);
+  if (!at || !ref) throw new Error("Bad movie key: " + key);
+
+  const own = MOVIE_PROVIDERS[at.src];
+  if (own && (!own.needsKey || own.hasKey())) {
+    const fetchOne = own.fetchMovie || own.fetchShow;
+    return fetchOne.call(own, ref);
+  }
+
+  // Its own catalogue is unreachable — no key, or gone. The ref is an IMDb id whenever
+  // Cinemeta wrote the record, which is exactly the case this has to cover.
+  if (/^tt\d+/.test(ref)) return standIn(await cinemeta.fetchMovie(ref), key);
+  throw new Error(`${(own || cinemeta).label} can't be reached, and this film has no id to find it by elsewhere.`);
+}
 
 // Fetch by the app's own provider-scoped key ("tvmaze:169"), so callers never have to know
 // which catalogue a given show came from.

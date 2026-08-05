@@ -3,9 +3,9 @@ import { h, svg, ICON, mount, toast, posterFallback, poster } from "./dom.js";
 import { state } from "../domain/store.js";
 import * as cache from "../io/cache.js";
 import { findShow, findLikeShow } from "../domain/schema.js";
-import { fmtScore } from "../domain/constants.js";
+import { fmtScore, isMovie } from "../domain/constants.js";
 import * as meta from "../io/meta.js";
-import { trackShow } from "./actions.js";
+import { trackShow, trackMovie } from "./actions.js";
 import { empty } from "./upnext.js";
 import { renderDiscover } from "./discover.js";
 
@@ -157,6 +157,10 @@ function result(r, go) {
   // a second copy of itself and then refusing.
   const held = findLikeShow(state, r);
   const tracked = !!held;
+  // A film opens a different page and is added by a different path; everything else about the
+  // row is the same, which is the point of holding both in one list.
+  const film = isMovie(r);
+  const route = film ? "movie" : "show";
   // Everything drawn here is worth keeping: opening this row should not have to fetch the
   // picture the user is already looking at.
   cache.putHint(r);
@@ -166,7 +170,7 @@ function result(r, go) {
         : h("div.result-poster", [posterFallback(r.name, "sm")]),
     h("button.result-text", {
       type: "button",
-      onclick: () => go("show", r.key),
+      onclick: () => go(route, r.key),
       "aria-label": `Open ${r.name}`,
     }, [
       h("div.result-name.t-title", { text: r.name + (r.year ? ` (${r.year})` : "") }),
@@ -174,17 +178,17 @@ function result(r, go) {
       r.overview ? h("p.result-overview", { text: r.overview }) : null,
     ]),
     tracked
-      ? h("button.btn.btn-sm.btn-ghost", { type: "button", text: "In library", onclick: () => go("show", held.id) })
+      ? h("button.btn.btn-sm.btn-ghost", { type: "button", text: "In library", onclick: () => go(route, held.id) })
       : h("button.btn.btn-sm.btn-primary", {
           type: "button",
           onclick: async (e) => {
             const btn = e.currentTarget;
             btn.disabled = true;
             try {
-              const sh = await trackShow(r.key);
+              const sh = film ? await trackMovie(r.key) : await trackShow(r.key);
               // Adding can turn out to be a show already held under the other catalogue's
               // numbering. Opening it is the thing wanted; a refusal on its own is a dead end.
-              if (sh && sh.id !== r.key) go("show", sh.id);
+              if (sh && sh.id !== r.key) go(route, sh.id);
             } catch (err) {
               toast(err.message);
               btn.disabled = false;
@@ -223,7 +227,18 @@ async function run(root, go, top) {
     status = "loading";
     renderSearch(root, { go, top });
     try {
-      results = await meta.search(q);
+      /* Both at once when films are on, and the two catalogues answering are not the same one:
+         television comes from whichever is chosen, films from TMDB or Cinemeta. Asked together
+         and settled together, so the list does not arrive in two jumps.
+
+         Films after shows rather than interleaved. This is a television tracker with films in
+         it, and a search for a title that is both should offer the series first. */
+      const wantMovies = !!(state.settings || {}).movies;
+      const [shows, films] = await Promise.all([
+        meta.search(q),
+        wantMovies ? meta.searchMovies(q).catch(() => []) : Promise.resolve([]),
+      ]);
+      results = [...shows, ...films];
       status = "done";
     } catch (e) {
       error = e.message;

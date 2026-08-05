@@ -2,7 +2,7 @@
 // so "mark watched" means exactly one thing no matter which screen you tapped it from.
 import { state } from "../domain/store.js";
 import { findShow } from "../domain/schema.js";
-import { markEpisode, markUpTo, markAllAired, markSeason, addShow, setWatchDates, removeShow, setStatus, startRewatch, cancelRewatch } from "../domain/model.js";
+import { markEpisode, markUpTo, markAllAired, markSeason, addShow, setWatchDates, removeShow, setStatus, startRewatch, cancelRewatch, markMovie } from "../domain/model.js";
 import { nextUp, passOf, completion, newlyFinished, showProgress } from "../domain/progress.js";
 import { epCode, parseEpKey, ordinal, parseShowKey, fmtDuration } from "../domain/constants.js";
 import { scheduleSync } from "../io/storage.js";
@@ -297,6 +297,53 @@ export function undoRewatch(showId) {
 }
 
 /* ---- library ---- */
+
+/* Tracking a film. The same shape as trackShow and for the same reasons — fetch first so the
+   vault record carries a real name and year rather than a number, cache the record that request
+   already paid for, and let addShow decide whether this is new. */
+/* The record for one film, fetched once and cached. Same contract as ensureMeta: a no-op when
+   there is nothing to fetch, and silent when the catalogue will not answer — a film page that
+   cannot load its record says so by staying on its skeleton, not by shouting. */
+export function ensureMovie(key, { force = false } = {}) {
+  if (!force && cache.has(key)) return Promise.resolve(cache.getMeta(key));
+  return meta.fetchMovie(key)
+    .then(async (m) => { await cache.putMeta(m); repaint(); return m; })
+    .catch(() => null);
+}
+
+/* Marking a film, including the case where it is not tracked yet. Somebody who opens a film
+   they do not hold and presses "Mark watched" means both things — add it, and mark it — and
+   making them press twice would be pedantry. */
+export async function markMovieNow(key, on = true) {
+  let sh = findShow(state, key);
+  if (!sh) {
+    if (!on) return null;
+    sh = await trackMovie(key).catch(() => null);
+    if (!sh) return null;
+  }
+  markMovie(state, sh.id, on);
+  scheduleSync();
+  repaint();
+  return sh;
+}
+
+export async function trackMovie(key) {
+  const existing = findShow(state, key);
+  if (existing) { toast("Already in your library"); return existing; }
+
+  const m = await meta.fetchMovie(key);
+  await cache.putMeta(m);
+  const before = state.shows.length;
+  const sh = addShow(state, m);
+  scheduleSync();
+  repaint();
+  if (state.shows.length === before) {
+    toast(`Already in your library as ${sh.name}`);
+    return sh;
+  }
+  toast(`Tracking ${sh.name}`);
+  return sh;
+}
 
 export async function trackShow(key) {
   const existing = findShow(state, key);

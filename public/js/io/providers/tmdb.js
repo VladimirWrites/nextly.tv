@@ -5,7 +5,7 @@
 // app's server in the middle of traffic it has no reason to see. So TMDB is opt-in with the
 // user's own key, which travels inside the encrypted vault and goes straight from the
 // browser to TMDB. TVmaze covers everyone who doesn't want to bother.
-import { showKey } from "../../domain/constants.js";
+import { showKey, movieKey } from "../../domain/constants.js";
 import { state } from "../../domain/store.js";
 
 const API = "https://api.themoviedb.org/3";
@@ -121,6 +121,68 @@ export async function fetchShow(ref) {
 /* Is this key actually usable? /configuration is the cheapest authenticated call TMDB has,
    so it answers the question without spending a search. A key that is merely stored tells
    the user nothing — they need to know it works before they rely on it. */
+/* ---- films ----
+
+   The same catalogue, a different half of it. Preferred over Cinemeta wherever a key exists:
+   it is the one with terms, an SLA of sorts, and artwork sized for the screen asking.
+
+   Films are numbered separately from series here, which is why the key carries an "m" — 76600
+   is a film and also, elsewhere in the same catalogue, something else entirely. */
+export async function fetchMovie(ref) {
+  const d = await get(`/movie/${encodeURIComponent(ref)}`, { append_to_response: "external_ids,videos,credits" });
+  return {
+    key: movieKey(id, d.id),
+    src: id,
+    ref: d.id,
+    kind: "movie",
+    name: d.title || d.original_title || "Untitled",
+    year: yearOf(d.release_date),
+    overview: d.overview || "",
+    runtime: d.runtime || null,
+    genres: (d.genres || []).map((g) => g.name),
+    poster: img(d.poster_path, "w500"),
+    posterSm: img(d.poster_path, "w185"),
+    backdrop: img(d.backdrop_path, "w1280"),
+    imdb: (d.external_ids && d.external_ids.imdb_id) || d.imdb_id || null,
+    tmdb: d.id,
+    tvdb: null,
+    ratings: d.vote_average
+      ? [{ source: "TMDB", score: d.vote_average, max: 10, votes: d.vote_count || 0,
+           url: `https://www.themoviedb.org/movie/${d.id}` }]
+      : [],
+    seasons: [],
+    released: d.release_date || null,
+    cast: ((d.credits && d.credits.cast) || []).slice(0, 12).map((c) => c.name),
+    director: ((d.credits && d.credits.crew) || []).filter((c) => c.job === "Director").map((c) => c.name),
+    trailer: bestVideo(d.videos),
+  };
+}
+
+export async function searchMovies(query) {
+  const d = await get("/search/movie", { query, include_adult: false });
+  return (d.results || []).map((r) => ({
+    key: movieKey(id, r.id),
+    src: id,
+    ref: r.id,
+    kind: "movie",
+    name: r.title || r.original_title || "",
+    year: yearOf(r.release_date),
+    overview: r.overview || "",
+    poster: img(r.poster_path, "w185"),
+    rating: r.vote_average || null,
+    ratingSource: "TMDB",
+  }));
+}
+
+/* A film this device holds under another catalogue's key. One request: TMDB's find endpoint
+   takes an IMDb id directly, which is what every record and every Trakt export carries. */
+export async function lookupMovie({ imdb }) {
+  if (!imdb) return null;
+  const d = await get(`/find/${encodeURIComponent(imdb)}`, { external_source: "imdb_id" }).catch(() => null);
+  const hit = d && (d.movie_results || [])[0];
+  return hit ? fetchMovie(hit.id) : null;
+}
+
 export async function verifyKey() {
   await get("/configuration");
   return true;

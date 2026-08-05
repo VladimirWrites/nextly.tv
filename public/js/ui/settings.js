@@ -81,6 +81,7 @@ export function renderSettings(root, { go, repaint }) {
         } })),
       row("Count specials", "Specials and one-off episodes join your progress and can appear in Up next.",
         toggle(s.specials, (on) => { s.specials = on; scheduleSync(); repaint(); })),
+      moviesRow(repaint),
     ]),
 
     installRow(repaint),
@@ -353,6 +354,36 @@ function installRow(repaint) {
          it rather than left for them to discover. */
       isIOS() ? h("div.set-row", [h("div.warn", { text: IOS_STORAGE_WARNING })]) : null,
     ]),
+  ]);
+}
+
+/* Films.
+
+   Off until asked for, and honest about where they come from. TVmaze has none — it is a
+   television database — so the catalogue that costs nothing cannot answer for them. TMDB can,
+   with a key, and Cinemeta can without one.
+
+   Which is why the hint names the source rather than hiding it: a reader with a key gets the
+   catalogue they already chose, and a reader without one gets a service that publishes no terms
+   and might stop answering. That is worth knowing before turning it on, not after.
+
+   Turning it off leaves the films in the vault and stops showing them. Nothing is deleted for
+   the sake of a switch, and turning it back on finds them where they were. */
+const hasTmdbKey = () => !!((state.settings || {}).tmdbKey || "").trim();
+
+function moviesRow(repaint) {
+  const s = state.settings;
+  const from = hasTmdbKey() ? "TMDB, the catalogue you have a key for" : "Cinemeta, which needs no key";
+  return h("div.set-row", { style: { alignItems: "flex-start" } }, [
+    h("div.set-text", [
+      h("div.set-name", { text: "Films" }),
+      h("div.set-hint", { text: `Track films alongside shows. They come from ${from}. Turning this off hides them and keeps them.` }),
+      s.movies && !hasTmdbKey()
+        ? h("div.set-hint", { style: { marginTop: "6px" },
+            text: "Cinemeta is free and open, and publishes no uptime promise. Add a TMDB key above and films come from there instead." })
+        : null,
+    ]),
+    toggle(!!s.movies, (on) => { s.movies = on; s.m = Date.now(); scheduleSync(); repaint(); }),
   ]);
 }
 

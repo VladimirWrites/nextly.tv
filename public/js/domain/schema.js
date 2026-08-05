@@ -6,7 +6,7 @@
 // ids — so the blob stays meaningful and re-resolvable if the provider it came from
 // disappears. Episode titles, posters and air dates are NOT stored: they're cache (see
 // io/cache.js), and "Breaking Bad S03E07" is already unambiguous without them.
-import { SCHEMA_VERSION, DEL_KINDS, DEFAULT_STATUS, SHOW_STATUS, showKey, parseShowKey,
+import { SCHEMA_VERSION, DEL_KINDS, DEFAULT_STATUS, SHOW_STATUS, MOVIE_MARK, showKey, parseShowKey,
          fold as foldText, levelOf, setLevel, passOf } from "./constants.js";
 
 export function defSettings() {
@@ -16,6 +16,7 @@ export function defSettings() {
     specials: false,     // count specials towards progress and up-next
     themeSync: false,    // whether the theme below is shared with your other devices
     sync: {},            // per-service tracker credentials; stripped from the export
+    movies: false,       // films alongside shows; off until asked for
     m: 0,                // mtime, so two devices changing settings resolve newest-wins
   };
 }
@@ -54,6 +55,9 @@ export function makeShow(meta, now = Date.now()) {
     added: now,
     m: now,
     entries: [],              // watch marks; presence means watched
+    // Absent means a show, because every record written before films existed is one. A film
+    // holds at most one mark, keyed MOVIE_MARK, and no seasons.
+    ...(meta.kind === "movie" ? { kind: "movie" } : {}),
   };
 }
 
@@ -94,8 +98,14 @@ export function normShow(sh) {
      mark written by a newer one, quietly delete the field it had never heard of, and push the
      stripped copy back for everyone. A field it cannot read is not a field it should be able to
      delete. */
+  /* An id this build recognises. "<season>x<episode>" for a show, and MOVIE_MARK for a film,
+     which is why the two can never be confused: epKey always contains an "x" and never produces
+     "m". The filter is what stops a corrupt blob putting nonsense in the vault — and it is also
+     what silently ate every film's only mark for as long as it knew about episodes alone. */
+  const markId = (id) => /^\d+x\d+$/.test(id) || id === MOVIE_MARK;
+
   sh.entries = sh.entries
-    .filter((e) => e && typeof e.id === "string" && /^\d+x\d+$/.test(e.id))
+    .filter((e) => e && typeof e.id === "string" && markId(e.id))
     .map((e) => {
       const { id, m, n, w, ...rest } = e;
       const out = { ...rest, id, m: +m || 0 };
@@ -158,18 +168,31 @@ export function findLikeShow(state, card) {
   if (byId || !card) return byId;
   const name = foldText(card.name);
   if (!name || !card.year) return null;
-  return (state.shows || []).find((x) => foldText(x.name) === name && x.year === card.year) || null;
+  /* Title and year is a weaker match than an id, and across kinds it is a wrong one: Fargo the
+     film and Fargo the series are not the same thing, and neither are the several remakes that
+     share a title with the year of their source. */
+  const kind = card.kind === "movie" ? "movie" : undefined;
+  return (state.shows || [])
+    .filter((x) => (x.kind === "movie" ? "movie" : undefined) === kind)
+    .find((x) => foldText(x.name) === name && x.year === card.year) || null;
 }
 
 export function findSameShow(state, meta) {
   if (!meta) return null;
   const shows = state.shows || [];
   const key = meta.key || (meta.src && meta.ref != null ? `${meta.src}:${meta.ref}` : null);
-  return (key && shows.find((x) => x.id === String(key)))
+  /* Same kind only. An IMDb id names one title so a film and a series cannot collide today —
+     but matching across kinds would mean one bad id folds a film into a series and takes its
+     marks with it, and the guard costs nothing. */
+  const kind = meta.kind === "movie" ? "movie" : undefined;
+  const same = (x) => (x.kind === "movie" ? "movie" : undefined) === kind;
+  const of = (fn) => shows.filter(same).find(fn);
+
+  return (key && of((x) => x.id === String(key)))
     // Learned last time: the other catalogue's key for this same series.
-    || (key && shows.find((x) => (x.alt || []).includes(String(key))))
-    || (meta.imdb && shows.find((x) => x.imdb && x.imdb === meta.imdb))
-    || (meta.tvdb && shows.find((x) => x.tvdb && String(x.tvdb) === String(meta.tvdb)))
+    || (key && of((x) => (x.alt || []).includes(String(key))))
+    || (meta.imdb && of((x) => x.imdb && x.imdb === meta.imdb))
+    || (meta.tvdb && of((x) => x.tvdb && String(x.tvdb) === String(meta.tvdb)))
     || null;
 }
 

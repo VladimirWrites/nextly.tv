@@ -4,7 +4,7 @@
 // Deletions just remove the record; merge.js turns that into a tombstone at sync time by
 // diffing against the last-synced baseline. Nothing here needs to know about tombstones.
 import { makeShow, findShow, findSameShow, rememberAlias, normShow } from "./schema.js";
-import { SHOW_STATUS, DEFAULT_STATUS, passOf, levelOf, setLevel, parseEpKey } from "./constants.js";
+import { SHOW_STATUS, DEFAULT_STATUS, passOf, levelOf, setLevel, parseEpKey, isMovie, MOVIE_MARK } from "./constants.js";
 import { episodeList } from "./progress.js";
 import { isUpcoming } from "./dates.js";
 
@@ -185,6 +185,10 @@ export function markEpisode(state, id, key, on = true, now = Date.now()) {
    Up next passes over, so a library that had just gained a thousand marks showed nothing at
    all on the screen it opens on. */
 export function start(sh, now) {
+  /* A film is watched or it is not; there is no middle where it is being watched. Leaving it
+     "planned" keeps it off Up next, which answers "what next in something you have started" and
+     has nothing to say about a film. */
+  if (isMovie(sh)) return;
   if (sh.st !== "planned") return;
   sh.st = "active";
   sh.m = now;
@@ -195,6 +199,23 @@ export function start(sh, now) {
 // Start another pass. Deliberately an explicit action rather than something that happens
 // when you tap an episode you've already seen: that tap means "I mis-marked this", and
 // silently promoting it to a rewatch would reset a finished show's progress by accident.
+/* Marking a film. One mark, keyed so it can never be mistaken for an episode: epKey builds
+   "<season>x<episode>" and cannot produce "m". Everything else — the pass level that counts
+   rewatches, the mtime, the tombstone on removal — is the machinery episodes already use. */
+export function markMovie(state, id, on = true, now = Date.now()) {
+  return markEpisode(state, id, MOVIE_MARK, on, now);
+}
+
+// Seen, at the pass currently being watched.
+export const movieWatched = (sh) =>
+  !!sh && (sh.entries || []).some((e) => e.id === MOVIE_MARK && levelOf(e) >= passOf(sh));
+
+// How many times, which an import can set from another service's play count.
+export const moviePlays = (sh) => {
+  const e = (sh && (sh.entries || []).find((x) => x.id === MOVIE_MARK)) || null;
+  return e ? levelOf(e) : 0;
+};
+
 export function startRewatch(state, id, now = Date.now()) {
   const sh = findShow(state, id);
   if (!sh) return null;
