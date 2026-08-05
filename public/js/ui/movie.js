@@ -7,7 +7,7 @@
 //
 // Everything it reads is the same record shape a show uses, with no seasons. What it writes is
 // one mark, keyed so it can never collide with an episode.
-import { h, svg, ICON, mount, keepMedia, poster, posterFallback } from "./dom.js";
+import { h, svg, ICON, mount, keepMedia, posterFallback } from "./dom.js";
 import { state } from "../domain/store.js";
 import { findShow, findSameShow } from "../domain/schema.js";
 import { movieWatched, moviePlays } from "../domain/model.js";

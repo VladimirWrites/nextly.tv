@@ -11,7 +11,7 @@
  * current is exactly how you lose data.
  */
 <<<<<<< HEAD
-const VERSION = "v1.8.0";
+const VERSION = "v1.8.1";
 =======
 const VERSION = "v1.8.0";
 >>>>>>> 050bee3 (Say on a discovery card whether you already have it)
