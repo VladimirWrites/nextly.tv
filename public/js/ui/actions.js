@@ -4,7 +4,7 @@ import { state } from "../domain/store.js";
 import { findShow } from "../domain/schema.js";
 import { markEpisode, markUpTo, markAllAired, markSeason, addShow, setWatchDates, removeShow, setStatus, startRewatch, cancelRewatch, markMovie } from "../domain/model.js";
 import { nextUp, passOf, completion, newlyFinished, showProgress } from "../domain/progress.js";
-import { epCode, parseEpKey, ordinal, parseShowKey, fmtDuration } from "../domain/constants.js";
+import { epCode, parseEpKey, ordinal, parseShowKey, fmtDuration, isMovie } from "../domain/constants.js";
 import { scheduleSync } from "../io/storage.js";
 import * as cache from "../io/cache.js";
 import * as meta from "../io/meta.js";
@@ -104,6 +104,18 @@ async function pool(items, worker, size = 4) {
 let lastSweep = 0;
 const SWEEP_EVERY = 30 * 60 * 1000;
 
+/* Whichever kind the record is.
+ *
+ * ensureMeta asks a catalogue for a series, and a movie key handed to it resolves to
+ * `/tv/m76600` — a 404, and on a first load a toast about it. So a movie added on one device
+ * arrived on the next one as a name with no poster, no year and no synopsis, and stayed that
+ * way until somebody opened its page, which is the one screen that asked the right question.
+ *
+ * The vault syncs records, not metadata: every device fetches its own artwork. That is the
+ * design, and it means the hydrate is the only thing standing between a synced record and a
+ * blank card. */
+const ensureRecord = (sh, opts) => (isMovie(sh) ? ensureMovie(sh.id, opts) : ensureMeta(sh.id, opts));
+
 export async function hydrateLibrary() {
   const shows = state.shows || [];
   if (!shows.length) return;
@@ -127,8 +139,8 @@ export async function hydrateLibrary() {
   const step = () => setProgress(++done, total);
   if (total) setProgress(0, total);
 
-  await pool(byNeed, (sh) => ensureMeta(sh.id).finally(step));
-  await pool(changed, (sh) => ensureMeta(sh.id, { force: true }).finally(step));
+  await pool(byNeed, (sh) => ensureRecord(sh).finally(step));
+  await pool(changed, (sh) => ensureRecord(sh, { force: true }).finally(step));
 
   setProgress(total, total);
   repaint();
@@ -137,11 +149,17 @@ export async function hydrateLibrary() {
 // Which cached shows actually changed upstream. One bulk request per catalogue that offers
 // one; anything else falls back to the per-show age check.
 async function staleFromCatalogue(cached) {
-  const sources = [...new Set(cached.map((sh) => sh.src))];
+  /* A series question: what has aired, what got renamed, which episode moved. No movie
+     catalogue answers it — TMDB's changes feed is per-kind and Cinemeta has none — and asking
+     it about a movie would put a movie's ref up against a list of series ids, where a match is
+     a coincidence rather than a fact. Movies fall through to the age check below. */
+  const series = cached.filter((sh) => !isMovie(sh));
+  const sources = [...new Set(series.map((sh) => sh.src))];
   const updates = new Map();
   await Promise.all(sources.map(async (src) => updates.set(src, await meta.updatedSince(src, "week"))));
 
   return cached.filter((sh) => {
+    if (isMovie(sh)) return cache.isStale(cache.getMeta(sh.id), cache.fetchedAt(sh.id));
     const changed = updates.get(sh.src);
     if (!changed) return cache.isStale(cache.getMeta(sh.id), cache.fetchedAt(sh.id));
     const upstream = changed.get(String(sh.ref));
@@ -152,7 +170,7 @@ async function staleFromCatalogue(cached) {
 // Force a refetch of everything. Only for the explicit "Refresh now" button, where the user
 // has asked for exactly that and is willing to wait.
 export async function refreshLibrary({ force = false } = {}) {
-  await pool(state.shows || [], (sh) => ensureMeta(sh.id, { force }));
+  await pool(state.shows || [], (sh) => ensureRecord(sh, { force }));
   repaint();
 }
 
