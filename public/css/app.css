@@ -3350,29 +3350,6 @@ button.score {
   cursor: pointer;
 }
 
-/* A second group needs air above its heading, or the label reads as a caption on the option
-   above it rather than as the start of something new. */
-.sheet-list + .sheet-title {
-  margin-top: 18px;
-}
-
-/* The count beside an option, so a filter that would come back empty says so before it is
-   chosen. Tabular figures, or the numbers jitter as the list changes underneath. */
-.sheet-opt-count {
-  margin-left: auto;
-  margin-right: 10px;
-  font-family: var(--mono);
-  font-size: 12.5px;
-  font-variant-numeric: tabular-nums;
-  color: var(--dim);
-}
-
-/* The sheet stays open while two axes are set, so it needs a way out that is not the scrim. */
-.sheet-actions {
-  display: flex;
-  justify-content: flex-end;
-  padding: 12px 4px 2px;
-}
 
 
 .sheet-opt:hover {
@@ -3908,4 +3885,34 @@ button.score {
 
 .noscript-note a {
   text-decoration: underline;
+}
+
+/* ---- the library's filter row ----
+ * One line that scrolls rather than a block that wraps: two axes of chips came to three rows on
+ * a phone and pushed the first posters below the fold. Bled to the screen edges so the last
+ * chip is visibly cut rather than sitting flush, which is what says there is more to the right.
+ */
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0 var(--edge-r) 12px var(--edge-l);
+  margin: 0 calc(-1 * var(--edge-r)) 0 calc(-1 * var(--edge-l));
+}
+
+.filter-bar::-webkit-scrollbar { display: none; }
+
+/* Chips must not squeeze to fit — a row that shrinks its contents to avoid scrolling is a row
+   nobody realises scrolls. */
+.filter-bar > .chip { flex: none; }
+
+/* Kind from status. Without it the two "All" chips read as one list. */
+.filter-sep {
+  flex: none;
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+  margin: 0 2px;
 }

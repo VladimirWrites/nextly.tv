@@ -65,8 +65,6 @@ export const ICON = {
   caret: "M9 5l7 7-7 7",
   // Three lines of falling length: order.
   order: ["M4 7h13", "M4 12h9", "M4 17h5"],
-  // A funnel: wide at the top, narrow at the stem, which is what filtering looks like.
-  filter: ["M4 5h16l-6 7v6l-4 2v-8z"],
   eye: ["M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z", "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"],
   eyeOff: ["M3 3l18 18", "M10.6 6.2A9.9 9.9 0 0 1 12 5.5c6.4 0 10 6.5 10 6.5a17 17 0 0 1-3.3 4",
            "M6.3 8A16.7 16.7 0 0 0 2 12s3.6 6.5 10 6.5a9.7 9.7 0 0 0 4-.85", "M9.9 9.9a3 3 0 0 0 4.2 4.2"],

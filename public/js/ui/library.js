@@ -12,7 +12,7 @@ import { ordinal, fold, sortKey, indexLetter, SHOW_STATUS, fmtDuration } from ".
 import { lifePill, cardLine } from "../domain/labels.js";
 import * as cache from "../io/cache.js";
 import { readView, writeView } from "../io/storage.js";
-import { chooser, filterSheet } from "./overlay.js";
+import { chooser } from "./overlay.js";
 import { miniBarcode } from "./barcode.js";
 import { opts, changeStatus } from "./actions.js";
 import { empty } from "./upnext.js";
@@ -108,48 +108,33 @@ export function renderLibrary(root, { go, top }) {
 
   const anyFilm = rows.some(isFilm);
 
-  /* Behind a funnel rather than across the top of the screen. Two axes meant a segmented
-     control and a row of chips above every library, which is a lot of furniture for something
-     most people set once — and on a phone it pushed the first row of posters off the fold.
+  /* One line that scrolls, rather than a block that wraps or a sheet that hides.
 
-     The button says whether anything is on, because a filter you cannot see is a filter you
-     forget you set and then wonder where your library went. */
-  const filtering = kind !== "all" || filter !== "all";
-  const filterBtn = h("button.btn.lib-btn", {
+     Chips are the right control here — visibly pressable, and they show what is on without
+     anything being opened first. What was wrong was the amount of them: two axes wrapped to
+     three rows and pushed the first posters off the fold. On one scrolling line it costs a row.
+
+     Kind first, then a hairline, then status. The separator is doing real work: without it the
+     two "All" chips read as one list where pressing either does the same thing. */
+  const of = rows.filter((r) => inKind(r, kind));
+  const chip = (label, n, on, act) => h("button.chip", {
     type: "button",
-    class: filtering ? "is-on" : null,
-    "aria-haspopup": "dialog",
-    "aria-label": filtering ? `Filter library: ${chosen.label}` : "Filter library",
-    onclick: () => filterSheet({
-      title: "Filter",
-      groups: () => {
-        const of = rows.filter((r) => inKind(r, kind));
-        return [
-          ...(anyFilm ? [{
-            id: "kind",
-            title: "Kind",
-            value: kind,
-            options: KINDS.map(([v, l]) => ({
-              value: v, label: l, count: rows.filter((r) => inKind(r, v)).length,
-            })),
-          }] : []),
-          {
-            id: "status",
-            title: "Status",
-            value: filter,
-            options: FILTERS
-              .filter((f) => f.id === "all" || of.some(f.test) || filter === f.id)
-              .map((f) => ({ value: f.id, label: f.label, count: of.filter(f.test).length })),
-          },
-        ];
-      },
-      onPick: (group, value) => {
-        if (group === "kind") kind = value;
-        else filter = value;
-        again();
-      },
-    }),
-  }, [svg(ICON.filter, "lib-btn-icon")]);
+    class: on ? "is-on" : null,
+    "aria-pressed": on ? "true" : "false",
+    text: n == null ? label : `${label} ${n}`,
+    onclick: act,
+  });
+
+  const bar = h("div.filter-bar", { role: "group", "aria-label": "Filter library" }, [
+    ...(anyFilm ? KINDS.map(([v, l]) =>
+      chip(l, rows.filter((r) => inKind(r, v)).length, kind === v, () => { kind = v; again(); })) : []),
+    anyFilm ? h("span.filter-sep", { "aria-hidden": "true" }) : null,
+    /* A status that cannot match anything in the kind on screen is not offered — which is what
+       leaves a movie exactly the two it has, under the names shows already use. */
+    ...FILTERS
+      .filter((f) => f.id === "all" || of.some(f.test) || filter === f.id)
+      .map((f) => chip(f.label, of.filter(f.test).length, filter === f.id, () => { filter = f.id; again(); })),
+  ]);
 
   /* A button, not a <select>. The native control renders as a system picker that belongs to a
      different app — on Android a full-screen grey list with none of this app's type.
@@ -264,11 +249,11 @@ export function renderLibrary(root, { go, top }) {
     top.bar.classList.add("has-actions");
     top.bar.classList.toggle("is-searching", !!(searching || query));
     top.actions.replaceChildren(
-      ...(searching || query ? [search, closeSearch] : [filterBtn, orderBtn, search]),
+      ...(searching || query ? [search, closeSearch] : [orderBtn, search]),
     );
   }
 
-  mount(root, results);
+  mount(root, bar, results);
 }
 
 /* Builds the grid and, as it goes, records the first card of each letter — that's the row a
