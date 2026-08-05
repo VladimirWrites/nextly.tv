@@ -317,3 +317,36 @@ export const totalWatched = (state) =>
 // Distinct episodes seen at least once, ignoring rewatches.
 export const totalEpisodes = (state) =>
   (state.shows || []).reduce((n, sh) => n + (sh.entries || []).length, 0);
+
+/* What a discovery card should say about itself.
+ *
+ * A row of posters answers "what could I watch" and could not answer the question anybody
+ * actually asks of it — whether they have the thing already. The library knows; the row simply
+ * never asked. This is that question, asked once, for every row in the app.
+ *
+ * Not an exact-key lookup, because a card and a record name the same title in different
+ * catalogues: a TMDB row gives `tmdb:m76600` for a movie saved from Cinemeta as
+ * `cinemeta:mtt1630029`. findSameShow reconciles those on the portable ids — IMDb, TVDB, and
+ * TMDB's own number, which Cinemeta carries — so this needs no special case per row.
+ *
+ * A movie is binary, so it says which half it is in. A show is not, and what it can honestly
+ * say is its status, a plain field on the record.
+ *
+ * Deliberately not "caught up", which is the more useful sentence and the one this cannot
+ * write: showProgress needs the episode list, and the metadata cache is read synchronously
+ * from whatever happens to be in memory. Half a row would say "Caught up" and half "Watching",
+ * decided by what an earlier screen had fetched, and it would change on repaint. A badge that
+ * means different things on neighbouring cards is worse than a badge that means less. */
+export const SHELF_STATUS = {
+  active: "Watching", planned: "Planned", paused: "Paused", dropped: "Dropped",
+};
+
+export function shelfState(state, card) {
+  if (!card || !card.key) return { held: null, label: null };
+  const held = findShow(state, card.key) || findSameShow(state, { ...card, key: card.key });
+  if (!held) return { held: null, label: null };
+  const label = isMovie(held)
+    ? (movieWatched(held) ? "Watched" : "Watchlist")
+    : (SHELF_STATUS[held.st] || "In library");
+  return { held, label };
+}

@@ -7,13 +7,14 @@
 // A card opens a show under its catalogue's episode numbering, so a mixed screen would hand
 // back TVmaze shows to someone who chose TMDB. TVmaze rows are built from its schedule
 // ranked by popularity; TMDB's come from endpoints TVmaze has no equivalent for.
-import { h, svg, ICON, mount, posterFallback, shelfScroller, poster } from "./dom.js";
+import { h, svg, ICON, mount, shelfScroller } from "./dom.js";
 import { state } from "../domain/store.js";
 import { trackedKeys } from "../domain/discover.js";
 import { fmtDay, daysUntil } from "../domain/dates.js";
 import { fmtScore } from "../domain/constants.js";
 import * as discover from "../io/discover.js";
 import * as cache from "../io/cache.js";
+import { shelfCard } from "./shelf.js";
 
 // Each row loads independently and paints as it arrives, so one slow feed never holds up
 // the others. Exported because the screen that shows a whole feed is the same feed: it takes
@@ -149,20 +150,7 @@ export function renderDiscover(root, { go }) {
 // something is the step before adding it, and adding by accident is annoying to undo.
 function posterCard(card, caption, go) {
   cache.putHint(card);
-  return h("button.shelf-card", {
-    type: "button",
-    // A movie in this row opens the movie page; everything else is a series.
-    onclick: () => go(card.kind === "movie" ? "movie" : "show", card.key),
-    "aria-label": `${card.name}${card.year ? `, ${card.year}` : ""}`,
-  }, [
-    h("div.shelf-art", [
-      card.poster
-        ? poster("shelf-poster", card.poster)
-        : posterFallback(card.name, "md"),
-    ]),
-    h("div.shelf-name.t-title", { text: card.name }),
-    caption ? h("div.shelf-cap", { text: caption }) : null,
-  ]);
+  return shelfCard(card, { caption, go });
 }
 
 /* The last card in the row, and a card rather than a link beside the heading because that is

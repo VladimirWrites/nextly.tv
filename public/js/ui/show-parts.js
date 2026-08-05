@@ -15,6 +15,7 @@ import * as view from "./viewstate.js";
 import * as discover from "../io/discover.js";
 import { shareButton } from "./share-button.js";
 import * as meta from "../io/meta.js";
+import { shelfCard } from "./shelf.js";
 
 /* ---- which render is the one being waited for ----
    Only the paint that lands on a page that was showing placeholders fades in. Every later
@@ -324,14 +325,7 @@ export function similarSection(show, go) {
     if (!cards.length) return section.remove();
     strip.replaceChildren(...cards.slice(0, 20).map((c) => {
       cache.putHint(c);
-      return h("button.shelf-card", { type: "button", onclick: () => go("show", c.key) }, [
-        h("div.shelf-art", [
-          c.poster ? poster("shelf-poster", c.poster)
-                   : posterFallback(c.name, "md"),
-        ]),
-        h("div.shelf-name.t-title", { text: c.name }),
-        c.year ? h("div.shelf-cap", { text: String(c.year) }) : null,
-      ]);
+      return shelfCard(c, { caption: c.year ? String(c.year) : null, go });
     }));
   }).catch(() => section.remove());
 
