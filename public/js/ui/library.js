@@ -51,6 +51,8 @@ const inKind = (r, k) => k === "all" || (k === "movies" ? isFilm(r) : !isFilm(r)
 
 let filter = "all";
 let kind = "all";
+// Which chip was last pressed, so the repaint it causes can keep it under the finger.
+let pressed = null;
 let sort = "recent";
 let query = "";
 let searching = false;     // the field is a button until you ask for it
@@ -117,27 +119,39 @@ export function renderLibrary(root, { go, top }) {
      Kind first, then a hairline, then status. The separator is doing real work: without it the
      two "All" chips read as one list where pressing either does the same thing. */
   const of = rows.filter((r) => inKind(r, kind));
-  const chip = (label, n, on, act) => h("button.chip", {
+  const chip = (id, label, n, on, act) => h("button.chip", {
     type: "button",
     class: on ? "is-on" : null,
     "aria-pressed": on ? "true" : "false",
+    "data-chip": id,
     text: n == null ? label : `${label} ${n}`,
-    onclick: act,
+    onclick: () => { pressed = id; act(); },
   });
 
   /* Through the same scroller every other horizontal strip in the app uses, so it drags with a
      mouse and fades at an end that has more past it. An overflow box scrolls on a phone and
-     sits there on a laptop, which is what this row was doing. */
+     sits there on a laptop, which is what this row was doing.
+
+     Keyed, so a row scrolled along and left is where it was when you come back to the tab.
+
+     But a key alone does not fix pressing a chip, and this took two goes to see: choosing one
+     repaints the library, a repaint builds a new row, and restoring a pixel offset onto it is
+     only right while the row is the same length. It is often not — choosing Movies drops
+     Waiting, Paused and Dropped — so the offset clamps, and on a shortened row it clamps to
+     nought. Which looks exactly like the row jumping back to the beginning.
+
+     What has to survive is not the offset but the chip: whichever was last pressed is brought
+     back into view after the repaint, at whatever offset that turns out to need. */
   const bar = shelfScroller(h("div.filter-bar", { role: "group", "aria-label": "Filter library" }, [
     ...(anyFilm ? KINDS.map(([v, l]) =>
-      chip(l, rows.filter((r) => inKind(r, v)).length, kind === v, () => { kind = v; again(); })) : []),
+      chip(`kind:${v}`, l, rows.filter((r) => inKind(r, v)).length, kind === v, () => { kind = v; again(); })) : []),
     anyFilm ? h("span.filter-sep", { "aria-hidden": "true" }) : null,
     /* A status that cannot match anything in the kind on screen is not offered — which is what
        leaves a movie exactly the two it has, under the names shows already use. */
     ...FILTERS
       .filter((f) => f.id === "all" || of.some(f.test) || filter === f.id)
-      .map((f) => chip(f.label, of.filter(f.test).length, filter === f.id, () => { filter = f.id; again(); })),
-  ]));
+      .map((f) => chip(`st:${f.id}`, f.label, of.filter(f.test).length, filter === f.id, () => { filter = f.id; again(); })),
+  ]), "library-filter");
 
   /* A button, not a <select>. The native control renders as a system picker that belongs to a
      different app — on Android a full-screen grey list with none of this app's type.
@@ -257,6 +271,15 @@ export function renderLibrary(root, { go, top }) {
   }
 
   mount(root, bar, results);
+
+  /* After the mount, because until the row is in the document it has no width to scroll and
+     nothing to scroll it to. `nearest` so a chip already on screen is left alone rather than
+     dragged to an edge. */
+  if (pressed) {
+    const el = bar.querySelector(`[data-chip="${pressed}"]`);
+    if (el) el.scrollIntoView({ inline: "nearest", block: "nearest" });
+    pressed = null;
+  }
 }
 
 /* Builds the grid and, as it goes, records the first card of each letter — that's the row a
