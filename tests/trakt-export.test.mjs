@@ -6,7 +6,7 @@
 // the other file is only ever a cross-check.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { feedFromHistory, shortfall, readExport, historyFiles } from "../public/js/domain/trakt-export.js";
+import { feedFromHistory, shortfall, readExport, historyFiles, watchlistShows } from "../public/js/domain/trakt-export.js";
 
 const play = (show, s, e, at, extra = {}) => ({
   id: Math.round(Math.random() * 1e6),
@@ -172,4 +172,64 @@ test("a file that merely starts with the same words is not a history page", () =
 test("a watch date at the epoch means unknown, not 1970", () => {
   const feed = feedFromHistory([play(WIRE, 1, 1, "1970-01-01T00:00:00.000Z")]);
   assert.equal(feed.shows[0].episodes[0].at, 0);
+});
+
+/* ---- the watchlist ----
+
+   What Trakt calls the watchlist its apps label "plan to watch", and somebody who uploaded an
+   export said so: the shows came in, the ones they meant to start did not. The file is empty
+   until you put something in it, which is why the first export tested against had none.
+
+   They carry no episodes, and that is what makes them work: an empty episode list means nothing
+   to mark, so the show is filed under this app's default status and left there. */
+
+const HOTD = { ids: { trakt: 154574, imdb: "tt11198330", tvdb: 371572, tmdb: 94997 },
+               title: "House of the Dragon", year: 2022 };
+
+test("a watchlisted show arrives with no episodes at all", () => {
+  const rows = watchlistShows([{ type: "show", show: HOTD, listed_at: "2026-08-05T12:41:01.000Z" }]);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].name, "House of the Dragon");
+  assert.equal(rows[0].imdb, "tt11198330");
+  assert.deepEqual(rows[0].episodes, [], "which is what keeps it unstarted");
+});
+
+/* A Trakt watchlist holds films and single episodes too. This app has neither. */
+test("only shows are taken off the watchlist", () => {
+  const rows = watchlistShows([
+    { type: "movie", movie: { title: "Heat", ids: { trakt: 1 } } },
+    { type: "episode", episode: { ids: { trakt: 2 } }, show: HOTD },
+    { type: "season", season: { ids: { trakt: 3 } }, show: HOTD },
+    { type: "show", show: HOTD },
+    { type: "show", show: { title: "Nameless", ids: {} } },
+  ]);
+  assert.deepEqual(rows.map((r) => r.name), ["House of the Dragon"]);
+});
+
+/* Watched beats planned. Something in both is something being watched, and the history is the
+   claim carrying the marks — appending it twice would file one show as two. */
+test("a show both watched and watchlisted appears once, with its history", () => {
+  const r = readExport({
+    "watched-history.json": [play(WIRE, 1, 1, "2018-02-03T21:30:00Z")],
+    "lists-watchlist.json": [{ type: "show", show: WIRE }, { type: "show", show: HOTD }],
+  });
+  assert.equal(r.planned, 1, "only the one with no history counts as planned");
+  assert.equal(r.feed.shows.length, 2);
+  const wire = r.feed.shows.find((x) => x.name === "The Wire");
+  assert.equal(wire.episodes.length, 1, "and it kept its episode");
+});
+
+test("an export with no watchlist file reads exactly as before", () => {
+  const r = readExport({ "watched-history.json": [play(WIRE, 1, 1, "2018-02-03T21:30:00Z")] });
+  assert.equal(r.planned, 0);
+  assert.equal(r.feed.shows.length, 1);
+});
+
+test("episode and show counts do not double-count the watchlist", () => {
+  const r = readExport({
+    "watched-history.json": [play(WIRE, 1, 1, "2018-02-03T21:30:00Z")],
+    "lists-watchlist.json": [{ type: "show", show: HOTD }],
+  });
+  assert.equal(r.episodes, 1, "the watchlisted show contributes no episodes");
+  assert.equal(r.feed.shows.length - r.planned, 1, "and is not counted among the watched");
 });

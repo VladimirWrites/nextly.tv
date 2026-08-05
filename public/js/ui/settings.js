@@ -3,7 +3,7 @@
 // This screen is also where the app makes its promise checkable: the export is a plain JSON
 // file with show names spelled out, so you can read your own history without this app, this
 // server, or any catalogue.
-import { traktSection } from "./trakt-import.js";
+import { importTraktZip } from "./trakt-import.js";
 import { h, mount, toast, confirmWord, isStandalone, isIOS, isFirefoxDesktop, IOS_STORAGE_WARNING, canPromptInstall, promptInstall } from "./dom.js";
 import { confirmDialog } from "./overlay.js";
 import { state } from "../domain/store.js";
@@ -113,8 +113,7 @@ export function renderSettings(root, { go, repaint }) {
     h("div.set-group", [
       storageRow(),
       exportRow(repaint),
-      row("Import", "Merges a previous export into what's here. Nothing is overwritten — the newer mark wins per episode.",
-        h("button.btn.btn-sm", { type: "button", text: "Import JSON", onclick: () => doImport(repaint) })),
+      importRow(repaint),
       row("Account number", "The only key to your vault. Anyone with it can read your data.",
         h("div.row-gap", [
           h("button.btn.btn-sm", { type: "button", text: "Show", onclick: (e) => {
@@ -156,8 +155,6 @@ export function renderSettings(root, { go, repaint }) {
           location.reload();
         } })),
     ]),
-
-    traktSection(repaint),
 
     /* The whole promise of this app is that the server cannot read your data, and there is no
        way to check that from the outside: the code that holds your key is served by the same
@@ -445,18 +442,55 @@ function doExport() {
   toast("Exported");
 }
 
-function doImport(repaint) {
-  const input = h("input", { type: "file", accept: "application/json,.json" });
+/* Two sources, one row. Both are a file somebody hands over, both merge rather than replace,
+   and both answer the same question — "I have my history somewhere else, can I bring it here."
+   Splitting them put a second import under its own heading, half a screen from the first.
+
+   The output sits under the hint rather than beside the buttons: what a Trakt zip has in it,
+   and what importing it would do, runs to two or three lines, and a control column is not where
+   sentences go. */
+function importRow(repaint) {
+  const out = h("div.set-hint", { style: { marginTop: "10px" }, hidden: true });
+  return h("div.set-row", { style: { alignItems: "flex-start" } }, [
+    h("div.set-text", [
+      h("div.set-name", { text: "Import" }),
+      h("div.set-hint", { text: "A nextly export, or a Trakt data export — watched history and watchlist both. Merged into what's here: nothing is overwritten, and the newer mark wins per episode." }),
+      out,
+    ]),
+    h("button.btn.btn-sm", { type: "button", text: "Open file", onclick: () => doImport(out, repaint) }),
+  ]);
+}
+
+/* One button for both kinds of file, because which kind this is is a question the app can
+   answer and the reader should not have to. Two buttons meant deciding what you had before
+   choosing it, and put a second import a screen away from the first.
+
+   Told apart by what is inside rather than by the name: a zip opens with "PK\x03\x04",
+   whatever it has been renamed to, and a file that is not one is read as text. Both merge, so
+   picking the wrong file is answered with a sentence rather than with a damaged library. */
+const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04];
+
+function doImport(out, repaint) {
+  const input = h("input", { type: "file", accept: ".json,.zip,application/json,application/zip" });
   input.addEventListener("change", async () => {
     const file = input.files && input.files[0];
     if (!file) return;
+    out.hidden = false;
+    out.replaceChildren(h("span", { text: "Reading\u2026" }));
     try {
-      const n = importJSON(await file.text());
-      toast(`Imported — ${n} shows in your library`);
+      const buffer = await file.arrayBuffer();
+      const head = [...new Uint8Array(buffer.slice(0, 4))];
+      if (ZIP_MAGIC.every((b, i) => head[i] === b)) {
+        await importTraktZip(buffer, out, repaint);
+        return;
+      }
+      const n = importJSON(new TextDecoder().decode(buffer));
+      out.hidden = true;
+      toast(`Imported \u2014 ${n} shows in your library`);
       repaint();
       refreshLibrary();
     } catch (e) {
-      toast(e.message);
+      out.replaceChildren(h("span", { text: e.message }));
     }
   });
   input.click();

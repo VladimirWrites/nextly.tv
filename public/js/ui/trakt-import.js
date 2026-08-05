@@ -1,4 +1,4 @@
-// Importing a Trakt export, in Settings.
+// Importing a Trakt export, from the Import row in Settings.
 //
 // Trakt charges for the API application you would otherwise connect, and does not charge for
 // the download of your own data. So this reads the download: no account to link, no token to
@@ -18,59 +18,26 @@ import { state } from "../domain/store.js";
 
 /* Matched rather than listed: a long history is split across watched-history-1.json and its
    numbered siblings, and how many there are is only known once the zip is open. */
-const WANTED = (name) => name === "watched-shows.json" || HISTORY_FILE.test(name);
+const WANTED = (name) =>
+  name === "watched-shows.json" || name === "lists-watchlist.json" || HISTORY_FILE.test(name);
 
 const fmtInt = (n) => Number(n || 0).toLocaleString();
 
-export function traktSection(repaint) {
-  const out = h("div.set-hint", { style: { marginTop: "10px" } });
+/* Offered from the Import row in Settings rather than from a section of its own.
 
-  return h("div", [
-    h("div.sect", [h("h2.t-label", { text: "Import from Trakt" })]),
-    h("div.set-group", [
-      h("div.set-row", { style: { alignItems: "flex-start" } }, [
-        h("div.set-text", [
-          h("div.set-name", { text: "Trakt export" }),
-          h("div.set-hint", {
-            text: "Ask Trakt for your data on their settings page, then open the zip here. "
-              + "It is read in this browser and never uploaded.",
-          }),
-          out,
-        ]),
-        h("button.btn.btn-sm.btn-primary", { type: "button", text: "Open zip",
-          onclick: () => pick(out, repaint) }),
-      ]),
-    ]),
-  ]);
+   It had one, headed "Import from Trakt", holding a row labelled "Trakt export" — which reads
+   as a contradiction, and sat nowhere near the import and export this app already had. A Trakt
+   zip is a file somebody imports. The place for it is the row that imports files. */
+/* A Trakt zip, once something else has decided that is what the file is.
+
+   Offered from the Import row rather than from a section of its own. It had one, headed
+   "Import from Trakt", holding a row labelled "Trakt export" — which reads as a contradiction,
+   and sat nowhere near the import and export this app already had. */
+export async function importTraktZip(buffer, out, repaint) {
+  const files = await readJSONZip(buffer, WANTED);
+  review(readExport(files), out, repaint);
 }
 
-function pick(out, repaint) {
-  const input = h("input", { type: "file", accept: ".zip,application/zip" });
-  input.addEventListener("change", async () => {
-    const file = input.files && input.files[0];
-    if (!file) return;
-    out.replaceChildren(h("span", { text: "Reading…" }));
-    try {
-      const files = await readJSONZip(await file.arrayBuffer(), WANTED);
-      const read = readExport(files);
-      review(read, out, repaint);
-    } catch (e) {
-      out.replaceChildren(h("span", { text: e.message }));
-    }
-  });
-  input.click();
-}
-
-/* What importing would do, in the reader's terms rather than the code's.
-
-   Three situations and they read differently. Something matched; nothing matched though the
-   library holds shows; and nothing matched because the library is empty — the common one on a
-   first run, where "nothing new for the shows you track" is a strange thing to be told by an
-   app you have only just started using.
-
-   The last two are told apart by how many shows are held, not by how many matched. `p.shows`
-   counts what this file lines up with, which is zero in both cases — so reading the library
-   size off the preview would tell somebody with two hundred shows that they have none. */
 export function what(p, held = (state.shows || []).length) {
   if (p.marks || p.updated) {
     return `${fmtInt(p.marks)} new to ${fmtInt(p.shows)} shows you track`
@@ -87,8 +54,14 @@ export function what(p, held = (state.shows || []).length) {
    "Added 1,412 marks" is not something anyone should learn afterwards. */
 function review(read, out, repaint) {
   const p = previewFeed(read.feed);
+  /* Watchlisted shows are counted apart from watched ones, because they are a different claim:
+     nothing has been seen of them, and what arrives is a place in the library rather than a
+     history. Somebody who watchlists heavily should see that number before pressing anything. */
   const lines = [
-    h("div", { text: `${fmtInt(read.episodes)} episodes across ${fmtInt(read.feed.shows.length)} shows in that file.` }),
+    h("div", {
+      text: `${fmtInt(read.episodes)} episodes across ${fmtInt(read.feed.shows.length - read.planned)} shows in that file`
+        + (read.planned ? `, and ${fmtInt(read.planned)} on the watchlist.` : "."),
+    }),
     h("div", { text: what(p) }),
   ];
 

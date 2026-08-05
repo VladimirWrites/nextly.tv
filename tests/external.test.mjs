@@ -268,3 +268,16 @@ test("an import that adds nothing promotes nothing", () => {
   applyMarks(sh, plan, NOW);
   assert.equal(sh.st, "planned", "untouched, because nothing was written");
 });
+
+/* A watchlisted show arrives as a row with no episodes. Nothing else about it is special, and
+   that is the point: an empty plan writes nothing, so the show keeps the status it was filed
+   under — "planned" — and Up next leaves it alone until something is actually watched. */
+test("a show with nothing watched stays where it was put", () => {
+  const sh = show({ st: "planned", entries: [] });
+  const plan = planMarks(sh, [], NOW);
+  assert.deepEqual(plan.add, []);
+  assert.deepEqual(plan.raise, []);
+  applyMarks(sh, plan, NOW);
+  assert.equal(sh.st, "planned", "planned, not started");
+  assert.equal(sh.entries.length, 0);
+});

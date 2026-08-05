@@ -13,6 +13,10 @@
 //   watched-shows.json    one entry per show: total plays and a last-watched date. No seasons,
 //                         no episodes — which is the whole reason the history is the source and
 //                         this one is only a cross-check.
+//   lists-watchlist.json  what Trakt calls the watchlist and its apps label "plan to watch":
+//                         shows somebody means to start and has no history for. Empty until you
+//                         put something in it, which is why the first export tested against had
+//                         no such file and this was missed.
 //
 // Everything else in the zip is ratings, comments, notes, lists, collection, social graph and
 // account settings. None of it is a watch mark, and none of it is read. The profile and
@@ -99,6 +103,34 @@ export function feedFromHistory(history) {
   };
 }
 
+/* The watchlist: shows meant for later.
+
+   These carry no episodes, which is the whole point of them, and that is exactly how they are
+   handed on — a row with an empty episode list. Everything downstream then does the right thing
+   without being told about watchlists at all: matching finds nothing to mark, adding files the
+   show under this app's default status, which is "planned", and applying an empty plan promotes
+   nothing, so a show meant for later stays meant for later.
+
+   Movies, seasons and single episodes can sit in a Trakt watchlist too. Only shows are taken. */
+export function watchlistShows(list) {
+  const out = [];
+  for (const row of list || []) {
+    if (!row || row.type !== "show" || !row.show) continue;
+    const ids = idsOf(row.show);
+    if (!showKeyOf(ids)) continue;
+    out.push({
+      name: row.show.title || "",
+      year: num(row.show.year) || null,
+      imdb: ids.imdb,
+      tvdb: ids.tvdb,
+      tmdb: ids.tmdb,
+      trakt: ids.trakt,
+      episodes: [],
+    });
+  }
+  return out;
+}
+
 /* What the history does not account for.
 
    watched-shows.json is the only place the export states a total, so it is the only way to
@@ -160,6 +192,15 @@ export function readExport(files) {
     throw new Error("That doesn't look like a Trakt export — no watched history inside.");
   }
   const feed = feedFromHistory(history);
+
+  /* Watchlisted shows are appended, and only where the history has not already accounted for
+     them. Something both watched and planned is something being watched — the history is the
+     stronger claim, and it is the one carrying the marks. */
+  const seen = new Set(feed.shows.map((r) => showKeyOf(r)));
+  const planned = watchlistShows(files["lists-watchlist.json"])
+    .filter((r) => !seen.has(showKeyOf(r)));
+  feed.shows.push(...planned);
+
   const episodes = feed.shows.reduce((t, s) => t + s.episodes.length, 0);
   const plays = feed.shows.reduce((t, s) => t + s.episodes.reduce((n, e) => n + e.plays, 0), 0);
   return {
@@ -168,6 +209,7 @@ export function readExport(files) {
     plays,
     events: history.length,
     pages: pages.length,
+    planned: planned.length,
     missing: shortfall(feed, files["watched-shows.json"]),
   };
 }
