@@ -34,7 +34,7 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
   let missed = 0;
 
   for (const { show, row } of known) {
-    marks += applyMarks(show, planMarks(show, row.episodes, now), now);
+    marks += applyMarks(show, planMarks(show, row.episodes, now, row), now);
   }
   onProgress({ phase: "matched", done: known.length, total: known.length });
 
@@ -51,7 +51,7 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
           await cache.putMeta(meta);
           const show = addShow(state, meta, now);
           added++;
-          marks += applyMarks(show, planMarks(show, row.episodes, now), now);
+          marks += applyMarks(show, planMarks(show, row.episodes, now, row), now);
         } else missed++;
       } catch (e) {
         // One show the catalogue cannot place must not abandon the other nine hundred.

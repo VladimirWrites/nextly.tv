@@ -306,7 +306,9 @@ export function undoRewatch(showId) {
    cannot load its record says so by staying on its skeleton, not by shouting. */
 export function ensureMovie(key, { force = false } = {}) {
   if (!force && cache.has(key)) return Promise.resolve(cache.getMeta(key));
-  return meta.fetchMovie(key)
+  // The vault's own portable id, so a film survives its catalogue's key being taken away.
+  const held = findShow(state, key);
+  return meta.fetchMovie(key, { imdb: (held && held.imdb) || null })
     .then(async (m) => { await cache.putMeta(m); repaint(); return m; })
     .catch(() => null);
 }

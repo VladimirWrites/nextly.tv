@@ -35,7 +35,7 @@ const fmtInt = (n) => Number(n || 0).toLocaleString();
    and sat nowhere near the import and export this app already had. */
 export async function importTraktZip(buffer, out, repaint) {
   const files = await readJSONZip(buffer, WANTED);
-  review(readExport(files), out, repaint);
+  review(readExport(files, { films: !!(state.settings || {}).movies }), out, repaint);
 }
 
 export function what(p, held = (state.shows || []).length) {
@@ -60,6 +60,7 @@ export function review(read, out, repaint) {
   const lines = [
     h("div", {
       text: `${fmtInt(read.episodes)} episodes across ${fmtInt(read.feed.shows.length - read.planned)} shows in that file`
+        + (read.films ? `, ${fmtInt(read.films)} films` : "")
         + (read.planned ? `, and ${fmtInt(read.planned)} on the watchlist.` : "."),
     }),
     h("div", { text: what(p) }),

@@ -29,6 +29,10 @@
    check-in, or a manual mark. They differ in provenance and not in meaning. */
 const isPlay = (e) => e && e.type === "episode" && e.episode && e.show;
 
+// The other half of the same file. A film play names the film and nothing else — there is no
+// episode to place it against, which is exactly what makes it a film.
+const isFilmPlay = (e) => e && e.type === "movie" && e.movie;
+
 // Absent is not zero, and a season number of 0 is a real season — specials.
 const num = (v) => (v === null || v === undefined || v === "" ? NaN : Math.trunc(+v));
 
@@ -45,11 +49,18 @@ const idsOf = (o) => {
 /* Which show an entry belongs to. Trakt's own id where there is one, because it is the only
    one guaranteed to be present and unique across the file — the others are what the show is
    matched by later, and a show can be missing any of them. */
-const showKeyOf = (ids) =>
-  ids.trakt ? `trakt:${ids.trakt}`
-    : ids.imdb ? `imdb:${ids.imdb}`
-      : ids.tvdb ? `tvdb:${ids.tvdb}`
-        : ids.tmdb ? `tmdb:${ids.tmdb}` : null;
+/* Kind first, because Trakt numbers films and series in separate spaces and every id in here
+   is one or the other. Without it a film with trakt id 154574 and a series with the same number
+   are the same row, and one silently eats the other — which is exactly what happened the first
+   time films were folded in: a watchlisted series vanished behind a film. */
+const keyOf = (ids, kind) =>
+  ids.trakt ? `${kind}:trakt:${ids.trakt}`
+    : ids.imdb ? `${kind}:imdb:${ids.imdb}`
+      : ids.tvdb ? `${kind}:tvdb:${ids.tvdb}`
+        : ids.tmdb ? `${kind}:tmdb:${ids.tmdb}` : null;
+
+const showKeyOf = (ids) => keyOf(ids, "show");
+const filmKeyOf = (ids) => keyOf(ids, "movie");
 
 /* The history, folded into one row per show and one entry per episode.
 
@@ -101,6 +112,50 @@ export function feedFromHistory(history) {
       episodes: [...row.episodes.values()].sort((a, b) => a.s - b.s || a.e - b.e),
     })),
   };
+}
+
+/* Films, from the same history.
+
+   Trakt files a film play as `type: "movie"` with the film in place of the show, and repeats
+   the entry for a rewatch exactly as it does for an episode. So the fold is the same fold: one
+   row per film, plays counted, the latest date kept.
+
+   What comes back is a row with an empty episode list and `kind: "movie"` on it, which is all
+   anything downstream needs to know — matching, adding and marking are the same code.
+
+   watched-movies-*.json holds the same films with a play count already summed, and is used the
+   way watched-shows.json is: a cross-check, never the source, because it says nothing about
+   when anything was seen. */
+export function filmsFromHistory(history) {
+  const films = new Map();
+
+  for (const entry of history || []) {
+    if (!isFilmPlay(entry)) continue;
+    const ids = idsOf(entry.movie);
+    const key = filmKeyOf(ids);
+    if (!key) continue;
+
+    const at = entry.watched_at ? Date.parse(entry.watched_at) || 0 : 0;
+    const held = films.get(key);
+    if (held) {
+      held.plays += 1;
+      if (at > held.at) held.at = at;
+    } else {
+      films.set(key, {
+        name: entry.movie.title || "",
+        year: num(entry.movie.year) || null,
+        imdb: ids.imdb,
+        tvdb: ids.tvdb,
+        tmdb: ids.tmdb,
+        trakt: ids.trakt,
+        kind: "movie",
+        plays: 1,
+        at,
+        episodes: [],
+      });
+    }
+  }
+  return [...films.values()];
 }
 
 /* The watchlist: shows meant for later.
@@ -192,7 +247,7 @@ const pagesOf = (names, re) => [...names]
 export const historyFiles = (names) => pagesOf(names, HISTORY_FILE);
 export const watchlistFiles = (names) => pagesOf(names, WATCHLIST_FILE);
 
-export function readExport(files) {
+export function readExport(files, { films: wantFilms = false } = {}) {
   const pages = historyFiles(Object.keys(files || {}));
   const history = pages.flatMap((name) => (Array.isArray(files[name]) ? files[name] : []));
   if (!pages.length || !history.length) {
@@ -200,10 +255,16 @@ export function readExport(files) {
   }
   const feed = feedFromHistory(history);
 
+  /* Films, where the reader has asked for them. Read from the same history and appended to the
+     same list, because a film is a record in the same collection — the only thing that marks
+     one out downstream is `kind`. */
+  const films = wantFilms ? filmsFromHistory(history) : [];
+  feed.shows.push(...films);
+
   /* Watchlisted shows are appended, and only where the history has not already accounted for
      them. Something both watched and planned is something being watched — the history is the
      stronger claim, and it is the one carrying the marks. */
-  const seen = new Set(feed.shows.map((r) => showKeyOf(r)));
+  const seen = new Set(feed.shows.map((r) => (r.kind === "movie" ? filmKeyOf(r) : showKeyOf(r))));
   const watchlist = watchlistFiles(Object.keys(files || {}))
     .flatMap((name) => (Array.isArray(files[name]) ? files[name] : []));
   const planned = watchlistShows(watchlist)
@@ -219,6 +280,7 @@ export function readExport(files) {
     events: history.length,
     pages: pages.length,
     planned: planned.length,
+    films: films.length,
     missing: shortfall(feed, files["watched-shows.json"]),
   };
 }

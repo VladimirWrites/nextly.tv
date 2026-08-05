@@ -62,7 +62,7 @@ function paint(root, who, go, top) {
   const facts = [
     lived,
     who.from,
-    who.shows.length ? `${who.shows.length} show${who.shows.length === 1 ? "" : "s"}` : null,
+    who.shows.length ? creditLine(who.shows) : null,
   ].filter(Boolean);
 
   /* Whatever the catalogue already said about them, since it came back with the rest of the
@@ -110,7 +110,8 @@ function paint(root, who, go, top) {
 
     bio ? h("div.person-about", [bio, more]) : null,
 
-    who.shows.length ? h("div.sect", [h("h2.t-label", { text: "Also in" })]) : null,
+    who.shows.length ? h("div.sect", [h("h2.t-label", { text: "Also in" }),
+        h("span.sect-count", { text: creditLine(who.shows) })]) : null,
     who.shows.length ? shelfScroller(h("div.shelf", who.shows.map((s) => showCard(s, go))), `also:${who.key}`) : null,
 
     // Only ever drawn for somebody who arrived without a vault; returns null otherwise.
@@ -123,10 +124,23 @@ function paint(root, who, go, top) {
   if (bio && (wasOpen || bio.scrollHeight > bio.clientHeight + 2)) more.hidden = false;
 }
 
+/* "12 shows · 30 films" rather than a bare total, because the two are different careers and
+   somebody looking an actor up usually came for one of them. */
+function creditLine(list) {
+  const films = list.filter((x) => x.kind === "movie").length;
+  const shows = list.length - films;
+  return [
+    shows ? `${shows} show${shows === 1 ? "" : "s"}` : null,
+    films ? `${films} film${films === 1 ? "" : "s"}` : null,
+  ].filter(Boolean).join(" · ");
+}
+
 function showCard(s, go) {
+  // A career holds both, and each half opens its own screen.
+  const route = s.kind === "movie" ? "movie" : "show";
   return h("button.shelf-card", {
     type: "button",
-    onclick: () => go("show", s.key),
+    onclick: () => go(route, s.key),
     "aria-label": `${s.name}${s.year ? `, ${s.year}` : ""}`,
   }, [
     h("div.shelf-art", [

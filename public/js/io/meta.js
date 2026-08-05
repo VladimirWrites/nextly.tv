@@ -53,9 +53,37 @@ export const searchMovies = (query) => {
   return (p.searchMovies ? p.searchMovies(query) : p.search(query));
 };
 
+/* The people in a film, and what to watch next after it. Both are TMDB only, and both return
+   nothing rather than failing where there is no key: Cinemeta's manifest lists two types,
+   movie and series, and no person resource at all — its cast is a list of names with no ids
+   behind them, so there is nobody to open. A film from there shows its cast as text.
+
+   Held for the session like the cast of a show, and for the same reason: none of it is yours,
+   none of it belongs in the vault, and it costs one request to ask again. */
+export function movieCredits(m) {
+  const ref = movieRef(m && (m.key || m.id));
+  if (!ref) return Promise.resolve([]);
+  return once(`movie-cast:${m.key || m.id}`, async () => {
+    if (!tmdb.hasKey()) return [];
+    // A film held under Cinemeta's key is still a film TMDB knows, by its IMDb id.
+    const at = m.tmdb || (/^tt/.test(ref) ? await tmdb.tmdbIdFromExternal({ imdb: ref }).catch(() => null) : ref);
+    return at ? tmdb.movieCredits(at).catch(() => []) : [];
+  });
+}
+
+export function similarMovies(m) {
+  const ref = movieRef(m && (m.key || m.id));
+  if (!ref) return Promise.resolve([]);
+  return once(`movie-like:${m.key || m.id}`, async () => {
+    if (!tmdb.hasKey()) return [];
+    const at = m.tmdb || (/^tt/.test(ref) ? await tmdb.tmdbIdFromExternal({ imdb: ref }).catch(() => null) : ref);
+    return at ? tmdb.similarMovies(at).catch(() => []) : [];
+  });
+}
+
 /* One film, from whichever catalogue its key names, falling back the way shows do: a key whose
    catalogue cannot be reached is still a film with an IMDb id, and the other one can place it. */
-export async function fetchMovie(key) {
+export async function fetchMovie(key, { imdb = null } = {}) {
   const at = parseShowKey(key);
   const ref = movieRef(key);
   if (!at || !ref) throw new Error("Bad movie key: " + key);
@@ -66,9 +94,14 @@ export async function fetchMovie(key) {
     return fetchOne.call(own, ref);
   }
 
-  // Its own catalogue is unreachable — no key, or gone. The ref is an IMDb id whenever
-  // Cinemeta wrote the record, which is exactly the case this has to cover.
-  if (/^tt\d+/.test(ref)) return standIn(await cinemeta.fetchMovie(ref), key);
+  /* Its own catalogue cannot answer — the key was removed, or the service is gone. The film is
+     still a film, and the vault holds an IMDb id for it, which is the whole reason portable ids
+     are stored. A record whose key came from Cinemeta carries that id in the key itself; one
+     from TMDB carries it on the record, so the caller passes it in.
+
+     Filed under the key that was asked for, so the mark still lines up with it. */
+  const portable = /^tt\d+/.test(ref) ? ref : imdb;
+  if (portable) return standIn(await cinemeta.fetchMovie(portable), key);
   throw new Error(`${(own || cinemeta).label} can't be reached, and this film has no id to find it by elsewhere.`);
 }
 

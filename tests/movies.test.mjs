@@ -11,6 +11,10 @@ import { makeShow, normShow, findSameShow, findLikeShow } from "../public/js/dom
 import { markMovie, movieWatched, moviePlays, addShow, start } from "../public/js/domain/model.js";
 import { upNextList } from "../public/js/domain/progress.js";
 
+const WIRE = { ids: { trakt: 1429, imdb: "tt0306414" }, title: "The Wire", year: 2002 };
+const play = (show, s, e, at) => ({ type: "episode", action: "watch", watched_at: at,
+  episode: { ids: { trakt: 1 }, season: s, number: e }, show });
+
 const NOW = 1_700_000_000_000;
 const film = (over = {}) => normShow(makeShow({
   key: "tmdb:m76600", src: "tmdb", ref: "m76600", kind: "movie",
@@ -119,4 +123,99 @@ test("adding a film files it as one", () => {
   assert.equal(sh.st, "planned");
   start(sh, NOW);
   assert.equal(sh.st, "planned", "and start() has nothing to say about it");
+});
+
+/* ---- films out of a Trakt export ---- */
+
+import { filmsFromHistory, readExport } from "../public/js/domain/trakt-export.js";
+import { planMarks, applyMarks } from "../public/js/domain/external.js";
+
+const filmPlay = (at, ids = { trakt: 56580, imdb: "tt1630029", tmdb: 76600 }) => ({
+  type: "movie", action: "watch", watched_at: at,
+  movie: { ids, year: 2022, title: "Avatar: The Way of Water" },
+});
+
+test("a film play becomes a row with no episodes", () => {
+  const rows = filmsFromHistory([filmPlay("2023-01-01T20:00:00Z")]);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].kind, "movie");
+  assert.deepEqual(rows[0].episodes, []);
+  assert.equal(rows[0].imdb, "tt1630029");
+  assert.equal(rows[0].plays, 1);
+});
+
+test("repeated film plays are counted, latest date kept", () => {
+  const rows = filmsFromHistory([
+    filmPlay("2023-01-01T20:00:00Z"), filmPlay("2024-06-01T20:00:00Z"), filmPlay("2023-08-01T20:00:00Z"),
+  ]);
+  assert.equal(rows[0].plays, 3);
+  assert.equal(rows[0].at, Date.parse("2024-06-01T20:00:00Z"));
+});
+
+/* Trakt numbers films and series separately, so the same number is two different titles. The
+   first version of this keyed on the number alone and a film quietly ate a watchlisted series. */
+test("a film and a series sharing a Trakt id stay two rows", () => {
+  const r = readExport({
+    "watched-history.json": [
+      play(WIRE, 1, 1, "2018-02-03T21:30:00Z"),
+      filmPlay("2023-01-01T20:00:00Z", { trakt: 1429, imdb: "tt1630029" }),   // same id as WIRE
+    ],
+  }, { films: true });
+  assert.equal(r.feed.shows.length, 2);
+  assert.equal(r.films, 1);
+});
+
+test("films are left out entirely when the setting is off", () => {
+  const r = readExport({ "watched-history.json": [filmPlay("2023-01-01T20:00:00Z")] }, { films: false });
+  assert.equal(r.films, 0);
+  assert.equal(r.feed.shows.length, 0);
+});
+
+/* The import writes a film's mark from its play count, which is where a rewatch elsewhere
+   becomes a rewatch here. */
+test("importing a film writes one mark carrying its plays and date", () => {
+  const sh = film();
+  const at = Date.parse("2024-06-01T20:00:00Z");
+  const plan = planMarks(sh, [], NOW, { kind: "movie", plays: 3, at });
+  assert.equal(plan.add.length, 1);
+  assert.equal(plan.add[0].id, MOVIE_MARK);
+  assert.equal(plan.add[0].n, 3);
+  assert.equal(plan.add[0].w, at, "when it was seen, not when it was imported");
+  assert.equal(plan.add[0].m, NOW, "and m is when this device recorded it");
+  applyMarks(sh, plan, NOW);
+  assert.equal(moviePlays(sh), 3);
+});
+
+test("importing a film twice adds nothing the second time", () => {
+  const sh = film();
+  const row = { kind: "movie", plays: 1, at: Date.parse("2024-06-01T20:00:00Z") };
+  applyMarks(sh, planMarks(sh, [], NOW, row), NOW);
+  const again = planMarks(sh, [], NOW, row);
+  assert.deepEqual(again.add, []);
+  assert.deepEqual(again.raise, []);
+});
+
+test("a higher play count raises an existing mark", () => {
+  const sh = film();
+  applyMarks(sh, planMarks(sh, [], NOW, { kind: "movie", plays: 1, at: 0 }), NOW);
+  applyMarks(sh, planMarks(sh, [], NOW, { kind: "movie", plays: 4, at: 0 }), NOW);
+  assert.equal(moviePlays(sh), 4);
+});
+
+/* TMDB carries announced projects years ahead of release. Sorting a filmography on the year
+   alone opened Sam Worthington's page with Avatar 5 and Avatar 4 — neither of which exists —
+   ahead of every film he has actually been in. A career is what happened, then what is coming. */
+test("a filmography leads with what exists, not with what is announced", () => {
+  const now = new Date().getFullYear();
+  const credits = [
+    { name: "Announced Sequel", year: now + 3 },
+    { name: "Last Year's Film", year: now - 1 },
+    { name: "Undated Project", year: null },
+    { name: "The Old One", year: now - 20 },
+    { name: "Next Year", year: now + 1 },
+  ];
+  const unreleased = (c) => !c.year || c.year > now;
+  credits.sort((a, b) => (unreleased(a) !== unreleased(b) ? (unreleased(a) ? 1 : -1) : (b.year || 0) - (a.year || 0)));
+  assert.deepEqual(credits.map((c) => c.name),
+    ["Last Year's Film", "The Old One", "Announced Sequel", "Next Year", "Undated Project"]);
 });

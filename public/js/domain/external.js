@@ -17,7 +17,7 @@
 // times that service thinks the episode has been seen, and may be absent.
 import { findSameShow, findShow } from "./schema.js";
 import { start } from "./model.js";
-import { epKey, parseEpKey, levelOf } from "./constants.js";
+import { epKey, parseEpKey, levelOf, MOVIE_MARK } from "./constants.js";
 
 // Absent is not zero. Only something that is actually a number counts as one.
 const num = (v) => (v === null || v === undefined || v === "" ? NaN : Math.trunc(+v));
@@ -54,8 +54,28 @@ export function matchFeed(state, feed) {
    is when the episode was actually seen and is what the statistics read. Stamping `m` with an
    imported date would make this device's copy look older than every other device's and lose
    the merge. */
-export function planMarks(show, episodes, now) {
+export function planMarks(show, episodes, now, row = null) {
   const have = new Map((show.entries || []).map((e) => [e.id, e]));
+
+  /* A film has one mark and no episodes, so the loop below has nothing to walk. What it carries
+     instead is a play count and a date, which is the same pair every episode carries — so the
+     plan is built by hand here and applied by exactly the same code. */
+  if (row && row.kind === "movie") {
+    const level = Math.max(1, Math.trunc(+row.plays) || 1);
+    const at = +row.at || 0;
+    const held = have.get(MOVIE_MARK);
+    if (!held) {
+      return { add: [{ id: MOVIE_MARK, m: now, ...(level > 1 ? { n: level } : {}), ...(at > 0 ? { w: at } : {}) }], raise: [] };
+    }
+    const wantsDate = at > 0 && !held.w;
+    const wantsLevel = level > levelOf(held);
+    return {
+      add: [],
+      raise: wantsDate || wantsLevel
+        ? [{ id: MOVIE_MARK, ...(wantsDate ? { w: at } : {}), ...(wantsLevel ? { n: level } : {}) }]
+        : [],
+    };
+  }
   const add = [];
   const raise = [];
   for (const ep of episodes || []) {
@@ -157,7 +177,7 @@ export function summarize(state, feed, now) {
   let add = 0;
   let raise = 0;
   for (const { show, row } of known) {
-    const plan = planMarks(show, row.episodes, now);
+    const plan = planMarks(show, row.episodes, now, row);
     add += plan.add.length;
     raise += plan.raise.length;
   }

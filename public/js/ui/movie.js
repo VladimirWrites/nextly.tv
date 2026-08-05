@@ -18,6 +18,8 @@ import { anonBar, canGoBack } from "./anon.js";
 import { markMovieNow, ensureMovie, untrackShow } from "./actions.js";
 import { empty } from "./upnext.js";
 import * as cache from "../io/cache.js";
+import { movieCredits, similarMovies } from "../io/meta.js";
+import { shelfScroller } from "./dom.js";
 
 export function renderMovie(root, key, { go, back, top, repaint }) {
   if (top) {
@@ -50,6 +52,9 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
     (m.genres || []).slice(0, 2).join(", ") || null,
     m.released && !m.year ? fmtDate(m.released) : null,
   ].filter(Boolean);
+
+  const castBox = h("div");
+  const likeBox = h("div");
 
   mount(
     root,
@@ -114,6 +119,12 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
           ])
         : null,
 
+      /* Filled after mount, and only where a TMDB key exists. Cinemeta lists a cast as names
+         with no ids behind them — there is nobody to open — so a film from there keeps the
+         plain line below and gains no shelf. */
+      castBox,
+      likeBox,
+
       (m.director || []).length || (m.cast || []).length
         ? h("div", [
             h("div.sect", [h("h2.t-label", { text: "Who made it" })]),
@@ -145,6 +156,43 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
       // Only ever drawn for somebody who arrived without a vault; returns null otherwise.
       anonBar(),
     ]),
+  );
+
+  fillCast(castBox, m, go);
+  fillSimilar(likeBox, m, go);
+}
+
+async function fillCast(box, m, go) {
+  const cast = await movieCredits(m).catch(() => []);
+  if (!cast.length || !box.isConnected) return;
+  box.replaceChildren(
+    h("div.sect", [h("h2.t-label", { text: "Cast" })]),
+    shelfScroller(h("div.shelf", cast.map((c) => h("button.shelf-card", {
+      type: "button",
+      onclick: () => go("person", c.key),
+      "aria-label": `Open ${c.name}`,
+    }, [
+      h("div.shelf-art", [c.image ? poster("shelf-poster", c.image) : posterFallback(c.name, "md")]),
+      h("div.shelf-name.t-title", { text: c.name }),
+      h("div.shelf-cap", { text: c.character || "" }),
+    ]))), `cast:${m.key}`),
+  );
+}
+
+async function fillSimilar(box, m, go) {
+  const like = await similarMovies(m).catch(() => []);
+  if (!like.length || !box.isConnected) return;
+  box.replaceChildren(
+    h("div.sect", [h("h2.t-label", { text: "If you liked this" })]),
+    shelfScroller(h("div.shelf", like.map((f) => h("button.shelf-card", {
+      type: "button",
+      onclick: () => go("movie", f.key),
+      "aria-label": `${f.name}${f.year ? `, ${f.year}` : ""}`,
+    }, [
+      h("div.shelf-art", [f.poster ? poster("shelf-poster", f.poster) : posterFallback(f.name, "md")]),
+      h("div.shelf-name.t-title", { text: f.name }),
+      h("div.shelf-cap", { text: f.year ? String(f.year) : "" }),
+    ]))), `like:${m.key}`),
   );
 }
 
