@@ -18,6 +18,10 @@
 <link rel="manifest" href="/site.webmanifest">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<!-- The first is what every browser now reads. The second is Safari's older spelling, which it
+     still needs and which Chrome warns about in the console — kept because dropping it would
+     take the standalone launch away from iOS, and a console warning is the cheaper thing. -->
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="nextly">
 

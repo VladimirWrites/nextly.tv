@@ -16,13 +16,82 @@ export const needsKey = false;
 // holding it open for text that never arrives.
 export const hasBios = false;
 
-async function get(path) {
-  const r = await fetch(API + path, { headers: { accept: "application/json" } });
+/* ---- being throttled, and surviving it ----
+
+   TVmaze allows "at least 20 calls every 10 seconds per IP address" and asks callers to back
+   off when refused. Nothing here did, and an import of five hundred shows costs two requests
+   each — a lookup and then the record, because /lookup/shows carries no episodes — so it went
+   out at roughly ten times the documented rate.
+
+   What made that hard to see is how the refusal arrives. The 429 comes back without CORS
+   headers, so a browser never shows the status at all: it reports "blocked by CORS policy" and
+   the fetch rejects as a network error. Callers that catch and carry on then count a throttled
+   show as one the catalogue could not place, and a library quietly arrives short. Measured on a
+   fast connection: twenty failures in a thousand requests, thirty-six shows lost.
+
+   So a refusal is retried rather than reported, up to three times, behind the gate below — the
+   waiting is that gate's job, and it holds every request rather than only the one that failed.
+   A 404 is not retried: the catalogue answering "no such show" is an answer. */
+const RETRIES = 3;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* Retrying alone would only be politer about causing the problem — the same burst goes out and
+   more of it comes back. But a fixed rate is the wrong answer too: TVmaze publishes a floor
+   ("at least" twenty in ten seconds) and serves a lot more than that from its edge cache, so
+   pacing to the floor spends minutes waiting for permission that was never going to be refused.
+   Measured on the same import: capped, 103 seconds; uncapped, 48.
+
+   So nothing is paced until something is refused, and then everything is. One refusal shuts the
+   gate for a moment, which is what breaks the burst up — retrying only the request that failed
+   would leave the rest of the burst in flight, causing the next one. The wait doubles while
+   refusals keep coming and relaxes as they stop, so a slow connection or a stricter limit finds
+   its own pace instead of being told one.
+
+   Deliberately shared across every caller: the point is that they stop together. */
+let pausedUntil = 0;
+let strikes = 0;
+
+const gate = async () => {
+  while (Date.now() < pausedUntil) await sleep(pausedUntil - Date.now() + 10);
+};
+
+// Half a second, doubling to eight, whichever is further away — a refusal arriving during a
+// pause must not shorten it.
+function refused() {
+  strikes = Math.min(strikes + 1, 5);
+  pausedUntil = Math.max(pausedUntil, Date.now() + Math.min(8000, 500 * (2 ** strikes)));
+}
+
+// Answered, so the next refusal starts from a shorter wait than the last one ended on.
+const allowed = () => { if (strikes) strikes--; };
+
+async function get(path, attempt = 0) {
+  await gate();
+  let r;
+  try {
+    r = await fetch(API + path, { headers: { accept: "application/json" } });
+  } catch (e) {
+    /* A network error, which is also what a CORS-less 429 looks like from in here — the refusal
+       carries no CORS headers, so the browser never shows the status and the fetch simply
+       rejects. Indistinguishable from being offline, and treated the same: back off and try
+       again, then give up honestly. */
+    refused();
+    if (attempt < RETRIES) return get(path, attempt + 1);
+    throw new Error("Couldn't reach TVmaze.");
+  }
+  if (r.status === 429 || r.status >= 500) {
+    refused();
+    if (attempt < RETRIES) return get(path, attempt + 1);
+    if (r.status === 429) throw new Error("TVmaze rate limit hit. Try again in a few seconds.");
+  }
+  allowed();
+  // Not retried: the catalogue saying it has no such show is an answer, not a refusal.
   if (r.status === 404) throw new Error("Not found on TVmaze.");
-  if (r.status === 429) throw new Error("TVmaze rate limit hit. Try again in a few seconds.");
   if (!r.ok) throw new Error(`TVmaze error ${r.status}`);
   return r.json();
 }
+
+
 
 // TVmaze summaries are HTML fragments. The app renders text nodes, so the tags are stripped
 // here rather than trusted anywhere downstream.
