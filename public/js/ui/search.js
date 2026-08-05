@@ -157,10 +157,10 @@ function result(r, go) {
   // a second copy of itself and then refusing.
   const held = findLikeShow(state, r);
   const tracked = !!held;
-  // A film opens a different page and is added by a different path; everything else about the
+  // A movie opens a different page and is added by a different path; everything else about the
   // row is the same, which is the point of holding both in one list.
-  const film = isMovie(r);
-  const route = film ? "movie" : "show";
+  const movie = isMovie(r);
+  const route = movie ? "movie" : "show";
   // Everything drawn here is worth keeping: opening this row should not have to fetch the
   // picture the user is already looking at.
   cache.putHint(r);
@@ -185,7 +185,7 @@ function result(r, go) {
             const btn = e.currentTarget;
             btn.disabled = true;
             try {
-              const sh = film ? await trackMovie(r.key) : await trackShow(r.key);
+              const sh = movie ? await trackMovie(r.key) : await trackShow(r.key);
               // Adding can turn out to be a show already held under the other catalogue's
               // numbering. Opening it is the thing wanted; a refusal on its own is a dead end.
               if (sh && sh.id !== r.key) go(route, sh.id);
@@ -227,18 +227,18 @@ async function run(root, go, top) {
     status = "loading";
     renderSearch(root, { go, top });
     try {
-      /* Both at once when films are on, and the two catalogues answering are not the same one:
-         television comes from whichever is chosen, films from TMDB or Cinemeta. Asked together
+      /* Both at once when movies are on, and the two catalogues answering are not the same one:
+         television comes from whichever is chosen, movies from TMDB or Cinemeta. Asked together
          and settled together, so the list does not arrive in two jumps.
 
-         Films after shows rather than interleaved. This is a television tracker with films in
+         Movies after shows rather than interleaved. This is a television tracker with movies in
          it, and a search for a title that is both should offer the series first. */
       const wantMovies = !!(state.settings || {}).movies;
-      const [shows, films] = await Promise.all([
+      const [shows, movies] = await Promise.all([
         meta.search(q),
         wantMovies ? meta.searchMovies(q).catch(() => []) : Promise.resolve([]),
       ]);
-      results = [...shows, ...films];
+      results = [...shows, ...movies];
       status = "done";
     } catch (e) {
       error = e.message;

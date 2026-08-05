@@ -1,8 +1,8 @@
-// Films.
+// Movies.
 //
-// A film is the show record with one mark and no seasons. These cover the places where that
+// A movie is the show record with one mark and no seasons. These cover the places where that
 // choice could go wrong quietly — and one of them did: normShow validated every mark id against
-// "<season>x<episode>", so a film's only mark was dropped every time the vault was read. It
+// "<season>x<episode>", so a movie's only mark was dropped every time the vault was read. It
 // saved correctly, came back empty, and nothing anywhere said so.
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -16,14 +16,14 @@ const play = (show, s, e, at) => ({ type: "episode", action: "watch", watched_at
   episode: { ids: { trakt: 1 }, season: s, number: e }, show });
 
 const NOW = 1_700_000_000_000;
-const film = (over = {}) => normShow(makeShow({
+const movie = (over = {}) => normShow(makeShow({
   key: "tmdb:m76600", src: "tmdb", ref: "m76600", kind: "movie",
   name: "Avatar: The Way of Water", year: 2022, imdb: "tt1630029", ...over,
 }, NOW));
 
-/* TMDB numbers films and series separately, so 76600 means two different things in the same
+/* TMDB numbers movies and series separately, so 76600 means two different things in the same
    catalogue. The marker is what keeps them apart in a key that has to survive being shared. */
-test("a film key is not a show key, even for the same number", () => {
+test("a movie key is not a show key, even for the same number", () => {
   assert.equal(movieKey("tmdb", 76600), "tmdb:m76600");
   assert.ok(isMovieKey("tmdb:m76600"));
   assert.ok(!isMovieKey("tmdb:76600"));
@@ -38,8 +38,8 @@ test("Cinemeta keys by IMDb id, which survives the marker", () => {
 
 /* The mark that normalisation used to eat. epKey builds "<season>x<episode>" and can never
    produce "m", so the two id shapes cannot collide however they are stored. */
-test("a film's mark survives being read back", () => {
-  const sh = film();
+test("a movie's mark survives being read back", () => {
+  const sh = movie();
   markMovie({ shows: [sh] }, sh.id, true, NOW);
   assert.equal(sh.entries.length, 1);
   assert.equal(sh.entries[0].id, MOVIE_MARK);
@@ -50,14 +50,14 @@ test("a film's mark survives being read back", () => {
 });
 
 test("nonsense in the entries is still refused", () => {
-  const sh = film();
+  const sh = movie();
   sh.entries = [{ id: "m", m: NOW }, { id: "1x1", m: NOW }, { id: "nonsense", m: NOW }, { id: "", m: NOW }];
   assert.deepEqual(normShow(sh).entries.map((e) => e.id), ["m", "1x1"]);
 });
 
-test("a film's kind survives being read back", () => {
-  assert.equal(normShow(JSON.parse(JSON.stringify(film()))).kind, "movie");
-  assert.ok(isMovie(normShow(JSON.parse(JSON.stringify(film())))));
+test("a movie's kind survives being read back", () => {
+  assert.equal(normShow(JSON.parse(JSON.stringify(movie()))).kind, "movie");
+  assert.ok(isMovie(normShow(JSON.parse(JSON.stringify(movie())))));
 });
 
 test("a show carries no kind at all, so old records read as shows", () => {
@@ -66,10 +66,10 @@ test("a show carries no kind at all, so old records read as shows", () => {
   assert.ok(!isMovie(sh));
 });
 
-/* Marking a film must not start it. "Watching" describes being partway through something, and
-   Up next answers a question a film has no answer to. */
-test("marking a film leaves it planned, and off Up next", () => {
-  const sh = film();
+/* Marking a movie must not start it. "Watching" describes being partway through something, and
+   Up next answers a question a movie has no answer to. */
+test("marking a movie leaves it planned, and off Up next", () => {
+  const sh = movie();
   const state = { shows: [sh] };
   markMovie(state, sh.id, true, NOW);
   assert.equal(sh.st, "planned");
@@ -78,7 +78,7 @@ test("marking a film leaves it planned, and off Up next", () => {
 });
 
 test("unmarking removes it again", () => {
-  const sh = film();
+  const sh = movie();
   const state = { shows: [sh] };
   markMovie(state, sh.id, true, NOW);
   markMovie(state, sh.id, false, NOW);
@@ -86,19 +86,19 @@ test("unmarking removes it again", () => {
   assert.ok(!movieWatched(sh));
 });
 
-/* An import can say a film was seen more than once — Trakt counts plays — and the pass level
+/* An import can say a movie was seen more than once — Trakt counts plays — and the pass level
    is where that already lives for shows. */
 test("plays are the pass level, so a rewatch counts", () => {
-  const sh = film();
+  const sh = movie();
   sh.entries = [{ id: MOVIE_MARK, m: NOW, n: 3 }];
   assert.equal(moviePlays(sh), 3);
   assert.ok(movieWatched(sh));
-  assert.equal(moviePlays(film()), 0, "and an unwatched film has none");
+  assert.equal(moviePlays(movie()), 0, "and an unwatched movie has none");
 });
 
-/* Fargo the film and Fargo the series are not the same thing, and neither are the remakes that
+/* Fargo the movie and Fargo the series are not the same thing, and neither are the remakes that
    share a title with the year of their source. */
-test("a film never folds into a show of the same name and year", () => {
+test("a movie never folds into a show of the same name and year", () => {
   const state = { shows: [normShow(makeShow({
     key: "tvmaze:1", src: "tvmaze", ref: 1, name: "Fargo", year: 1996, imdb: "tt0116282",
   }, NOW))] };
@@ -108,14 +108,14 @@ test("a film never folds into a show of the same name and year", () => {
     "not even on a shared id, which should never happen and would take the marks with it");
 });
 
-test("a film does fold into the same film from another catalogue", () => {
-  const state = { shows: [film()] };
+test("a movie does fold into the same movie from another catalogue", () => {
+  const state = { shows: [movie()] };
   const same = { key: "cinemeta:mtt1630029", src: "cinemeta", ref: "mtt1630029", kind: "movie",
                  name: "Avatar: The Way of Water", year: 2022, imdb: "tt1630029" };
   assert.ok(findSameShow(state, same), "matched on the portable id, as shows are");
 });
 
-test("adding a film files it as one", () => {
+test("adding a movie files it as one", () => {
   const state = { shows: [] };
   const sh = addShow(state, { key: "tmdb:m76600", src: "tmdb", ref: "m76600", kind: "movie",
                               name: "Avatar: The Way of Water", year: 2022 }, NOW);
@@ -125,18 +125,18 @@ test("adding a film files it as one", () => {
   assert.equal(sh.st, "planned", "and start() has nothing to say about it");
 });
 
-/* ---- films out of a Trakt export ---- */
+/* ---- movies out of a Trakt export ---- */
 
-import { filmsFromHistory, readExport } from "../public/js/domain/trakt-export.js";
+import { moviesFromHistory, readExport } from "../public/js/domain/trakt-export.js";
 import { planMarks, applyMarks } from "../public/js/domain/external.js";
 
-const filmPlay = (at, ids = { trakt: 56580, imdb: "tt1630029", tmdb: 76600 }) => ({
+const moviePlay = (at, ids = { trakt: 56580, imdb: "tt1630029", tmdb: 76600 }) => ({
   type: "movie", action: "watch", watched_at: at,
   movie: { ids, year: 2022, title: "Avatar: The Way of Water" },
 });
 
-test("a film play becomes a row with no episodes", () => {
-  const rows = filmsFromHistory([filmPlay("2023-01-01T20:00:00Z")]);
+test("a movie play becomes a row with no episodes", () => {
+  const rows = moviesFromHistory([moviePlay("2023-01-01T20:00:00Z")]);
   assert.equal(rows.length, 1);
   assert.equal(rows[0].kind, "movie");
   assert.deepEqual(rows[0].episodes, []);
@@ -144,41 +144,41 @@ test("a film play becomes a row with no episodes", () => {
   assert.equal(rows[0].plays, 1);
 });
 
-test("repeated film plays are counted, latest date kept", () => {
-  const rows = filmsFromHistory([
-    filmPlay("2023-01-01T20:00:00Z"), filmPlay("2024-06-01T20:00:00Z"), filmPlay("2023-08-01T20:00:00Z"),
+test("repeated movie plays are counted, latest date kept", () => {
+  const rows = moviesFromHistory([
+    moviePlay("2023-01-01T20:00:00Z"), moviePlay("2024-06-01T20:00:00Z"), moviePlay("2023-08-01T20:00:00Z"),
   ]);
   assert.equal(rows[0].plays, 3);
   assert.equal(rows[0].at, Date.parse("2024-06-01T20:00:00Z"));
 });
 
-/* Trakt numbers films and series separately, so the same number is two different titles. The
-   first version of this keyed on the number alone and a film quietly ate a watchlisted series. */
-test("a film and a series sharing a Trakt id stay two rows", () => {
+/* Trakt numbers movies and series separately, so the same number is two different titles. The
+   first version of this keyed on the number alone and a movie quietly ate a watchlisted series. */
+test("a movie and a series sharing a Trakt id stay two rows", () => {
   const r = readExport({
     "watched-history.json": [
       play(WIRE, 1, 1, "2018-02-03T21:30:00Z"),
-      filmPlay("2023-01-01T20:00:00Z", { trakt: 1429, imdb: "tt1630029" }),   // same id as WIRE
+      moviePlay("2023-01-01T20:00:00Z", { trakt: 1429, imdb: "tt1630029" }),   // same id as WIRE
     ],
   });
   assert.equal(r.feed.shows.length, 2);
-  assert.equal(r.films, 1);
+  assert.equal(r.movies, 1);
 });
 
-/* The setting hides films; it does not decide what is kept. Somebody who switches films on a
+/* The setting hides movies; it does not decide what is kept. Somebody who switches movies on a
    month after importing should find their history already there rather than having to fetch
    the export again. */
-test("films are imported whether or not they are switched on", () => {
-  const r = readExport({ "watched-history.json": [filmPlay("2023-01-01T20:00:00Z")] });
-  assert.equal(r.films, 1);
+test("movies are imported whether or not they are switched on", () => {
+  const r = readExport({ "watched-history.json": [moviePlay("2023-01-01T20:00:00Z")] });
+  assert.equal(r.movies, 1);
   assert.equal(r.feed.shows.length, 1);
   assert.equal(r.feed.shows[0].kind, "movie");
 });
 
-/* The import writes a film's mark from its play count, which is where a rewatch elsewhere
+/* The import writes a movie's mark from its play count, which is where a rewatch elsewhere
    becomes a rewatch here. */
-test("importing a film writes one mark carrying its plays and date", () => {
-  const sh = film();
+test("importing a movie writes one mark carrying its plays and date", () => {
+  const sh = movie();
   const at = Date.parse("2024-06-01T20:00:00Z");
   const plan = planMarks(sh, [], NOW, { kind: "movie", plays: 3, at });
   assert.equal(plan.add.length, 1);
@@ -190,8 +190,8 @@ test("importing a film writes one mark carrying its plays and date", () => {
   assert.equal(moviePlays(sh), 3);
 });
 
-test("importing a film twice adds nothing the second time", () => {
-  const sh = film();
+test("importing a movie twice adds nothing the second time", () => {
+  const sh = movie();
   const row = { kind: "movie", plays: 1, at: Date.parse("2024-06-01T20:00:00Z") };
   applyMarks(sh, planMarks(sh, [], NOW, row), NOW);
   const again = planMarks(sh, [], NOW, row);
@@ -200,7 +200,7 @@ test("importing a film twice adds nothing the second time", () => {
 });
 
 test("a higher play count raises an existing mark", () => {
-  const sh = film();
+  const sh = movie();
   applyMarks(sh, planMarks(sh, [], NOW, { kind: "movie", plays: 1, at: 0 }), NOW);
   applyMarks(sh, planMarks(sh, [], NOW, { kind: "movie", plays: 4, at: 0 }), NOW);
   assert.equal(moviePlays(sh), 4);
@@ -208,12 +208,12 @@ test("a higher play count raises an existing mark", () => {
 
 /* TMDB carries announced projects years ahead of release. Sorting a filmography on the year
    alone opened Sam Worthington's page with Avatar 5 and Avatar 4 — neither of which exists —
-   ahead of every film he has actually been in. A career is what happened, then what is coming. */
+   ahead of every movie he has actually been in. A career is what happened, then what is coming. */
 test("a filmography leads with what exists, not with what is announced", () => {
   const now = new Date().getFullYear();
   const credits = [
     { name: "Announced Sequel", year: now + 3 },
-    { name: "Last Year's Film", year: now - 1 },
+    { name: "Last Year's Movie", year: now - 1 },
     { name: "Undated Project", year: null },
     { name: "The Old One", year: now - 20 },
     { name: "Next Year", year: now + 1 },
@@ -221,13 +221,13 @@ test("a filmography leads with what exists, not with what is announced", () => {
   const unreleased = (c) => !c.year || c.year > now;
   credits.sort((a, b) => (unreleased(a) !== unreleased(b) ? (unreleased(a) ? 1 : -1) : (b.year || 0) - (a.year || 0)));
   assert.deepEqual(credits.map((c) => c.name),
-    ["Last Year's Film", "The Old One", "Announced Sequel", "Next Year", "Undated Project"]);
+    ["Last Year's Movie", "The Old One", "Announced Sequel", "Next Year", "Undated Project"]);
 });
 
 /* ---- which catalogue places an imported row ----
 
-   Five hundred and ninety-three films were read out of a Trakt export correctly, looked up
-   against TVmaze — which has no films — and written off as titles nothing could place. The
+   Five hundred and ninety-three movies were read out of a Trakt export correctly, looked up
+   against TVmaze — which has no movies — and written off as titles nothing could place. The
    library came back with the shows and none of the movies, and the count said "missed". */
 test("a movie row is placed by the movie catalogue, a show row by the show one", async () => {
   const { importFeed } = await import("../public/js/io/import-feed.js");
@@ -247,7 +247,7 @@ test("a movie row is placed by the movie catalogue, a show row by the show one",
 
   await importFeed({ shows: [
     { name: "A Series", imdb: "tt0306414", episodes: [{ s: 1, e: 1, at: 0, plays: 1 }] },
-    { name: "A Film", imdb: "tt1630029", kind: "movie", plays: 1, at: 0, episodes: [] },
+    { name: "A Movie", imdb: "tt1630029", kind: "movie", plays: 1, at: 0, episodes: [] },
   ] }, {
     addMissing: true,
     pick: (row) => (row.kind === "movie" ? stub("cinemeta") : stub("tvmaze")),
@@ -258,14 +258,14 @@ test("a movie row is placed by the movie catalogue, a show row by the show one",
     { id: "tvmaze", imdb: "tt0306414" },
   ], "each row went to the catalogue that can answer for it");
   assert.equal(state.shows.length, 2);
-  assert.ok(state.shows.some((x) => x.kind === "movie"), "and the film was added as one");
+  assert.ok(state.shows.some((x) => x.kind === "movie"), "and the movie was added as one");
 });
 
 /* ---- the same movie, found in the other catalogue ----
 
-   A film added from Cinemeta is keyed by its IMDb id. Switch to TMDB and search for it again
+   A movie added from Cinemeta is keyed by its IMDb id. Switch to TMDB and search for it again
    and the result carries TMDB's id and no IMDb id at all — that endpoint does not return one.
-   With nothing in common the row offered to add a film the library already held, and pressing
+   With nothing in common the row offered to add a movie the library already held, and pressing
    it said "already in your library", which is a fine way to make somebody distrust both. */
 
 test("a TMDB search result matches the same movie added from Cinemeta", () => {
@@ -273,7 +273,7 @@ test("a TMDB search result matches the same movie added from Cinemeta", () => {
     key: "cinemeta:mtt0111161", src: "cinemeta", ref: "mtt0111161", kind: "movie",
     name: "The Shawshank Redemption", year: 1994, imdb: "tt0111161", tmdb: 278,
   }, NOW));
-  assert.equal(held.tmdb, 278, "TMDB's id is kept, because for a film it is the only bridge");
+  assert.equal(held.tmdb, 278, "TMDB's id is kept, because for a movie it is the only bridge");
 
   const state = { shows: [held] };
   // Exactly what tmdb.searchMovies returns: an id, and no imdb.
@@ -302,7 +302,7 @@ test("a TMDB id survives being read back", () => {
   assert.equal(sh.tmdb, 278);
 });
 
-/* Two different films must not fold together just because both are on TMDB. */
+/* Two different movies must not fold together just because both are on TMDB. */
 test("different TMDB ids stay different movies", () => {
   const state = { shows: [normShow(makeShow({
     key: "cinemeta:mtt0111161", src: "cinemeta", ref: "mtt0111161", kind: "movie",
@@ -312,7 +312,7 @@ test("different TMDB ids stay different movies", () => {
   assert.equal(findSameShow(state, other), null);
 });
 
-/* And a film's TMDB id must never match a series carrying the same number — the two spaces are
+/* And a movie's TMDB id must never match a series carrying the same number — the two spaces are
    numbered separately, and the kind guard is what keeps them apart. */
 test("a movie never matches a show on a shared TMDB number", () => {
   const state = { shows: [normShow(makeShow({
@@ -325,20 +325,20 @@ test("a movie never matches a show on a shared TMDB number", () => {
 /* ---- which catalogue a movie comes from ----
 
    It follows the catalogue that has been chosen, which it did not: reading the TMDB key alone
-   meant somebody who had entered one and then deliberately picked TVmaze still had every film
+   meant somebody who had entered one and then deliberately picked TVmaze still had every movie
    come from TMDB and be stored under a TMDB key. */
-test("choosing TVmaze means films come from Cinemeta, key or no key", async () => {
+test("choosing TVmaze means movies come from Cinemeta, key or no key", async () => {
   const { movieProvider } = await import("../public/js/io/meta.js");
   const { state } = await import("../public/js/domain/store.js");
 
   state.settings = { provider: "tvmaze", tmdbKey: "KEY" };
-  assert.equal(movieProvider().id, "cinemeta", "TVmaze has no films, and TVmaze is what was asked for");
+  assert.equal(movieProvider().id, "cinemeta", "TVmaze has no movies, and TVmaze is what was asked for");
 
   state.settings = { provider: "tvmaze" };
   assert.equal(movieProvider().id, "cinemeta");
 });
 
-test("choosing TMDB means films come from TMDB, when the key works", async () => {
+test("choosing TMDB means movies come from TMDB, when the key works", async () => {
   const { movieProvider } = await import("../public/js/io/meta.js");
   const { state } = await import("../public/js/domain/store.js");
 
@@ -346,7 +346,7 @@ test("choosing TMDB means films come from TMDB, when the key works", async () =>
   assert.equal(movieProvider().id, "tmdb");
 
   /* Chosen but unusable falls back to TVmaze for television, and there is only one thing left
-     that can answer for a film. */
+     that can answer for a movie. */
   state.settings = { provider: "tmdb" };
   assert.equal(movieProvider().id, "cinemeta");
 });
@@ -358,9 +358,9 @@ test("choosing TMDB means films come from TMDB, when the key works", async () =>
 test("cast and recommendations follow the chosen catalogue, not a stored key", async () => {
   const meta = await import("../public/js/io/meta.js");
   const { state } = await import("../public/js/domain/store.js");
-  const film = { key: "cinemeta:mtt1630029", imdb: "tt1630029", tmdb: 76600 };
+  const movie = { key: "cinemeta:mtt1630029", imdb: "tt1630029", tmdb: 76600 };
 
   state.settings = { provider: "tvmaze", tmdbKey: "KEY" };
-  assert.deepEqual(await meta.movieCredits(film), [], "TVmaze chosen: no cast, as on a show page");
-  assert.deepEqual(await meta.similarMovies(film), [], "and no recommendations");
+  assert.deepEqual(await meta.movieCredits(movie), [], "TVmaze chosen: no cast, as on a show page");
+  assert.deepEqual(await meta.similarMovies(movie), [], "and no recommendations");
 });

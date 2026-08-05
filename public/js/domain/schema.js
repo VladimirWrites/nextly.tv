@@ -16,7 +16,7 @@ export function defSettings() {
     specials: false,     // count specials towards progress and up-next
     themeSync: false,    // whether the theme below is shared with your other devices
     sync: {},            // per-service tracker credentials; stripped from the export
-    movies: false,       // films alongside shows; off until asked for
+    movies: false,       // movies alongside shows; off until asked for
     m: 0,                // mtime, so two devices changing settings resolve newest-wins
   };
 }
@@ -52,15 +52,15 @@ export function makeShow(meta, now = Date.now()) {
     imdb: meta.imdb || null,  // the portable ids: what re-resolves this show elsewhere
     tvdb: meta.tvdb || null,
     /* TMDB's id, kept because for a movie it is the only bridge there is. TMDB's movie search
-       returns no IMDb id, so a film added from Cinemeta — which does carry TMDB's id — could
-       not be recognised as the same film in a TMDB search result, and the row offered to add
+       returns no IMDb id, so a movie added from Cinemeta — which does carry TMDB's id — could
+       not be recognised as the same movie in a TMDB search result, and the row offered to add
        something the library already held. */
     ...(meta.tmdb ? { tmdb: +meta.tmdb || null } : {}),
     st: DEFAULT_STATUS,
     added: now,
     m: now,
     entries: [],              // watch marks; presence means watched
-    // Absent means a show, because every record written before films existed is one. A film
+    // Absent means a show, because every record written before movies existed is one. A movie
     // holds at most one mark, keyed MOVIE_MARK, and no seasons.
     ...(meta.kind === "movie" ? { kind: "movie" } : {}),
   };
@@ -104,10 +104,10 @@ export function normShow(sh) {
      mark written by a newer one, quietly delete the field it had never heard of, and push the
      stripped copy back for everyone. A field it cannot read is not a field it should be able to
      delete. */
-  /* An id this build recognises. "<season>x<episode>" for a show, and MOVIE_MARK for a film,
+  /* An id this build recognises. "<season>x<episode>" for a show, and MOVIE_MARK for a movie,
      which is why the two can never be confused: epKey always contains an "x" and never produces
      "m". The filter is what stops a corrupt blob putting nonsense in the vault — and it is also
-     what silently ate every film's only mark for as long as it knew about episodes alone. */
+     what silently ate every movie's only mark for as long as it knew about episodes alone. */
   const markId = (id) => /^\d+x\d+$/.test(id) || id === MOVIE_MARK;
 
   sh.entries = sh.entries
@@ -175,7 +175,7 @@ export function findLikeShow(state, card) {
   const name = foldText(card.name);
   if (!name || !card.year) return null;
   /* Title and year is a weaker match than an id, and across kinds it is a wrong one: Fargo the
-     film and Fargo the series are not the same thing, and neither are the several remakes that
+     movie and Fargo the series are not the same thing, and neither are the several remakes that
      share a title with the year of their source. */
   const kind = card.kind === "movie" ? "movie" : undefined;
   return (state.shows || [])
@@ -187,8 +187,8 @@ export function findSameShow(state, meta) {
   if (!meta) return null;
   const shows = state.shows || [];
   const key = meta.key || (meta.src && meta.ref != null ? `${meta.src}:${meta.ref}` : null);
-  /* Same kind only. An IMDb id names one title so a film and a series cannot collide today —
-     but matching across kinds would mean one bad id folds a film into a series and takes its
+  /* Same kind only. An IMDb id names one title so a movie and a series cannot collide today —
+     but matching across kinds would mean one bad id folds a movie into a series and takes its
      marks with it, and the guard costs nothing. */
   const kind = meta.kind === "movie" ? "movie" : undefined;
   const same = (x) => (x.kind === "movie" ? "movie" : undefined) === kind;

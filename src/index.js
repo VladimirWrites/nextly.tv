@@ -58,11 +58,16 @@ const policy = (file, extra = {}) => [
    the alternative — allowing any https image — would leave the one channel that could carry
    something out of the page open for no gain. */
 const CSP_APP = policy("app.html", {
-  /* Cinemeta is here for films, which TVmaze does not carry at all — it is a television
+  /* Cinemeta is here for movies, which TVmaze does not carry at all — it is a television
      database. Its artwork comes from two hosts it does not serve itself: metahub for its own
      posters, and Amazon's image CDN for the ones it takes from IMDb. Both have to be named, or
-     the poster is the only part of a film that fails to arrive. */
-  connect: "https://api.themoviedb.org https://api.tvmaze.com https://v3-cinemeta.strem.io",
+     the poster is the only part of a movie that fails to arrive.
+
+     Its catalogue lives on a third host: asking v3-cinemeta for one answers 307 to
+     cinemeta-catalogs, and a policy names the host a redirect lands on as well as the one it
+     started from. Without it the request dies at the redirect and the row simply comes back
+     empty, which is indistinguishable from a catalogue with nothing in it. */
+  connect: "https://api.themoviedb.org https://api.tvmaze.com https://v3-cinemeta.strem.io https://cinemeta-catalogs.strem.io",
   img: "https://image.tmdb.org https://static.tvmaze.com https://images.metahub.space https://m.media-amazon.com",
 });
 

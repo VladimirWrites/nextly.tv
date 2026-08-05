@@ -134,17 +134,17 @@ test("DETAIL names exactly the screens that have a subject", () => {
   assert.deepEqual(Object.keys(DETAIL).sort(), ["episode", "feed", "movie", "person", "season", "show"]);
 });
 
-/* A film names a film, so it goes in the fragment with the rest. Its key carries an "m" after
-   the colon because TMDB numbers films and series separately and the same number means two
+/* A movie names a movie, so it goes in the fragment with the rest. Its key carries an "m" after
+   the colon because TMDB numbers movies and series separately and the same number means two
    different things — which is a thing the address has to survive being copied. */
-test("a film is named in the fragment, keeping the marker in its key", () => {
+test("a movie is named in the fragment, keeping the marker in its key", () => {
   assert.deepEqual(parseRoute("/movie", "#tmdb:m76600"), { name: "movie", arg: "tmdb:m76600" });
   assert.equal(pathFor("movie", "tmdb:m76600"), "/movie#tmdb:m76600");
-  assert.deepEqual(parseRoute("/movie", ""), HOME, "a film with no name is not a place");
+  assert.deepEqual(parseRoute("/movie", ""), HOME, "a movie with no name is not a place");
   assert.deepEqual(parseRoute("/movie/tmdb:m76600", ""), HOME, "and the path form is not a route");
 });
 
-test("a Cinemeta film keeps its IMDb id through an address", () => {
+test("a Cinemeta movie keeps its IMDb id through an address", () => {
   assert.deepEqual(parseRoute("/movie", "#cinemeta:mtt1630029"),
     { name: "movie", arg: "cinemeta:mtt1630029" });
   assert.equal(pathFor("movie", "cinemeta:mtt1630029"), "/movie#cinemeta:mtt1630029");

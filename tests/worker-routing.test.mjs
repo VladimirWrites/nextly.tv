@@ -146,7 +146,9 @@ test("only documents carry a policy — a policy on a script would say nothing",
 
 test("the app's policy names the catalogues it talks to and nothing else", async () => {
   const csp = (await get("/library")).headers.get("content-security-policy");
-  assert.match(csp, /connect-src 'self' https:\/\/api\.themoviedb\.org https:\/\/api\.tvmaze\.com https:\/\/v3-cinemeta\.strem\.io;/);
+  assert.match(csp, /connect-src 'self' https:\/\/api\.themoviedb\.org https:\/\/api\.tvmaze\.com https:\/\/v3-cinemeta\.strem\.io https:\/\/cinemeta-catalogs\.strem\.io;/);
+  assert.match(csp, /cinemeta-catalogs\.strem\.io/,
+    "Cinemeta's catalogue answers 307 to another host, and a policy names where a redirect lands");
   assert.match(csp, /img-src 'self' data: [^;]*images\.metahub\.space[^;]*m\.media-amazon\.com/,
     "Cinemeta's posters come from hosts it does not serve itself, and a host not named here is a poster that never loads");
   assert.match(csp, /img-src 'self' data: https:\/\/image\.tmdb\.org https:\/\/static\.tvmaze\.com/);

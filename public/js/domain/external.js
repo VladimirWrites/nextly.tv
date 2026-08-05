@@ -57,7 +57,7 @@ export function matchFeed(state, feed) {
 export function planMarks(show, episodes, now, row = null) {
   const have = new Map((show.entries || []).map((e) => [e.id, e]));
 
-  /* A film has one mark and no episodes, so the loop below has nothing to walk. What it carries
+  /* A movie has one mark and no episodes, so the loop below has nothing to walk. What it carries
      instead is a play count and a date, which is the same pair every episode carries — so the
      plan is built by hand here and applied by exactly the same code. */
   if (row && row.kind === "movie") {

@@ -1,8 +1,8 @@
-// Cinemeta: films, without a key.
+// Cinemeta: movies, without a key.
 //
-// TVmaze has no films — it is a television database and says so in its name — so the catalogue
+// TVmaze has no movies — it is a television database and says so in its name — so the catalogue
 // that costs nothing to use cannot answer for them. TMDB can, and needs a key. That would have
-// made films a feature most readers could not turn on, which is a poor kind of feature.
+// made movies a feature most readers could not turn on, which is a poor kind of feature.
 //
 // Cinemeta is Stremio's metadata add-on: open, keyless, and answering CORS preflights with
 // `access-control-allow-origin: *`, so the browser can talk to it directly the way it talks to
@@ -12,7 +12,7 @@
 //
 // What they do not publish is a rate limit, a term of service, or any promise that it will keep
 // answering. So it is the fallback and never the first choice: a reader with a TMDB key never
-// touches it, and if it goes away, films degrade for the readers who had no key rather than
+// touches it, and if it goes away, movies degrade for the readers who had no key rather than
 // breaking for everyone. That is the same bargain the whole provider layer exists to make.
 //
 // Keyed by IMDb id, which is the happy part: the portable id is the primary key, so nothing
@@ -78,7 +78,7 @@ const yearOf = (v) => {
   return m ? +m[1] : null;
 };
 
-/* A film, in the shape io/cache.js documents for a show, with no seasons.
+/* A movie, in the shape io/cache.js documents for a show, with no seasons.
    Nothing downstream has to know which catalogue answered. */
 function normalize(meta) {
   const ref = meta.imdb_id || meta.id;
@@ -97,7 +97,7 @@ function normalize(meta) {
     backdrop: meta.background || null,
     imdb: meta.imdb_id || (String(meta.id || "").startsWith("tt") ? meta.id : null),
     // Cinemeta carries TMDB's id as well, so a record made here can still be recognised as the
-    // same film if the reader later adds a TMDB key.
+    // same movie if the reader later adds a TMDB key.
     tmdb: meta.moviedb_id ? +meta.moviedb_id : null,
     tvdb: null,
     // Its own opinion, named — a number with no source is folklore.
@@ -110,8 +110,8 @@ function normalize(meta) {
 }
 
 /* An id it has never heard of comes back 200 with an empty meta object rather than a 404, so
-   the absence has to be recognised by what is missing from it. A film with no name is not a
-   film, and taking it at face value would have filed "Untitled" in somebody's library. */
+   the absence has to be recognised by what is missing from it. A movie with no name is not a
+   movie, and taking it at face value would have filed "Untitled" in somebody's library. */
 export async function fetchMovie(ref) {
   const d = await get(`/meta/movie/${encodeURIComponent(ref)}.json`);
   const meta = d && d.meta;
@@ -135,7 +135,26 @@ export async function search(query) {
   }));
 }
 
-// The portable id is the key here, so placing a film from elsewhere costs one request and no
+/* Its "top" catalogue, which the manifest labels Popular. Paged by an offset rather than a page
+   number, and it answers a redirect before it answers with JSON — fetch follows that on its own,
+   which curl does not, and is why this looked broken the first time it was asked for. */
+export async function popularMovies(skip = 0) {
+  const at = skip ? `/catalog/movie/top/skip=${skip}.json` : "/catalog/movie/top.json";
+  const d = await get(at).catch(() => null);
+  return ((d && d.metas) || []).map((m) => ({
+    key: movieKey(id, m.imdb_id || m.id),
+    kind: "movie",
+    src: id,
+    ref: m.imdb_id || m.id,
+    name: m.name || "",
+    year: yearOf(m.year) || yearOf(m.releaseInfo) || null,
+    poster: m.poster || null,
+    rating: m.imdbRating ? +m.imdbRating : null,
+    ratingSource: "IMDb",
+  }));
+}
+
+// The portable id is the key here, so placing a movie from elsewhere costs one request and no
 // searching. tvdb is ignored: Cinemeta does not index it.
 export async function lookup({ imdb }) {
   if (!imdb) return null;

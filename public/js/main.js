@@ -202,15 +202,15 @@ function render() {
      in the bar with every other screen's, and so the document title says which feed too. */
   const feed = route.name === "feed" ? feedById(route.arg) : null;
   const titles = { next: "Up next", library: "Library", search: "Search", you: "You", stats: "Your year", show: "", movie: "", person: "", season: "", episode: "", feed: feed ? feed.title : "" };
-  /* The show and film pages bleed their cover to the edges of the column, so they cap their own
-     children instead of being capped as a whole. A film's cover is the same cover — it was left
+  /* The show and movie pages bleed their cover to the edges of the column, so they cap their own
+     children instead of being capped as a whole. A movie's cover is the same cover — it was left
      out of this and sat inset by the page gutter with bands either side, which reads as a bug
      rather than as a design. */
   const body = h("main.main", { class: ["show", "movie"].includes(route.name) ? "is-show" : null });
 
   setDocumentTitle(titles);
 
-  // The show and film pages have their own bar over the cover, so they take no topbar at all.
+  // The show and movie pages have their own bar over the cover, so they take no topbar at all.
   const top = ["show", "movie"].includes(route.name) ? null : renderTopbar(titles[route.name]);
 
   /* A screen tapped into rather than navigated to. On a phone the tab bar comes off these:

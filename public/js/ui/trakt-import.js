@@ -61,15 +61,15 @@ export function review(read, out, repaint) {
   const lines = [
     h("div", {
       text: `${fmtInt(read.episodes)} episodes across ${fmtInt(read.feed.shows.length - read.planned)} shows in that file`
-        + (read.films ? `, ${fmtInt(read.films)} movies` : "")
+        + (read.movies ? `, ${fmtInt(read.movies)} movies` : "")
         + (read.planned ? `, and ${fmtInt(read.planned)} on the watchlist.` : "."),
     }),
     h("div", { text: what(p) }),
   ];
 
-  /* Films come in whether or not they are switched on, so somebody with them off should be
+  /* Movies come in whether or not they are switched on, so somebody with them off should be
      told where they went rather than left wondering why the count did not match. */
-  if (read.films && !(state.settings || {}).movies) {
+  if (read.movies && !(state.settings || {}).movies) {
     lines.push(h("div", { style: { marginTop: "6px" },
       text: "Movies are imported too. They stay hidden until you switch movies on in You." }));
   }

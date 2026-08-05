@@ -19,7 +19,7 @@ import { empty } from "./upnext.js";
 
 // Filters name states you'd actually go looking for, not the raw status field. "Waiting"
 // is the one that matters day to day: tracked, aired, unwatched.
-const isFilm = (r) => r.kind === "movie";
+const isMovie = (r) => r.kind === "movie";
 
 /* Two axes, two controls, because they answer different questions: what kind of thing, and
    where it stands. Folding both into one row of chips gave nine of them over three lines with
@@ -36,16 +36,16 @@ const isFilm = (r) => r.kind === "movie";
    two kinds on screen every chip means something for both. */
 const FILTERS = [
   { id: "all", label: "All", test: () => true },
-  { id: "waiting", label: "Waiting", test: (r) => !isFilm(r) && r.st === "active" && r.progress.remaining > 0 },
-  { id: "caught", label: "Caught up", test: (r) => (isFilm(r) ? r.watched : r.st === "active" && r.progress.remaining === 0) },
-  { id: "planned", label: "Planned", test: (r) => (isFilm(r) ? !r.watched : r.st === "planned") },
-  { id: "paused", label: "Paused", test: (r) => !isFilm(r) && r.st === "paused" },
-  { id: "dropped", label: "Dropped", test: (r) => !isFilm(r) && r.st === "dropped" },
+  { id: "waiting", label: "Waiting", test: (r) => !isMovie(r) && r.st === "active" && r.progress.remaining > 0 },
+  { id: "caught", label: "Caught up", test: (r) => (isMovie(r) ? r.watched : r.st === "active" && r.progress.remaining === 0) },
+  { id: "planned", label: "Planned", test: (r) => (isMovie(r) ? !r.watched : r.st === "planned") },
+  { id: "paused", label: "Paused", test: (r) => !isMovie(r) && r.st === "paused" },
+  { id: "dropped", label: "Dropped", test: (r) => !isMovie(r) && r.st === "dropped" },
 ];
 
 const KINDS = [["all", "All"], ["shows", "Shows"], ["movies", "Movies"]];
 
-const inKind = (r, k) => k === "all" || (k === "movies" ? isFilm(r) : !isFilm(r));
+const inKind = (r, k) => k === "all" || (k === "movies" ? isMovie(r) : !isMovie(r));
 
 
 
@@ -84,10 +84,10 @@ export function renderLibrary(root, { go, top }) {
     ));
   }
 
-  /* Films are hidden rather than removed when the setting is off, so switching it back on finds
+  /* Movies are hidden rather than removed when the setting is off, so switching it back on finds
      them where they were. The vault is not edited by a preference. */
-  const wantFilms = !!(state.settings || {}).movies;
-  const rows = state.shows.filter((sh) => wantFilms || sh.kind !== "movie").map((show) => {
+  const wantMovies = !!(state.settings || {}).movies;
+  const rows = state.shows.filter((sh) => wantMovies || sh.kind !== "movie").map((show) => {
     const meta = cache.getMeta(show.id);
     const progress = meta ? showProgress(show, meta, opts()) : { remaining: 0, watched: 0, aired: 0, pct: 0 };
     return {
@@ -108,7 +108,7 @@ export function renderLibrary(root, { go, top }) {
   const shown = ofKind.filter(chosen.test)
     .sort((SORTS.find((s) => s.id === sort) || SORTS[0]).cmp);
 
-  const anyFilm = rows.some(isFilm);
+  const anyMovie = rows.some(isMovie);
 
   /* One line that scrolls, rather than a block that wraps or a sheet that hides.
 
@@ -143,9 +143,9 @@ export function renderLibrary(root, { go, top }) {
      What has to survive is not the offset but the chip: whichever was last pressed is brought
      back into view after the repaint, at whatever offset that turns out to need. */
   const bar = shelfScroller(h("div.filter-bar", { role: "group", "aria-label": "Filter library" }, [
-    ...(anyFilm ? KINDS.map(([v, l]) =>
+    ...(anyMovie ? KINDS.map(([v, l]) =>
       chip(`kind:${v}`, l, rows.filter((r) => inKind(r, v)).length, kind === v, () => { kind = v; again(); })) : []),
-    anyFilm ? h("span.filter-sep", { "aria-hidden": "true" }) : null,
+    anyMovie ? h("span.filter-sep", { "aria-hidden": "true" }) : null,
     /* A status that cannot match anything in the kind on screen is not offered — which is what
        leaves a movie exactly the two it has, under the names shows already use. */
     ...FILTERS
@@ -235,7 +235,7 @@ export function renderLibrary(root, { go, top }) {
     const list = q ? shown.filter((r) => fold(r.name).includes(q)) : shown;
     /* Counted against what is on screen rather than against the vault: with Movies chosen,
        "3 of 604" is a comparison nobody asked for, and calling four things "4 shows" when
-       three of them are films was simply wrong. */
+       three of them are movies was simply wrong. */
     const held = rows.length;
     count.textContent = q || filter !== "all" || kind !== "all"
       ? `${list.length} of ${held}`
@@ -417,7 +417,7 @@ export function stopIndexWatch() {
 
 function card(row, go) {
   const { show, meta, progress } = row;
-  if (show.kind === "movie") return filmCard(row, go);
+  if (show.kind === "movie") return movieCard(row, go);
   const src = meta && (meta.posterSm || meta.poster);
   const next = meta ? nextUp(show, meta, opts()) : null;
   // A caught-up card has room to say when the show is back, which is the only thing left to
@@ -449,13 +449,13 @@ function card(row, go) {
   ]);
 }
 
-/* A film card, which is the show card with everything episode-shaped taken out.
+/* A movie card, which is the show card with everything episode-shaped taken out.
 
    No barcode: one tick is not a barcode, it is a dot, and a strip of one reads as a rendering
-   fault rather than as progress. No unwatched count and no returning pill either — a film is
+   fault rather than as progress. No unwatched count and no returning pill either — a movie is
    not partly seen and does not come back in the autumn. What is left is the poster, the title,
    and the one fact worth carrying: whether you have seen it, and how long it is. */
-function filmCard(row, go) {
+function movieCard(row, go) {
   const { show, meta } = row;
   const src = meta && (meta.posterSm || meta.poster);
   const seen = row.watched;
@@ -486,7 +486,7 @@ const STATUS_LABEL = { active: "Watching", planned: "Planned", paused: "Paused",
 // The same sheet the show page raises, from the card. Nothing is changed until something is
 // chosen, and choosing what it already is costs nothing.
 async function askStatus(show) {
-  // Watching, paused and dropped are all about being partway through something. A film is not.
+  // Watching, paused and dropped are all about being partway through something. A movie is not.
   if (show.kind === "movie") return;
   const picked = await chooser({
     title: show.name,

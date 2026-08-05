@@ -121,13 +121,13 @@ export async function fetchShow(ref) {
 /* Is this key actually usable? /configuration is the cheapest authenticated call TMDB has,
    so it answers the question without spending a search. A key that is merely stored tells
    the user nothing — they need to know it works before they rely on it. */
-/* ---- films ----
+/* ---- movies ----
 
    The same catalogue, a different half of it. Preferred over Cinemeta wherever a key exists:
    it is the one with terms, an SLA of sorts, and artwork sized for the screen asking.
 
-   Films are numbered separately from series here, which is why the key carries an "m" — 76600
-   is a film and also, elsewhere in the same catalogue, something else entirely. */
+   Movies are numbered separately from series here, which is why the key carries an "m" — 76600
+   is a movie and also, elsewhere in the same catalogue, something else entirely. */
 export async function fetchMovie(ref) {
   const d = await get(`/movie/${encodeURIComponent(ref)}`, { append_to_response: "external_ids,videos,credits" });
   return {
@@ -174,7 +174,7 @@ export async function searchMovies(query) {
   }));
 }
 
-/* A film this device holds under another catalogue's key. One request: TMDB's find endpoint
+/* A movie this device holds under another catalogue's key. One request: TMDB's find endpoint
    takes an IMDb id directly, which is what every record and every Trakt export carries. */
 export async function lookupMovie({ imdb }) {
   if (!imdb) return null;
@@ -332,34 +332,34 @@ export async function credits(ref) {
 
 /* combined_credits rather than tv_credits: an actor is not two people, and a page that lists
    only their television leaves half of most careers out. Each entry says which it is, so the
-   page can send a film to the film screen and a series to the series one.
+   page can send a movie to the movie screen and a series to the series one.
 
-   Films are listed whether or not the reader has films switched on. The setting decides what
-   this app tracks, not what a person has been in — and a filmography with the films removed is
+   Movies are listed whether or not the reader has movies switched on. The setting decides what
+   this app tracks, not what a person has been in — and a filmography with the movies removed is
    a strange thing to show somebody. */
 export async function person(ref) {
   const d = await get(`/person/${encodeURIComponent(ref)}`, { append_to_response: "combined_credits" });
   const seen = new Set();
   const shows = [];
   for (const c of ((d.combined_credits || {}).cast) || []) {
-    const film = c.media_type === "movie";
+    const movie = c.media_type === "movie";
     if (!c.id || seen.has(`${c.media_type}:${c.id}`)) continue;
     seen.add(`${c.media_type}:${c.id}`);
     shows.push({
-      key: film ? movieKey(id, c.id) : showKey(id, c.id),
-      kind: film ? "movie" : undefined,
-      name: (film ? c.title || c.original_title : c.name || c.original_name) || "",
-      year: yearOf(film ? c.release_date : c.first_air_date),
+      key: movie ? movieKey(id, c.id) : showKey(id, c.id),
+      kind: movie ? "movie" : undefined,
+      name: (movie ? c.title || c.original_title : c.name || c.original_name) || "",
+      year: yearOf(movie ? c.release_date : c.first_air_date),
       poster: img(c.poster_path, "w342"),
       character: c.character || "",
       // How much of a career an entry represents, so a walk-on does not outrank a lead.
-      weight: film ? (c.popularity || 0) : (c.episode_count || 1) * 2,
+      weight: movie ? (c.popularity || 0) : (c.episode_count || 1) * 2,
     });
   }
   /* Newest first among things that exist, and everything unreleased after them.
 
      Sorting on the year alone put two unannounced Avatar sequels at the head of Sam
-     Worthington's page, ahead of every film he has actually been in. TMDB carries announced
+     Worthington's page, ahead of every movie he has actually been in. TMDB carries announced
      projects years ahead, and a filmography that opens with them describes a schedule rather
      than a career. An undated credit is the same thing with the year missing, so it sorts with
      them. */
@@ -387,25 +387,35 @@ export async function person(ref) {
 /* What else to watch, from the catalogue's own idea of it. `recommendations` rather than
    `similar`: TMDB's similar endpoint matches on genre and keywords and returns a lot of
    loosely-related filler, while recommendations is built from what people actually went on to
-   watch — which is the question being asked. Falls back to similar where a film is obscure
+   watch — which is the question being asked. Falls back to similar where a movie is obscure
    enough to have no recommendations at all. */
+/* One shape for every movie this provider offers up, so a card from a search, a recommendation
+   and a popular row are the same object and the screens drawing them need no special cases. */
+const movieCard = (r) => ({
+  key: movieKey(id, r.id),
+  kind: "movie",
+  src: id,
+  ref: r.id,
+  name: r.title || r.original_title || "",
+  year: yearOf(r.release_date),
+  poster: img(r.poster_path, "w342"),
+  rating: r.vote_average || null,
+  ratingSource: "TMDB",
+});
+
+// Most-watched movies, the movie half of what `popular` already does for series.
+export async function popularMovies(page = 1) {
+  const d = await get("/movie/popular", { page });
+  return (d.results || []).map(movieCard);
+}
+
 export async function similarMovies(ref) {
   const d = await get(`/movie/${encodeURIComponent(ref)}/recommendations`).catch(() => null)
     || await get(`/movie/${encodeURIComponent(ref)}/similar`).catch(() => null);
-  return ((d && d.results) || []).slice(0, 20).map((r) => ({
-    key: movieKey(id, r.id),
-    kind: "movie",
-    src: id,
-    ref: r.id,
-    name: r.title || r.original_title || "",
-    year: yearOf(r.release_date),
-    poster: img(r.poster_path, "w342"),
-    rating: r.vote_average || null,
-    ratingSource: "TMDB",
-  }));
+  return ((d && d.results) || []).slice(0, 20).map(movieCard);
 }
 
-// The people in a film, with ids, so each one is a page rather than a name.
+// The people in a movie, with ids, so each one is a page rather than a name.
 export async function movieCredits(ref) {
   const d = await get(`/movie/${encodeURIComponent(ref)}/credits`).catch(() => null);
   const seen = new Set();
