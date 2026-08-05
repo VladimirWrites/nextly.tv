@@ -160,15 +160,19 @@ test("a film and a series sharing a Trakt id stay two rows", () => {
       play(WIRE, 1, 1, "2018-02-03T21:30:00Z"),
       filmPlay("2023-01-01T20:00:00Z", { trakt: 1429, imdb: "tt1630029" }),   // same id as WIRE
     ],
-  }, { films: true });
+  });
   assert.equal(r.feed.shows.length, 2);
   assert.equal(r.films, 1);
 });
 
-test("films are left out entirely when the setting is off", () => {
-  const r = readExport({ "watched-history.json": [filmPlay("2023-01-01T20:00:00Z")] }, { films: false });
-  assert.equal(r.films, 0);
-  assert.equal(r.feed.shows.length, 0);
+/* The setting hides films; it does not decide what is kept. Somebody who switches films on a
+   month after importing should find their history already there rather than having to fetch
+   the export again. */
+test("films are imported whether or not they are switched on", () => {
+  const r = readExport({ "watched-history.json": [filmPlay("2023-01-01T20:00:00Z")] });
+  assert.equal(r.films, 1);
+  assert.equal(r.feed.shows.length, 1);
+  assert.equal(r.feed.shows[0].kind, "movie");
 });
 
 /* The import writes a film's mark from its play count, which is where a rewatch elsewhere

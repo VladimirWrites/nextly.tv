@@ -247,7 +247,7 @@ const pagesOf = (names, re) => [...names]
 export const historyFiles = (names) => pagesOf(names, HISTORY_FILE);
 export const watchlistFiles = (names) => pagesOf(names, WATCHLIST_FILE);
 
-export function readExport(files, { films: wantFilms = false } = {}) {
+export function readExport(files) {
   const pages = historyFiles(Object.keys(files || {}));
   const history = pages.flatMap((name) => (Array.isArray(files[name]) ? files[name] : []));
   if (!pages.length || !history.length) {
@@ -255,10 +255,13 @@ export function readExport(files, { films: wantFilms = false } = {}) {
   }
   const feed = feedFromHistory(history);
 
-  /* Films, where the reader has asked for them. Read from the same history and appended to the
-     same list, because a film is a record in the same collection — the only thing that marks
-     one out downstream is `kind`. */
-  const films = wantFilms ? filmsFromHistory(history) : [];
+  /* Films, always, whether or not the reader has switched them on.
+
+     The setting decides what is shown, not what is kept — the Library hides films when it is
+     off and the vault holds them either way. Skipping them at import instead would mean
+     somebody who turns films on a month later has to find the export again and re-import it,
+     to get a history that was sitting in the file they already gave us. */
+  const films = filmsFromHistory(history);
   feed.shows.push(...films);
 
   /* Watchlisted shows are appended, and only where the history has not already accounted for

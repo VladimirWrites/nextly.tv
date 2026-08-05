@@ -11,7 +11,7 @@ import { h, svg, ICON, mount, keepMedia, poster, posterFallback } from "./dom.js
 import { state } from "../domain/store.js";
 import { findShow } from "../domain/schema.js";
 import { movieWatched, moviePlays } from "../domain/model.js";
-import { fmtScore, fmtDuration } from "../domain/constants.js";
+import { fmtScore, fmtDuration, movieKey } from "../domain/constants.js";
 import { fmtDate } from "../domain/dates.js";
 import { shareButton } from "./share-button.js";
 import { anonBar, canGoBack } from "./anon.js";
@@ -36,14 +36,33 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
   const name = (held && held.name) || (m && m.name) || "";
 
   if (top) {
-    top.actions.replaceChildren(shareButton(name || "this film", "movie", key));
+    /* Shared by an address the other end can actually open. A tmdb:m… key is a number only
+       TMDB can read, and a reader without a key gets nothing from it — where the IMDb id every
+       record carries is readable by Cinemeta, which needs no key at all. Same reasoning as the
+       portable key a show is shared by. */
+    const imdb = (held && held.imdb) || (m && m.imdb) || null;
+    top.actions.replaceChildren(
+      shareButton(name || "this film", "movie", imdb ? movieKey("cinemeta", imdb) : key));
     top.bar.querySelector(".topbar-title").textContent = name;
   }
 
   // Asked for on every visit, not only when it is missing: a record written before this app
   // read runtimes is present, complete-looking, and silent about them.
-  ensureMovie(key);
-  if (!m) return mount(root, waiting());
+  /* Asked for on every visit, and its failure is a state this page has to draw. A film keyed to
+     a catalogue this device cannot reach — a TMDB link opened by somebody with no key — would
+     otherwise sit on its skeleton for ever, which is what a shared link looked like before this
+     was checked. */
+  /* Asked once. Repainting on the failure is what draws the message below, and asking again on
+     that repaint would fetch, fail, repaint and fetch for as long as the page is open — which
+     is what it did before this guard, at one request per frame. */
+  if (!failed.has(key)) {
+    ensureMovie(key).then((got) => {
+      if (got || cache.has(key)) return;
+      failed.add(key);
+      repaint();
+    });
+  }
+  if (!m) return mount(root, failed.has(key) ? unplaceable(go) : waiting());
 
   const watched = movieWatched(held);
   const plays = moviePlays(held);
@@ -177,6 +196,19 @@ async function fillSimilar(box, m, go) {
       h("div.shelf-name.t-title", { text: f.name }),
       h("div.shelf-cap", { text: f.year ? String(f.year) : "" }),
     ]))), `like:${m.key}`),
+  );
+}
+
+/* Either it is on its way or it is not coming. The two look the same for a moment, which is
+   why the skeleton is what is drawn first and the honest sentence replaces it — a page that
+   says "couldn't find this" while the answer is still in flight is worse than a blank one. */
+const failed = new Set();
+
+function unplaceable(go) {
+  return empty(
+    "Couldn't find that film",
+    "The catalogue that link names can't be reached from this device. Searching for it by name may still find it.",
+    "Search", () => go("search"),
   );
 }
 

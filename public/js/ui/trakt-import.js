@@ -35,7 +35,7 @@ const fmtInt = (n) => Number(n || 0).toLocaleString();
    and sat nowhere near the import and export this app already had. */
 export async function importTraktZip(buffer, out, repaint) {
   const files = await readJSONZip(buffer, WANTED);
-  review(readExport(files, { films: !!(state.settings || {}).movies }), out, repaint);
+  review(readExport(files), out, repaint);
 }
 
 export function what(p, held = (state.shows || []).length) {
@@ -65,6 +65,13 @@ export function review(read, out, repaint) {
     }),
     h("div", { text: what(p) }),
   ];
+
+  /* Films come in whether or not they are switched on, so somebody with them off should be
+     told where they went rather than left wondering why the count did not match. */
+  if (read.films && !(state.settings || {}).movies) {
+    lines.push(h("div", { style: { marginTop: "6px" },
+      text: `Films are imported too. They stay hidden until you switch films on in You.` }));
+  }
 
   /* A history that does not add up to what Trakt says it holds. Said plainly: an import that
      silently covers two thirds of a library is worse than one that admits it. */
