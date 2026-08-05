@@ -6,7 +6,7 @@
 // the other file is only ever a cross-check.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { feedFromHistory, shortfall, readExport, historyFiles, watchlistShows } from "../public/js/domain/trakt-export.js";
+import { feedFromHistory, shortfall, readExport, historyFiles, watchlistFiles, watchlistShows } from "../public/js/domain/trakt-export.js";
 
 const play = (show, s, e, at, extra = {}) => ({
   id: Math.round(Math.random() * 1e6),
@@ -232,4 +232,45 @@ test("episode and show counts do not double-count the watchlist", () => {
   });
   assert.equal(r.episodes, 1, "the watchlisted show contributes no episodes");
   assert.equal(r.feed.shows.length - r.planned, 1, "and is not counted among the watched");
+});
+
+/* The watchlist splits the same way the history does, which two exports in a row failed to
+   show: one had no watchlist and the other had a single entry. An account with four hundred
+   gets lists-watchlist-1.json through -4, and reading only the unnumbered name dropped every
+   one of them without a word — 412 shows, in the export this was found in. */
+
+test("a watchlist split across numbered files is read as one", () => {
+  const wl = (n, from) => Array.from({ length: n }, (_, i) => ({
+    type: "show",
+    show: { ids: { trakt: from + i, imdb: `tt${900000 + from + i}` }, title: `Show ${from + i}`, year: 2020 },
+  }));
+  const r = readExport({
+    "watched-history.json": [play(WIRE, 1, 1, "2018-02-03T21:30:00Z")],
+    "lists-watchlist-1.json": wl(250, 1),
+    "lists-watchlist-2.json": wl(162, 251),
+  });
+  assert.equal(r.planned, 412);
+  assert.equal(r.feed.shows.length, 413, "the watched one, and the rest planned");
+  assert.equal(r.episodes, 1, "none of which contribute episodes");
+});
+
+test("the unnumbered watchlist is still understood", () => {
+  const r = readExport({
+    "watched-history.json": [play(WIRE, 1, 1, "2018-02-03T21:30:00Z")],
+    "lists-watchlist.json": [{ type: "show", show: HOTD }],
+  });
+  assert.equal(r.planned, 1);
+});
+
+test("watchlist pages are ordered numerically, and near-misses are not pages", () => {
+  assert.deepEqual(
+    watchlistFiles(["lists-watchlist-10.json", "lists-watchlist-2.json", "lists-watchlist.json"]),
+    ["lists-watchlist.json", "lists-watchlist-2.json", "lists-watchlist-10.json"],
+  );
+  assert.deepEqual(watchlistFiles(["lists-watchlist-notes.json", "lists-favorites.json", "lists-lists.json"]), []);
+});
+
+/* A user's own custom lists sit beside the watchlist and are not it. */
+test("a named list is not the watchlist", () => {
+  assert.deepEqual(watchlistFiles(["lists-list-33726051-watch2.json"]), []);
 });

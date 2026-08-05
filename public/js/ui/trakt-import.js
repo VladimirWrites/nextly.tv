@@ -11,7 +11,7 @@
 // discovered halfway through a progress bar.
 import { h, toast } from "./dom.js";
 import { readJSONZip } from "../io/zip.js";
-import { readExport, HISTORY_FILE } from "../domain/trakt-export.js";
+import { readExport, HISTORY_FILE, WATCHLIST_FILE } from "../domain/trakt-export.js";
 import { importFeed, previewFeed } from "../io/import-feed.js";
 import { hydrateLibrary } from "./actions.js";
 import { state } from "../domain/store.js";
@@ -19,7 +19,7 @@ import { state } from "../domain/store.js";
 /* Matched rather than listed: a long history is split across watched-history-1.json and its
    numbered siblings, and how many there are is only known once the zip is open. */
 const WANTED = (name) =>
-  name === "watched-shows.json" || name === "lists-watchlist.json" || HISTORY_FILE.test(name);
+  name === "watched-shows.json" || HISTORY_FILE.test(name) || WATCHLIST_FILE.test(name);
 
 const fmtInt = (n) => Number(n || 0).toLocaleString();
 
@@ -52,7 +52,7 @@ export function what(p, held = (state.shows || []).length) {
 
 /* What it holds and what importing it would do, before anything is done.
    "Added 1,412 marks" is not something anyone should learn afterwards. */
-function review(read, out, repaint) {
+export function review(read, out, repaint) {
   const p = previewFeed(read.feed);
   /* Watchlisted shows are counted apart from watched ones, because they are a different claim:
      nothing has been seen of them, and what arrives is a place in the library rather than a
@@ -74,26 +74,25 @@ function review(read, out, repaint) {
       + `${read.missing.length > 3 ? ", …" : ""}). Trakt's export may not go all the way back.` }));
   }
 
-  /* Two buttons for one action, at two prices. The first applies what can be matched for
-     nothing; the second does that *and* looks up the rest, at a request each.
+  /* One button, which imports.
 
-     Which is why the second reads "Also" only when the first is beside it — a library with
-     nothing tracked yet gets one button, and "Also add 26 shows" invites the reasonable
-     question of what else it is about to do. */
-  const tracked = p.marks || p.updated;
-  const buttons = h("div", { style: { display: "flex", gap: "8px", marginTop: "8px", flexWrap: "wrap" } }, [
-    tracked
-      ? h("button.btn.btn-sm.btn-primary", { type: "button", text: "Import into tracked shows",
-          onclick: () => run(read.feed, false, out, repaint) })
-      : null,
-    p.newShows
-      ? h("button.btn.btn-sm", {
+     There were two, at two prices: one applied what could be matched for nothing, the other did
+     that and looked the rest up at a request each. Splitting them was a cost argument, and the
+     cost turned out not to be there — 113 shows resolve in nine seconds, so 500 is under a
+     minute, once, behind a progress line.
+
+     What the split did instead was put the emphasis on the wrong one. Somebody who already
+     tracked a couple of shows saw "Import into tracked shows" in the accent colour and the real
+     import greyed out beside it. Pressing the obvious one imported a hundred marks onto two
+     shows and left five hundred behind, reported afterwards as "523 untracked shows left
+     alone". Their library looked empty, and they said so. */
+  const total = p.marks + p.updated + p.newShows;
+  const buttons = h("div", { style: { marginTop: "8px" } }, [
+    total
+      ? h("button.btn.btn-sm.btn-primary", {
           type: "button",
-          class: tracked ? null : "btn-primary",
-          text: tracked
-            ? `Also add ${fmtInt(p.newShows)} new shows`
-            : `Add ${fmtInt(p.newShows)} shows and their history`,
-          onclick: () => run(read.feed, true, out, repaint),
+          text: p.newShows ? `Import ${fmtInt(p.newShows)} shows and their history` : "Import",
+          onclick: () => run(read.feed, out, repaint),
         })
       : null,
   ]);
@@ -101,11 +100,11 @@ function review(read, out, repaint) {
   out.replaceChildren(...lines, buttons);
 }
 
-async function run(feed, addMissing, out, repaint) {
+async function run(feed, out, repaint) {
   out.replaceChildren(h("span", { text: "Importing…" }));
   try {
     const r = await importFeed(feed, {
-      addMissing,
+      addMissing: true,
       onProgress: ({ phase, done, total }) => {
         if (phase === "adding") out.replaceChildren(h("span", { text: `Adding shows… ${done}/${total}` }));
       },
@@ -114,7 +113,7 @@ async function run(feed, addMissing, out, repaint) {
     out.replaceChildren(h("span", {
       text: `${fmtInt(r.marks)} marks, ${fmtInt(r.added)} shows added`
         + (r.missed ? `, ${fmtInt(r.missed)} the catalogue couldn't place` : "")
-        + (r.skipped ? `, ${fmtInt(r.skipped)} untracked shows left alone` : "") + ".",
+        + ".",
     }));
     repaint();
     /* And fill in whatever is still bare. Shows added here arrive with the record their lookup

@@ -14,9 +14,9 @@
 //                         no episodes — which is the whole reason the history is the source and
 //                         this one is only a cross-check.
 //   lists-watchlist.json  what Trakt calls the watchlist and its apps label "plan to watch":
-//                         shows somebody means to start and has no history for. Empty until you
-//                         put something in it, which is why the first export tested against had
-//                         no such file and this was missed.
+//   lists-watchlist-N.json  shows somebody means to start and has no history for. Split and
+//                         numbered past a few hundred entries, exactly as the history is, and
+//                         for the same reason — so both names have to be understood here too.
 //
 // Everything else in the zip is ratings, comments, notes, lists, collection, social graph and
 // account settings. None of it is a watch mark, and none of it is read. The profile and
@@ -179,11 +179,18 @@ export function shortfall(feed, watchedShows) {
    list confusing to read. */
 export const HISTORY_FILE = /^watched-history(?:-(\d+))?\.json$/;
 
-export function historyFiles(names) {
-  return [...names]
-    .filter((n) => HISTORY_FILE.test(n))
-    .sort((a, b) => (+(a.match(HISTORY_FILE)[1] || 0)) - (+(b.match(HISTORY_FILE)[1] || 0)));
-}
+/* The watchlist splits the same way, which the first two exports tested against did not show:
+   one had no watchlist at all and the other had a single entry. An account with four hundred
+   gets lists-watchlist-1.json through -4, and a reader that knows only the unnumbered name
+   drops every one of them without a word. */
+export const WATCHLIST_FILE = /^lists-watchlist(?:-(\d+))?\.json$/;
+
+const pagesOf = (names, re) => [...names]
+  .filter((n) => re.test(n))
+  .sort((a, b) => (+(a.match(re)[1] || 0)) - (+(b.match(re)[1] || 0)));
+
+export const historyFiles = (names) => pagesOf(names, HISTORY_FILE);
+export const watchlistFiles = (names) => pagesOf(names, WATCHLIST_FILE);
 
 export function readExport(files) {
   const pages = historyFiles(Object.keys(files || {}));
@@ -197,7 +204,9 @@ export function readExport(files) {
      them. Something both watched and planned is something being watched — the history is the
      stronger claim, and it is the one carrying the marks. */
   const seen = new Set(feed.shows.map((r) => showKeyOf(r)));
-  const planned = watchlistShows(files["lists-watchlist.json"])
+  const watchlist = watchlistFiles(Object.keys(files || {}))
+    .flatMap((name) => (Array.isArray(files[name]) ? files[name] : []));
+  const planned = watchlistShows(watchlist)
     .filter((r) => !seen.has(showKeyOf(r)));
   feed.shows.push(...planned);
 

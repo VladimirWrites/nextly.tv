@@ -19,10 +19,14 @@ export const previewFeed = (feed, now = Date.now()) => summarize(state, feed, no
 
 /* Apply a feed to the library.
 
-   `addMissing` is the expensive half and is a separate decision: matching what is already
-   tracked is free, because the portable ids are already in the vault, and looking up
-   everything else is one request per show against the catalogue. Someone importing a thousand
-   shows they have never tracked should be choosing that, not discovering it. */
+   `addMissing` is the expensive half: matching what is already tracked is free, because the
+   portable ids are already in the vault, while looking up everything else is one request per
+   show against the catalogue.
+
+   The screen used to offer that as a choice and no longer does — the emphasis landed on the
+   cheap half, and people imported a Trakt library and got a handful of marks. It stays an
+   option here because it is a real distinction and the io layer is not the place to decide it
+   is uninteresting; every caller today passes true. */
 export async function importFeed(feed, { addMissing = false, onProgress = () => {}, now = Date.now() } = {}) {
   const { known, unknown } = matchFeed(state, feed);
   let marks = 0;
