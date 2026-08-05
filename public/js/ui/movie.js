@@ -13,53 +13,25 @@ import { findShow, findSameShow } from "../domain/schema.js";
 import { movieWatched, moviePlays } from "../domain/model.js";
 import { fmtScore, fmtDuration, movieKey } from "../domain/constants.js";
 import { fmtDate } from "../domain/dates.js";
-import { shareButton } from "./share-button.js";
-import { anonBar, canGoBack } from "./anon.js";
+import { anonBar } from "./anon.js";
 import { markMovieNow, ensureMovie, untrackShow } from "./actions.js";
 import { empty } from "./upnext.js";
 import * as cache from "../io/cache.js";
 import { movieCredits, similarMovies } from "../io/meta.js";
-import { castSection } from "./show-parts.js";
+import { castSection, stickyBar, watchTitle } from "./show-parts.js";
 import { shelfScroller } from "./dom.js";
 
 export function renderMovie(root, key, { go, back, top, repaint }) {
-  if (top) {
-    top.lead.replaceChildren(...(canGoBack() ? [h("button.topbar-back", {
-      type: "button", "aria-label": "Back", onclick: () => back("library"),
-    }, [svg(ICON.back)])] : []));
-    top.bar.classList.remove("is-searching");
-    top.bar.classList.add("has-actions");
-  }
-
-  /* The same film under either catalogue's key. A record added from Cinemeta is keyed by its
-     IMDb id and a TMDB link names a number, so an exact-key lookup finds nothing and the page
-     offers to add a film the library already holds. findSameShow knows the ids are the same
-     film; the key alone is enough for it, since a movie key carries the catalogue's own id. */
   const held = findShow(state, key)
+    /* The same film under either catalogue's key. A record added from Cinemeta is keyed by its
+       IMDb id and a TMDB link names a number, so an exact-key lookup finds nothing and the page
+       offers to add a film the library already holds. */
     || findSameShow(state, { ...(cache.getMeta(key) || {}), key, kind: "movie" });
   const m = cache.getMeta(key) || cache.getHint(key);
   const name = (held && held.name) || (m && m.name) || "";
 
-  if (top) {
-    /* Shared by an address the other end can actually open. A tmdb:m… key is a number only
-       TMDB can read, and a reader without a key gets nothing from it — where the IMDb id every
-       record carries is readable by Cinemeta, which needs no key at all. Same reasoning as the
-       portable key a show is shared by. */
-    const imdb = (held && held.imdb) || (m && m.imdb) || null;
-    top.actions.replaceChildren(
-      shareButton(name || "this movie", "movie", imdb ? movieKey("cinemeta", imdb) : key));
-    top.bar.querySelector(".topbar-title").textContent = name;
-  }
-
-  // Asked for on every visit, not only when it is missing: a record written before this app
-  // read runtimes is present, complete-looking, and silent about them.
-  /* Asked for on every visit, and its failure is a state this page has to draw. A film keyed to
-     a catalogue this device cannot reach — a TMDB link opened by somebody with no key — would
-     otherwise sit on its skeleton for ever, which is what a shared link looked like before this
-     was checked. */
   /* Asked once. Repainting on the failure is what draws the message below, and asking again on
-     that repaint would fetch, fail, repaint and fetch for as long as the page is open — which
-     is what it did before this guard, at one request per frame. */
+     that repaint would fetch, fail, repaint and fetch for as long as the page is open. */
   if (!failed.has(key)) {
     ensureMovie(key).then((got) => {
       if (got || cache.has(key)) return;
@@ -67,7 +39,21 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
       repaint();
     });
   }
-  if (!m) return mount(root, failed.has(key) ? unplaceable(go) : waiting());
+
+  /* The show page's own bar, over the cover, rather than the app's topbar — which is why this
+     route takes none. A bar above the artwork puts it in a box; the cover has to start at the
+     top of the screen and the bar has to float on it.
+
+     Shared with the show page rather than rebuilt: what differs is where Back falls back to and
+     what Share addresses. A film is shared by an id every device can open, which is Cinemeta's
+     form of the IMDb id — a tmdb:m key is a number only TMDB can read. */
+  const imdb = (held && held.imdb) || (m && m.imdb) || null;
+  const bar = stickyBar({ id: key, name }, back, {
+    route: "movie",
+    shareKey: imdb ? movieKey("cinemeta", imdb) : key,
+  });
+
+  if (!m) return mount(root, bar, failed.has(key) ? unplaceable(go) : waiting());
 
   const watched = movieWatched(held);
   const plays = moviePlays(held);
@@ -83,6 +69,7 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
 
   mount(
     root,
+    bar,
     h("section.show-hero", [
       m.backdrop || m.poster
         ? keepMedia(`bg:${key}`, "div", {
@@ -183,6 +170,7 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
     ]),
   );
 
+  watchTitle(bar, root.querySelector(".show-name"));
   castBox.replaceChildren(castSection(m, go, movieCredits));
   fillSimilar(likeBox, m, go);
 }

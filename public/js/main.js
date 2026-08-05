@@ -210,8 +210,8 @@ function render() {
 
   setDocumentTitle(titles);
 
-  // The show page has its own bar over the cover, so it takes no topbar at all.
-  const top = route.name === "show" ? null : renderTopbar(titles[route.name]);
+  // The show and film pages have their own bar over the cover, so they take no topbar at all.
+  const top = ["show", "movie"].includes(route.name) ? null : renderTopbar(titles[route.name]);
 
   /* A screen tapped into rather than navigated to. On a phone the tab bar comes off these:
      they carry a back button already, so the bar is a second way out of a screen that has
