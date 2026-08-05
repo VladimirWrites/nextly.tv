@@ -45,9 +45,11 @@ export const search = (query) => activeProvider().search(query);
    and its key works, and falls back to TVmaze when the key is missing, where Cinemeta is the
    only thing that can answer anyway.
 
-   What does not follow the setting is the extra a film page asks for on top: cast and
-   recommendations come from TMDB wherever there is a key, because Cinemeta publishes neither
-   and a reader who has a key should not lose them for preferring TVmaze's numbering. */
+   The extras a film page asks for on top follow it too. Cinemeta has no people and no
+   recommendations, so with it chosen those sections are simply absent — the same way "More
+   like this" disappears from a show page on TVmaze. discover.js records why, having been
+   written the other way once: a section that survives on a stored key contradicts Settings
+   telling the reader in as many words that the key is not being used. */
 export const MOVIE_PROVIDERS = { tmdb, cinemeta };
 
 export function movieProvider() {
@@ -71,8 +73,9 @@ export const searchMovies = (query) => {
 export function movieCredits(m) {
   const ref = movieRef(m && (m.key || m.id));
   if (!ref) return Promise.resolve([]);
-  return once(`movie-cast:${m.key || m.id}`, async () => {
-    if (!tmdb.hasKey()) return [];
+  return once(`movie-cast:${movieProvider().id}:${m.key || m.id}`, async () => {
+    // The catalogue in use, not merely a key that happens to be stored.
+    if (movieProvider().id !== "tmdb") return [];
     // A film held under Cinemeta's key is still a film TMDB knows, by its IMDb id.
     const at = m.tmdb || (/^tt/.test(ref) ? await tmdb.tmdbIdFromExternal({ imdb: ref }).catch(() => null) : ref);
     return at ? tmdb.movieCredits(at).catch(() => []) : [];
@@ -82,8 +85,8 @@ export function movieCredits(m) {
 export function similarMovies(m) {
   const ref = movieRef(m && (m.key || m.id));
   if (!ref) return Promise.resolve([]);
-  return once(`movie-like:${m.key || m.id}`, async () => {
-    if (!tmdb.hasKey()) return [];
+  return once(`movie-like:${movieProvider().id}:${m.key || m.id}`, async () => {
+    if (movieProvider().id !== "tmdb") return [];
     const at = m.tmdb || (/^tt/.test(ref) ? await tmdb.tmdbIdFromExternal({ imdb: ref }).catch(() => null) : ref);
     return at ? tmdb.similarMovies(at).catch(() => []) : [];
   });

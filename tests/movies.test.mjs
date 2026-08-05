@@ -350,3 +350,17 @@ test("choosing TMDB means films come from TMDB, when the key works", async () =>
   state.settings = { provider: "tmdb" };
   assert.equal(movieProvider().id, "cinemeta");
 });
+
+/* The extras follow the setting too, which is the half I got wrong first. discover.js already
+   records the reasoning for shows: a section that survives on a stored key contradicts Settings
+   saying the key is not in use. Cinemeta has no people and no recommendations, so choosing it
+   means those sections are absent rather than quietly fetched from somewhere else. */
+test("cast and recommendations follow the chosen catalogue, not a stored key", async () => {
+  const meta = await import("../public/js/io/meta.js");
+  const { state } = await import("../public/js/domain/store.js");
+  const film = { key: "cinemeta:mtt1630029", imdb: "tt1630029", tmdb: 76600 };
+
+  state.settings = { provider: "tvmaze", tmdbKey: "KEY" };
+  assert.deepEqual(await meta.movieCredits(film), [], "TVmaze chosen: no cast, as on a show page");
+  assert.deepEqual(await meta.similarMovies(film), [], "and no recommendations");
+});
