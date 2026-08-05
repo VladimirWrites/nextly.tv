@@ -19,27 +19,40 @@ import { empty } from "./upnext.js";
 
 // Filters name states you'd actually go looking for, not the raw status field. "Waiting"
 // is the one that matters day to day: tracked, aired, unwatched.
-/* Films are a kind, not a state, so they get their own two chips rather than being folded into
-   the ones above — "Waiting" and "Caught up" are about episodes and mean nothing for a film,
-   and "Planned" for a film is just one you have not seen.
-
-   Both chips are hidden entirely when films are switched off, along with every film, so a
-   library that has none looks exactly as it did before they existed. */
 const isFilm = (r) => r.kind === "movie";
 
-const FILTERS = [
+/* Two axes, two controls, because they answer different questions: what kind of thing, and
+   where it stands. Folding both into one row of chips gave nine of them over three lines with
+   "Movies" ninth, which is not a filter anybody finds.
+
+   Kind is the segmented control above; the chips below filter within it. And the chips differ
+   by kind on purpose — "Waiting" and "Caught up" are about having episodes left, which a movie
+   never has, so a movie has two states and a show has five. */
+const SHOW_FILTERS = [
   { id: "all", label: "All", test: () => true },
-  { id: "waiting", label: "Waiting", test: (r) => !isFilm(r) && r.st === "active" && r.progress.remaining > 0 },
-  { id: "caught", label: "Caught up", test: (r) => !isFilm(r) && r.st === "active" && r.progress.remaining === 0 },
-  { id: "planned", label: "Planned", test: (r) => !isFilm(r) && r.st === "planned" },
-  { id: "paused", label: "Paused", test: (r) => !isFilm(r) && r.st === "paused" },
-  { id: "dropped", label: "Dropped", test: (r) => !isFilm(r) && r.st === "dropped" },
-  { id: "shows", label: "Shows", test: (r) => !isFilm(r), films: true },
-  { id: "films", label: "Movies", test: isFilm, films: true },
-  { id: "unseen", label: "Not seen", test: (r) => isFilm(r) && !r.watched, films: true },
+  { id: "waiting", label: "Waiting", test: (r) => r.st === "active" && r.progress.remaining > 0 },
+  { id: "caught", label: "Caught up", test: (r) => r.st === "active" && r.progress.remaining === 0 },
+  { id: "planned", label: "Planned", test: (r) => r.st === "planned" },
+  { id: "paused", label: "Paused", test: (r) => r.st === "paused" },
+  { id: "dropped", label: "Dropped", test: (r) => r.st === "dropped" },
 ];
 
+const MOVIE_FILTERS = [
+  { id: "all", label: "All", test: () => true },
+  { id: "seen", label: "Seen", test: (r) => r.watched },
+  { id: "unseen", label: "Not seen", test: (r) => !r.watched },
+];
+
+const KINDS = [["all", "All"], ["shows", "Shows"], ["movies", "Movies"]];
+
+const inKind = (r, k) => k === "all" || (k === "movies" ? isFilm(r) : !isFilm(r));
+
+// Which chips make sense depends on what is being looked at. A mixed list gets the show ones,
+// since that is what most of a mixed library is.
+const filtersFor = (k) => (k === "movies" ? MOVIE_FILTERS : SHOW_FILTERS);
+
 let filter = "all";
+let kind = "all";
 let sort = "recent";
 let query = "";
 let searching = false;     // the field is a button until you ask for it
@@ -90,15 +103,27 @@ export function renderLibrary(root, { go, top }) {
     };
   });
 
-  const shown = rows.filter((FILTERS.find((f) => f.id === filter) || FILTERS[0]).test)
+  const FILTERS = filtersFor(kind);
+  // A chip that does not exist for this kind falls back to All rather than showing nothing.
+  const chosen = FILTERS.find((f) => f.id === filter) || FILTERS[0];
+  const ofKind = rows.filter((r) => inKind(r, kind));
+  const shown = ofKind.filter(chosen.test)
     .sort((SORTS.find((s) => s.id === sort) || SORTS[0]).cmp);
 
-  /* The film chips appear only where there is something for them to say. A reader with films
-     switched off never sees them; one who has switched them on but tracks none yet does not
-     either, because a chip that always says 0 is furniture. */
+  /* The kind control appears only where there is a kind to choose. Somebody with no movies —
+     because they have none or because they are switched off — sees the library exactly as it
+     was before movies existed. */
   const anyFilm = rows.some(isFilm);
-  const chips = h("div.row-gap", FILTERS.filter((f) => !f.films || anyFilm).map((f) => {
-    const n = rows.filter(f.test).length;
+  const kinds = anyFilm
+    ? segmented(KINDS.map(([v, l]) => [v, l]), kind, (v) => {
+        kind = v;
+        if (!filtersFor(kind).some((f) => f.id === filter)) filter = "all";
+        again();
+      })
+    : null;
+
+  const chips = h("div.row-gap", FILTERS.map((f) => {
+    const n = ofKind.filter(f.test).length;
     return h("button.chip", {
       type: "button",
       class: f.id === filter ? "is-on" : null,
@@ -187,9 +212,13 @@ export function renderLibrary(root, { go, top }) {
   function fill() {
     const q = fold(query.trim());
     const list = q ? shown.filter((r) => fold(r.name).includes(q)) : shown;
-    count.textContent = q || filter !== "all"
-      ? `${list.length} of ${state.shows.length}`
-      : `${state.shows.length} shows`;
+    /* Counted against what is on screen rather than against the vault: with Movies chosen,
+       "3 of 604" is a comparison nobody asked for, and calling four things "4 shows" when
+       three of them are films was simply wrong. */
+    const held = rows.length;
+    count.textContent = q || filter !== "all" || kind !== "all"
+      ? `${list.length} of ${held}`
+      : `${held} ${held === 1 ? "title" : "titles"}`;
 
     if (!list.length) {
       return results.replaceChildren(h("div.empty", [
@@ -220,7 +249,7 @@ export function renderLibrary(root, { go, top }) {
     );
   }
 
-  mount(root, chips, results);
+  mount(root, kinds, chips, results);
 }
 
 /* Builds the grid and, as it goes, records the first card of each letter — that's the row a
@@ -354,6 +383,18 @@ function watchIndex(rail, keys, anchors, scrubbing) {
 export function stopIndexWatch() {
   if (detachAz) detachAz();
   detachAz = null;
+}
+
+/* The same control Settings uses for a small closed choice. Kept here rather than imported so
+   the library does not depend on the settings screen for a button. */
+function segmented(options, value, onPick) {
+  return h("div.seg", { style: { marginBottom: "10px" } }, options.map(([v, label]) =>
+    h("button.seg-btn", {
+      type: "button",
+      class: v === value ? "is-on" : null,
+      text: label,
+      onclick: () => onPick(v),
+    })));
 }
 
 function card(row, go) {

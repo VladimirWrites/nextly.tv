@@ -223,3 +223,40 @@ test("a filmography leads with what exists, not with what is announced", () => {
   assert.deepEqual(credits.map((c) => c.name),
     ["Last Year's Film", "The Old One", "Announced Sequel", "Next Year", "Undated Project"]);
 });
+
+/* ---- which catalogue places an imported row ----
+
+   Five hundred and ninety-three films were read out of a Trakt export correctly, looked up
+   against TVmaze — which has no films — and written off as titles nothing could place. The
+   library came back with the shows and none of the movies, and the count said "missed". */
+test("a movie row is placed by the movie catalogue, a show row by the show one", async () => {
+  const { importFeed } = await import("../public/js/io/import-feed.js");
+  const { state } = await import("../public/js/domain/store.js");
+  state.shows = [];
+  state.settings = { provider: "tvmaze", m: 1 };
+
+  const asked = [];
+  const stub = (id) => ({
+    id,
+    lookup: async ({ imdb }) => {
+      asked.push({ id, imdb });
+      return { key: `${id}:${imdb}`, src: id, ref: imdb, name: `From ${id}`, imdb,
+               kind: id === "cinemeta" ? "movie" : undefined, seasons: [] };
+    },
+  });
+
+  await importFeed({ shows: [
+    { name: "A Series", imdb: "tt0306414", episodes: [{ s: 1, e: 1, at: 0, plays: 1 }] },
+    { name: "A Film", imdb: "tt1630029", kind: "movie", plays: 1, at: 0, episodes: [] },
+  ] }, {
+    addMissing: true,
+    pick: (row) => (row.kind === "movie" ? stub("cinemeta") : stub("tvmaze")),
+  });
+
+  assert.deepEqual(asked.sort((a, b) => a.id.localeCompare(b.id)), [
+    { id: "cinemeta", imdb: "tt1630029" },
+    { id: "tvmaze", imdb: "tt0306414" },
+  ], "each row went to the catalogue that can answer for it");
+  assert.equal(state.shows.length, 2);
+  assert.ok(state.shows.some((x) => x.kind === "movie"), "and the film was added as one");
+});
