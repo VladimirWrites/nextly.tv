@@ -88,7 +88,8 @@ test("a history that falls short of what Trakt counted is reported", () => {
     { plays: 1, show: MORTY },
   ]);
   assert.equal(missing.length, 2);
-  assert.deepEqual(missing.find((m) => m.name === "The Wire"), { name: "The Wire", had: 1, claimed: 60 });
+  assert.deepEqual(missing.find((m) => m.name === "The Wire"),
+    { name: "The Wire", had: 1, claimed: 60, kind: "show" });
   assert.equal(missing.find((m) => m.name === "Rick and Morty").had, 0, "absent entirely, not merely short");
 });
 
@@ -273,4 +274,45 @@ test("watchlist pages are ordered numerically, and near-misses are not pages", (
 /* A user's own custom lists sit beside the watchlist and are not it. */
 test("a named list is not the watchlist", () => {
   assert.deepEqual(watchlistFiles(["lists-list-33726051-watch2.json"]), []);
+});
+
+/* The film half of the same check. Trakt states a play total per film in watched-movies-*.json,
+   and the history is what has to add up to it — the count lives on the row rather than spread
+   across an episode list, which is the only thing that differs. */
+test("a film history that falls short is reported too", async () => {
+  const { shortfall } = await import("../public/js/domain/trakt-export.js");
+  const feed = { shows: [{ kind: "movie", trakt: 56580, imdb: "tt1630029", plays: 1, episodes: [] }] };
+  const missing = shortfall(feed, [], [
+    { plays: 3, movie: { ids: { trakt: 56580, imdb: "tt1630029" }, title: "Avatar: The Way of Water" } },
+    { plays: 1, movie: { ids: { trakt: 999, imdb: "tt0000001" }, title: "Never Imported" } },
+  ]);
+  assert.equal(missing.length, 2);
+  assert.deepEqual(missing.find((m) => m.name === "Never Imported"),
+    { name: "Never Imported", had: 0, claimed: 1, kind: "movie" });
+  assert.ok(missing.every((m) => m.kind === "movie"));
+});
+
+test("a film whose plays add up is not reported", async () => {
+  const { shortfall } = await import("../public/js/domain/trakt-export.js");
+  const feed = { shows: [{ kind: "movie", trakt: 56580, imdb: "tt1630029", plays: 3, episodes: [] }] };
+  assert.deepEqual(shortfall(feed, [], [{ plays: 3, movie: { ids: { trakt: 56580 }, title: "Avatar" } }]), []);
+});
+
+/* A show whose plays add up exactly must not be reported. Somebody saw "1 shows have fewer
+   plays than Trakt counted (The O.C.)" against an export where watched-shows.json claims 92
+   plays and the history carries 92 — which is not a shortfall, and a warning about a complete
+   history is worse than no warning at all: it teaches people to ignore the real ones. */
+test("a show whose plays match exactly is never reported as short", () => {
+  const feed = feedFromHistory(Array.from({ length: 92 }, (_, i) =>
+    play(WIRE, 1 + Math.floor(i / 25), (i % 25) + 1, "2018-02-03T21:30:00Z")));
+  assert.deepEqual(shortfall(feed, [{ plays: 92, show: WIRE }], []), []);
+});
+
+/* And the number has to agree with the noun. "1 shows have" is the sort of thing that makes
+   somebody trust the count less than they should. */
+test("one short show is one show, not one shows", () => {
+  const feed = feedFromHistory([play(WIRE, 1, 1, "2018-02-03T21:30:00Z")]);
+  const missing = shortfall(feed, [{ plays: 9, show: WIRE }], []);
+  assert.equal(missing.length, 1);
+  assert.equal(missing[0].kind, "show");
 });

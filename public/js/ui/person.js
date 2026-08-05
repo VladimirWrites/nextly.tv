@@ -131,7 +131,7 @@ function creditLine(list) {
   const shows = list.length - films;
   return [
     shows ? `${shows} show${shows === 1 ? "" : "s"}` : null,
-    films ? `${films} film${films === 1 ? "" : "s"}` : null,
+    films ? `${films} movie${films === 1 ? "" : "s"}` : null,
   ].filter(Boolean).join(" · ");
 }
 

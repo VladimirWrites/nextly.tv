@@ -35,7 +35,7 @@ const FILTERS = [
   { id: "paused", label: "Paused", test: (r) => !isFilm(r) && r.st === "paused" },
   { id: "dropped", label: "Dropped", test: (r) => !isFilm(r) && r.st === "dropped" },
   { id: "shows", label: "Shows", test: (r) => !isFilm(r), films: true },
-  { id: "films", label: "Films", test: isFilm, films: true },
+  { id: "films", label: "Movies", test: isFilm, films: true },
   { id: "unseen", label: "Not seen", test: (r) => isFilm(r) && !r.watched, films: true },
 ];
 

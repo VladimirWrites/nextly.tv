@@ -196,14 +196,30 @@ export function watchlistShows(list) {
    Plays are compared and not episode counts, because that is what both files report. A show
    watched twice through has more plays than episodes, so the comparison says "fewer plays than
    Trakt counted" and never pretends to name which episode is missing. */
-export function shortfall(feed, watchedShows) {
+export function shortfall(feed, watchedShows, watchedMovies) {
   const byKey = new Map();
   for (const row of feed.shows) {
-    const key = showKeyOf({ trakt: row.trakt, imdb: row.imdb, tvdb: row.tvdb, tmdb: row.tmdb });
+    const key = row.kind === "movie" ? filmKeyOf(row) : showKeyOf(row);
     if (key) byKey.set(key, row);
   }
 
   const missing = [];
+
+  /* Films first, and counted differently: a film's plays live on the row, an episode's are
+     spread across the episode list. Same question either way — does the history add up to what
+     the totals claim. */
+  for (const row of watchedMovies || []) {
+    if (!row || !row.movie) continue;
+    const key = filmKeyOf(idsOf(row.movie));
+    if (!key) continue;
+    const found = byKey.get(key);
+    const plays = found ? (+found.plays || 0) : 0;
+    const claimed = num(row.plays) || 0;
+    if (plays < claimed) {
+      missing.push({ name: row.movie.title || "", had: plays, claimed, kind: "movie" });
+    }
+  }
+
   for (const row of watchedShows || []) {
     if (!row || !row.show) continue;
     const ids = idsOf(row.show);
@@ -213,7 +229,7 @@ export function shortfall(feed, watchedShows) {
     const plays = found ? found.episodes.reduce((t, ep) => t + ep.plays, 0) : 0;
     const claimed = num(row.plays) || 0;
     if (plays < claimed) {
-      missing.push({ name: row.show.title || "", had: plays, claimed });
+      missing.push({ name: row.show.title || "", had: plays, claimed, kind: "show" });
     }
   }
   return missing;
@@ -240,12 +256,17 @@ export const HISTORY_FILE = /^watched-history(?:-(\d+))?\.json$/;
    drops every one of them without a word. */
 export const WATCHLIST_FILE = /^lists-watchlist(?:-(\d+))?\.json$/;
 
+/* Per-film totals, the movie half of watched-shows.json. Split and numbered past a few hundred
+   entries the way everything else in here is. */
+export const WATCHED_MOVIES_FILE = /^watched-movies(?:-(\d+))?\.json$/;
+
 const pagesOf = (names, re) => [...names]
   .filter((n) => re.test(n))
   .sort((a, b) => (+(a.match(re)[1] || 0)) - (+(b.match(re)[1] || 0)));
 
 export const historyFiles = (names) => pagesOf(names, HISTORY_FILE);
 export const watchlistFiles = (names) => pagesOf(names, WATCHLIST_FILE);
+export const watchedMovieFiles = (names) => pagesOf(names, WATCHED_MOVIES_FILE);
 
 export function readExport(files) {
   const pages = historyFiles(Object.keys(files || {}));
@@ -284,6 +305,7 @@ export function readExport(files) {
     pages: pages.length,
     planned: planned.length,
     films: films.length,
-    missing: shortfall(feed, files["watched-shows.json"]),
+    missing: shortfall(feed, files["watched-shows.json"], watchedMovieFiles(Object.keys(files || {}))
+      .flatMap((name) => (Array.isArray(files[name]) ? files[name] : []))),
   };
 }

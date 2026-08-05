@@ -11,7 +11,7 @@
 // discovered halfway through a progress bar.
 import { h, toast } from "./dom.js";
 import { readJSONZip } from "../io/zip.js";
-import { readExport, HISTORY_FILE, WATCHLIST_FILE } from "../domain/trakt-export.js";
+import { readExport, HISTORY_FILE, WATCHLIST_FILE, WATCHED_MOVIES_FILE } from "../domain/trakt-export.js";
 import { importFeed, previewFeed } from "../io/import-feed.js";
 import { hydrateLibrary } from "./actions.js";
 import { state } from "../domain/store.js";
@@ -19,7 +19,8 @@ import { state } from "../domain/store.js";
 /* Matched rather than listed: a long history is split across watched-history-1.json and its
    numbered siblings, and how many there are is only known once the zip is open. */
 const WANTED = (name) =>
-  name === "watched-shows.json" || HISTORY_FILE.test(name) || WATCHLIST_FILE.test(name);
+  name === "watched-shows.json" || HISTORY_FILE.test(name) || WATCHLIST_FILE.test(name)
+  || WATCHED_MOVIES_FILE.test(name);
 
 const fmtInt = (n) => Number(n || 0).toLocaleString();
 
@@ -60,7 +61,7 @@ export function review(read, out, repaint) {
   const lines = [
     h("div", {
       text: `${fmtInt(read.episodes)} episodes across ${fmtInt(read.feed.shows.length - read.planned)} shows in that file`
-        + (read.films ? `, ${fmtInt(read.films)} films` : "")
+        + (read.films ? `, ${fmtInt(read.films)} movies` : "")
         + (read.planned ? `, and ${fmtInt(read.planned)} on the watchlist.` : "."),
     }),
     h("div", { text: what(p) }),
@@ -70,16 +71,14 @@ export function review(read, out, repaint) {
      told where they went rather than left wondering why the count did not match. */
   if (read.films && !(state.settings || {}).movies) {
     lines.push(h("div", { style: { marginTop: "6px" },
-      text: `Films are imported too. They stay hidden until you switch films on in You.` }));
+      text: "Movies are imported too. They stay hidden until you switch movies on in You." }));
   }
 
   /* A history that does not add up to what Trakt says it holds. Said plainly: an import that
      silently covers two thirds of a library is worse than one that admits it. */
   if (read.missing.length) {
     lines.push(h("div", { style: { marginTop: "6px" }, text:
-      `${fmtInt(read.missing.length)} shows have fewer plays in the file than Trakt counted `
-      + `(${read.missing.slice(0, 3).map((m) => m.name).filter(Boolean).join(", ")}`
-      + `${read.missing.length > 3 ? ", …" : ""}). Trakt's export may not go all the way back.` }));
+      shortfallLine(read.missing) }));
   }
 
   /* One button, which imports.

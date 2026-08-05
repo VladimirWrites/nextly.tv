@@ -42,7 +42,7 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
        portable key a show is shared by. */
     const imdb = (held && held.imdb) || (m && m.imdb) || null;
     top.actions.replaceChildren(
-      shareButton(name || "this film", "movie", imdb ? movieKey("cinemeta", imdb) : key));
+      shareButton(name || "this movie", "movie", imdb ? movieKey("cinemeta", imdb) : key));
     top.bar.querySelector(".topbar-title").textContent = name;
   }
 
@@ -206,7 +206,7 @@ const failed = new Set();
 
 function unplaceable(go) {
   return empty(
-    "Couldn't find that film",
+    "Couldn't find that movie",
     "The catalogue that link names can't be reached from this device. Searching for it by name may still find it.",
     "Search", () => go("search"),
   );

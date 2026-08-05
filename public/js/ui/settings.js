@@ -376,11 +376,11 @@ function moviesRow(repaint) {
   const from = hasTmdbKey() ? "TMDB, the catalogue you have a key for" : "Cinemeta, which needs no key";
   return h("div.set-row", { style: { alignItems: "flex-start" } }, [
     h("div.set-text", [
-      h("div.set-name", { text: "Films" }),
-      h("div.set-hint", { text: `Track films alongside shows. They come from ${from}. Turning this off hides them and keeps them.` }),
+      h("div.set-name", { text: "Movies" }),
+      h("div.set-hint", { text: `Track movies alongside shows. They come from ${from}. Turning this off hides them and keeps them.` }),
       s.movies && !hasTmdbKey()
         ? h("div.set-hint", { style: { marginTop: "6px" },
-            text: "Cinemeta is free and open, and publishes no uptime promise. Add a TMDB key above and films come from there instead." })
+            text: "Cinemeta is free and open, and publishes no uptime promise. Add a TMDB key above and movies come from there instead." })
         : null,
     ]),
     toggle(!!s.movies, (on) => { s.movies = on; s.m = Date.now(); scheduleSync(); repaint(); }),
