@@ -277,11 +277,15 @@ export function hintRatings(hint) {
    Who is in it. Fetched from whichever catalogue answered for this show, held for the session
    only, and dropped from the page entirely when there is nothing to show — an empty shelf under
    a heading is worse than neither. */
-export function castSection(m, go) {
+/* Shared with the film page, which is why the fetch is an argument: a series asks the
+   catalogue for its cast by the show's id, a film by the film's, and everything after that —
+   the round faces, the character underneath, dropping the section when there is nobody to show
+   — is the same section and should stay the same section. */
+export function castSection(m, go, fetch = meta.credits) {
   const strip = shelfScroller(h("div.shelf"), `cast:${m.key}`);
   const section = h("div", [h("div.sect", [h("h2.t-label", { text: "Cast" })]), strip]);
 
-  meta.credits(m).then((cast) => {
+  fetch(m).then((cast) => {
     if (!cast.length) return section.remove();
     strip.replaceChildren(...cast.slice(0, 24).map((c) => h("button.shelf-card.is-face", {
       type: "button",

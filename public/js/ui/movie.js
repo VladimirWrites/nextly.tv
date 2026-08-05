@@ -19,6 +19,7 @@ import { markMovieNow, ensureMovie, untrackShow } from "./actions.js";
 import { empty } from "./upnext.js";
 import * as cache from "../io/cache.js";
 import { movieCredits, similarMovies } from "../io/meta.js";
+import { castSection } from "./show-parts.js";
 import { shelfScroller } from "./dom.js";
 
 export function renderMovie(root, key, { go, back, top, repaint }) {
@@ -158,25 +159,8 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
     ]),
   );
 
-  fillCast(castBox, m, go);
+  castBox.replaceChildren(castSection(m, go, movieCredits));
   fillSimilar(likeBox, m, go);
-}
-
-async function fillCast(box, m, go) {
-  const cast = await movieCredits(m).catch(() => []);
-  if (!cast.length || !box.isConnected) return;
-  box.replaceChildren(
-    h("div.sect", [h("h2.t-label", { text: "Cast" })]),
-    shelfScroller(h("div.shelf", cast.map((c) => h("button.shelf-card", {
-      type: "button",
-      onclick: () => go("person", c.key),
-      "aria-label": `Open ${c.name}`,
-    }, [
-      h("div.shelf-art", [c.image ? poster("shelf-poster", c.image) : posterFallback(c.name, "md")]),
-      h("div.shelf-name.t-title", { text: c.name }),
-      h("div.shelf-cap", { text: c.character || "" }),
-    ]))), `cast:${m.key}`),
-  );
 }
 
 async function fillSimilar(box, m, go) {
