@@ -147,7 +147,7 @@ export const lastWatchedAt = (show) =>
 export function upNextList(shows, metaOf, { specials = false, now = Date.now() } = {}) {
   const rows = [];
   for (const show of shows || []) {
-    // A film has no next episode. Up next answers one question and this is not it.
+    // A movie has no next episode. Up next answers one question and this is not it.
     if (show.kind === "movie") continue;
     if (show.st !== "active") continue;
     const meta = metaOf(show.id);

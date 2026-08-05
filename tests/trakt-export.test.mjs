@@ -123,7 +123,7 @@ test("something that isn't a Trakt export is refused by name", () => {
   assert.throws(() => readExport({ "watched-history.json": { shows: [] } }), /watched history/,
     "present but not a list, which is a broken export rather than an empty one");
   assert.throws(() => readExport({ "watched-movies.json": [] }), /watched history/,
-    "an export of somebody who only logs films has nothing here to read");
+    "an export of somebody who only logs movies has nothing here to read");
 });
 
 /* ---- how a long history is filed ----
@@ -195,7 +195,7 @@ test("a watchlisted show arrives with no episodes at all", () => {
   assert.deepEqual(rows[0].episodes, [], "which is what keeps it unstarted");
 });
 
-/* A Trakt watchlist holds films and single episodes too. This app has neither. */
+/* A Trakt watchlist holds movies and single episodes too. This app has neither. */
 test("only shows are taken off the watchlist", () => {
   const rows = watchlistShows([
     { type: "movie", movie: { title: "Heat", ids: { trakt: 1 } } },
@@ -276,10 +276,10 @@ test("a named list is not the watchlist", () => {
   assert.deepEqual(watchlistFiles(["lists-list-33726051-watch2.json"]), []);
 });
 
-/* The film half of the same check. Trakt states a play total per film in watched-movies-*.json,
+/* The movie half of the same check. Trakt states a play total per movie in watched-movies-*.json,
    and the history is what has to add up to it — the count lives on the row rather than spread
    across an episode list, which is the only thing that differs. */
-test("a film history that falls short is reported too", async () => {
+test("a movie history that falls short is reported too", async () => {
   const { shortfall } = await import("../public/js/domain/trakt-export.js");
   const feed = { shows: [{ kind: "movie", trakt: 56580, imdb: "tt1630029", plays: 1, episodes: [] }] };
   const missing = shortfall(feed, [], [
@@ -292,7 +292,7 @@ test("a film history that falls short is reported too", async () => {
   assert.ok(missing.every((m) => m.kind === "movie"));
 });
 
-test("a film whose plays add up is not reported", async () => {
+test("a movie whose plays add up is not reported", async () => {
   const { shortfall } = await import("../public/js/domain/trakt-export.js");
   const feed = { shows: [{ kind: "movie", trakt: 56580, imdb: "tt1630029", plays: 3, episodes: [] }] };
   assert.deepEqual(shortfall(feed, [], [{ plays: 3, movie: { ids: { trakt: 56580 }, title: "Avatar" } }]), []);

@@ -357,7 +357,7 @@ function installRow(repaint) {
   ]);
 }
 
-/* Films.
+/* Movies.
 
    Off until asked for, and honest about where they come from. TVmaze has none — it is a
    television database — so the catalogue that costs nothing cannot answer for them. TMDB can,
@@ -367,7 +367,7 @@ function installRow(repaint) {
    catalogue they already chose, and a reader without one gets a service that publishes no terms
    and might stop answering. That is worth knowing before turning it on, not after.
 
-   Turning it off leaves the films in the vault and stops showing them. Nothing is deleted for
+   Turning it off leaves the movies in the vault and stops showing them. Nothing is deleted for
    the sake of a switch, and turning it back on finds them where they were. */
 const hasTmdbKey = () => !!((state.settings || {}).tmdbKey || "").trim();
 

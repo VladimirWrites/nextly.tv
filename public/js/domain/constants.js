@@ -62,9 +62,9 @@ export function parseShowKey(key) {
   return { src: key.slice(0, i), ref: key.slice(i + 1) };
 }
 
-/* ---- films ----
+/* ---- movies ----
 
-   A film is a show with one episode and no seasons, and the cheapest honest way to hold one is
+   A movie is a show with one episode and no seasons, and the cheapest honest way to hold one is
    the record that already exists. Everything hard in this app — the merge between two devices,
    the fold of the same title found in two catalogues, the export, the import, the vault schema
    — is written once against `state.shows`, and a parallel `movies` array would need every one
@@ -73,9 +73,9 @@ export function parseShowKey(key) {
    So: the same record, with `kind` saying which it is. Absent means show, because every record
    written before this existed is one.
 
-   The key carries an "m" after the colon — `tmdb:m76600` — because TMDB numbers films and
+   The key carries an "m" after the colon — `tmdb:m76600` — because TMDB numbers movies and
    series separately and 76600 means a different thing in each. Cinemeta keys by IMDb id
-   directly, so a film from there is `cinemeta:mtt1630029`, which is ugly and unambiguous. */
+   directly, so a movie from there is `cinemeta:mtt1630029`, which is ugly and unambiguous. */
 export const MOVIE_MARK = "m";
 
 export const movieKey = (src, ref) => `${src}:m${ref}`;
@@ -91,7 +91,7 @@ export const movieRef = (key) => {
   return at && at.ref.startsWith("m") ? at.ref.slice(1) : null;
 };
 
-/* Whether a record is a film. Read off the record rather than off the key, because the record
+/* Whether a record is a movie. Read off the record rather than off the key, because the record
    is what the rest of the app has in hand — but the two must agree, and the key is what a
    cold link arrives as. */
 export const isMovie = (rec) => !!rec && (rec.kind === "movie" || isMovieKey(rec.id || rec.key || ""));

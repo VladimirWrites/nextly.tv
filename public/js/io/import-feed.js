@@ -29,9 +29,9 @@ export const previewFeed = (feed, now = Date.now()) => summarize(state, feed, no
    is uninteresting; every caller today passes true. */
 /* Which catalogue can place a row this library has never seen.
 
-   Not the same one for both: TVmaze has no films at all, so asking the television catalogue to
-   find a film by its IMDb id gets a 404 and the row is written off as one nothing could place.
-   That is what happened to every one of five hundred imported films — they were read out of the
+   Not the same one for both: TVmaze has no movies at all, so asking the television catalogue to
+   find a movie by its IMDb id gets a 404 and the row is written off as one nothing could place.
+   That is what happened to every one of five hundred imported movies — they were read out of the
    export correctly, looked up against the wrong catalogue, and counted as missing.
 
    Injectable so the choice can be tested without a network. */

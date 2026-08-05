@@ -124,14 +124,14 @@ function paint(root, who, go, top) {
   if (bio && (wasOpen || bio.scrollHeight > bio.clientHeight + 2)) more.hidden = false;
 }
 
-/* "12 shows · 30 films" rather than a bare total, because the two are different careers and
+/* "12 shows · 30 movies" rather than a bare total, because the two are different careers and
    somebody looking an actor up usually came for one of them. */
 function creditLine(list) {
-  const films = list.filter((x) => x.kind === "movie").length;
-  const shows = list.length - films;
+  const movies = list.filter((x) => x.kind === "movie").length;
+  const shows = list.length - movies;
   return [
     shows ? `${shows} show${shows === 1 ? "" : "s"}` : null,
-    films ? `${films} movie${films === 1 ? "" : "s"}` : null,
+    movies ? `${movies} movie${movies === 1 ? "" : "s"}` : null,
   ].filter(Boolean).join(" · ");
 }
 

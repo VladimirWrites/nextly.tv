@@ -9,7 +9,8 @@
 // list costs nothing, and refetching a fortnight every time the tab is opened costs a lot.
 import * as tvmaze from "./providers/tvmaze.js";
 import * as tmdb from "./providers/tmdb.js";
-import { activeProvider } from "./meta.js";
+import * as cinemeta from "./providers/cinemeta.js";
+import { activeProvider, movieProvider } from "./meta.js";
 import { premieres, airing } from "../domain/discover.js";
 
 const DAYS_AHEAD = 14;
@@ -77,10 +78,32 @@ export async function feedPage(id, page = 1, opts = {}) {
   // default of two dozen, the whole-feed screen passes Infinity and gets the lot.
   if (id === "premieres") return { cards: page > 1 ? [] : await premiereFeed(opts), more: false };
   if (id === "today") return { cards: page > 1 ? [] : await airingFeed(opts), more: false };
+  if (id === "movies") return popularMoviesFeed(page);
   const fn = { trending: trendingFeed, popular: popularFeed, toprated: topRatedFeed }[id];
   if (!fn) return { cards: [], more: false };
   const { cards, pages } = await fn(page);
   return { cards, more: page < pages };
+}
+
+/* ---- movies ----
+
+   The one discovery row that works without a key. Every other feed here is either TVmaze's
+   schedule or something only TMDB publishes, so a reader on TVmaze gets a thin Search screen —
+   Cinemeta's own popular catalogue fills that in for movies, and a reader with a TMDB key gets
+   TMDB's, which is the same rule the movie pages follow.
+
+   Paged differently on each side: TMDB counts pages, Cinemeta counts the items to skip. Both
+   are hidden behind a page number here so the row and the whole-feed screen do not have to
+   know which one answered. */
+const MOVIES_PER_PAGE = 48;
+
+export async function popularMoviesFeed(page = 1) {
+  const p = movieProvider();
+  const cards = p.id === "tmdb"
+    ? await tmdb.popularMovies(page).catch(() => [])
+    : await cinemeta.popularMovies((page - 1) * MOVIES_PER_PAGE).catch(() => []);
+  // Neither says how many pages there are, so "more" is whether this one came back full.
+  return { cards, more: cards.length >= (p.id === "tmdb" ? 20 : MOVIES_PER_PAGE) };
 }
 
 /* ---- feeds that need the user's TMDB key ---- */

@@ -1,6 +1,6 @@
-// One film.
+// One movie.
 //
-// A show page is mostly its episode list — the barcode, the seasons, what to watch next. A film
+// A show page is mostly its episode list — the barcode, the seasons, what to watch next. A movie
 // has none of that, and building this out of the show page would have meant a screen with most
 // of itself switched off. So it is its own page, and a short one: the artwork, what it is, and
 // the one thing there is to say about it, which is whether you have seen it.
@@ -23,9 +23,9 @@ import { shelfScroller } from "./dom.js";
 
 export function renderMovie(root, key, { go, back, top, repaint }) {
   const held = findShow(state, key)
-    /* The same film under either catalogue's key. A record added from Cinemeta is keyed by its
+    /* The same movie under either catalogue's key. A record added from Cinemeta is keyed by its
        IMDb id and a TMDB link names a number, so an exact-key lookup finds nothing and the page
-       offers to add a film the library already holds. */
+       offers to add a movie the library already holds. */
     || findSameShow(state, { ...(cache.getMeta(key) || {}), key, kind: "movie" });
   const m = cache.getMeta(key) || cache.getHint(key);
   const name = (held && held.name) || (m && m.name) || "";
@@ -45,7 +45,7 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
      top of the screen and the bar has to float on it.
 
      Shared with the show page rather than rebuilt: what differs is where Back falls back to and
-     what Share addresses. A film is shared by an id every device can open, which is Cinemeta's
+     what Share addresses. A movie is shared by an id every device can open, which is Cinemeta's
      form of the IMDb id — a tmdb:m key is a number only TMDB can read. */
   const imdb = (held && held.imdb) || (m && m.imdb) || null;
   const bar = stickyBar({ id: key, name }, back, {
@@ -105,7 +105,7 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
                 onclick: () => markMovieNow(held.id, !watched),
               }, [svg(ICON.check, "btn-icon"), watched ? "Watched — undo" : "Mark watched"])
             /* Not tracked, so there is nothing to mark yet. Marking it is also the most likely
-               reason somebody opened a film they do not hold, so the one button does both. */
+               reason somebody opened a movie they do not hold, so the one button does both. */
             : h("button.btn.btn-primary", {
                 type: "button",
                 onclick: () => markMovieNow(key, true),
@@ -132,7 +132,7 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
         : null,
 
       /* Filled after mount, and only where a TMDB key exists. Cinemeta lists a cast as names
-         with no ids behind them — there is nobody to open — so a film from there keeps the
+         with no ids behind them — there is nobody to open — so a movie from there keeps the
          plain line below and gains no shelf. */
       castBox,
       likeBox,

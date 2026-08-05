@@ -51,6 +51,16 @@ export const ROWS = [
     load: () => discover.feedPage("popular"),
     caption: (c) => scoreCaption(c),
   },
+  /* The only row that does not need a key, which is why it carries no `via`: it is drawn for
+     whichever catalogue is in use, so long as movies are switched on at all. */
+  {
+    id: "movies",
+    via: "any",
+    title: "Popular movies",
+    lede: "What people are watching, whether or not you have a key.",
+    load: () => discover.feedPage("movies"),
+    caption: (c) => scoreCaption(c),
+  },
   {
     id: "toprated",
     via: "tmdb",
@@ -85,7 +95,9 @@ discover.onForget(() => drawn.clear());
 export function renderDiscover(root, { go }) {
   const tracked = trackedKeys(state.shows);
   const using = discover.hasTmdb() ? "tmdb" : "tvmaze";
-  const sections = ROWS.filter((r) => r.via === using);
+  // "any" belongs to no catalogue: it is the movies row, and it appears wherever movies are on.
+  const wantMovies = !!(state.settings || {}).movies;
+  const sections = ROWS.filter((r) => (r.via === "any" ? wantMovies : r.via === using));
 
   const nodes = sections.map((row) => {
     /* Filtered again on the way back out: a show tracked since this row was drawn should not
@@ -139,7 +151,8 @@ function posterCard(card, caption, go) {
   cache.putHint(card);
   return h("button.shelf-card", {
     type: "button",
-    onclick: () => go("show", card.key),
+    // A movie in this row opens the movie page; everything else is a series.
+    onclick: () => go(card.kind === "movie" ? "movie" : "show", card.key),
     "aria-label": `${card.name}${card.year ? `, ${card.year}` : ""}`,
   }, [
     h("div.shelf-art", [

@@ -36,7 +36,7 @@ export function tookArrival(id) {
    route — so scrolling into a long episode list left nothing saying which show you were in
    or how to get out.
 
-   Shared with the film page, which skips the topbar for the same reason: the cover has to run
+   Shared with the movie page, which skips the topbar for the same reason: the cover has to run
    from the very top of the screen, and a bar above it puts the artwork in a box. What differs
    between the two is only where the back arrow falls back to and what the share button
    addresses, so both are arguments.
@@ -282,8 +282,8 @@ export function hintRatings(hint) {
    Who is in it. Fetched from whichever catalogue answered for this show, held for the session
    only, and dropped from the page entirely when there is nothing to show — an empty shelf under
    a heading is worse than neither. */
-/* Shared with the film page, which is why the fetch is an argument: a series asks the
-   catalogue for its cast by the show's id, a film by the film's, and everything after that —
+/* Shared with the movie page, which is why the fetch is an argument: a series asks the
+   catalogue for its cast by the show's id, a movie by the movie's, and everything after that —
    the round faces, the character underneath, dropping the section when there is nobody to show
    — is the same section and should stay the same section. */
 export function castSection(m, go, fetch = meta.credits) {

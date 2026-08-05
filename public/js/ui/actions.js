@@ -298,22 +298,22 @@ export function undoRewatch(showId) {
 
 /* ---- library ---- */
 
-/* Tracking a film. The same shape as trackShow and for the same reasons — fetch first so the
+/* Tracking a movie. The same shape as trackShow and for the same reasons — fetch first so the
    vault record carries a real name and year rather than a number, cache the record that request
    already paid for, and let addShow decide whether this is new. */
-/* The record for one film, fetched once and cached. Same contract as ensureMeta: a no-op when
-   there is nothing to fetch, and silent when the catalogue will not answer — a film page that
+/* The record for one movie, fetched once and cached. Same contract as ensureMeta: a no-op when
+   there is nothing to fetch, and silent when the catalogue will not answer — a movie page that
    cannot load its record says so by staying on its skeleton, not by shouting. */
 export function ensureMovie(key, { force = false } = {}) {
   if (!force && cache.has(key)) return Promise.resolve(cache.getMeta(key));
-  // The vault's own portable id, so a film survives its catalogue's key being taken away.
+  // The vault's own portable id, so a movie survives its catalogue's key being taken away.
   const held = findShow(state, key);
   return meta.fetchMovie(key, { imdb: (held && held.imdb) || null })
     .then(async (m) => { await cache.putMeta(m); repaint(); return m; })
     .catch(() => null);
 }
 
-/* Marking a film, including the case where it is not tracked yet. Somebody who opens a film
+/* Marking a movie, including the case where it is not tracked yet. Somebody who opens a movie
    they do not hold and presses "Mark watched" means both things — add it, and mark it — and
    making them press twice would be pedantry. */
 export async function markMovieNow(key, on = true) {

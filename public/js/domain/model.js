@@ -185,9 +185,9 @@ export function markEpisode(state, id, key, on = true, now = Date.now()) {
    Up next passes over, so a library that had just gained a thousand marks showed nothing at
    all on the screen it opens on. */
 export function start(sh, now) {
-  /* A film is watched or it is not; there is no middle where it is being watched. Leaving it
+  /* A movie is watched or it is not; there is no middle where it is being watched. Leaving it
      "planned" keeps it off Up next, which answers "what next in something you have started" and
-     has nothing to say about a film. */
+     has nothing to say about a movie. */
   if (isMovie(sh)) return;
   if (sh.st !== "planned") return;
   sh.st = "active";
@@ -199,7 +199,7 @@ export function start(sh, now) {
 // Start another pass. Deliberately an explicit action rather than something that happens
 // when you tap an episode you've already seen: that tap means "I mis-marked this", and
 // silently promoting it to a rewatch would reset a finished show's progress by accident.
-/* Marking a film. One mark, keyed so it can never be mistaken for an episode: epKey builds
+/* Marking a movie. One mark, keyed so it can never be mistaken for an episode: epKey builds
    "<season>x<episode>" and cannot produce "m". Everything else — the pass level that counts
    rewatches, the mtime, the tombstone on removal — is the machinery episodes already use. */
 export function markMovie(state, id, on = true, now = Date.now()) {
