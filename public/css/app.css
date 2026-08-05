@@ -1838,6 +1838,25 @@ div.bar-row {
   text-align: center;
 }
 
+/* A tick, not a number. The rule above centres a digit by giving the badge a line-height, which
+   is exactly what an inline SVG ignores — it sits on the text baseline instead and rides low.
+   A glyph has to be centred as a box. */
+.card-badge.is-seen {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  line-height: 0;
+}
+
+.card-badge.is-seen svg {
+  display: block;
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  fill: none;
+}
+
 .card-title {
   font-size: 13.5px;
   line-height: 1.25;
