@@ -7,12 +7,13 @@
 // Its title, its lede and its captions come from the row definition rather than a second copy
 // of them here. A screen that restated its own heading would eventually disagree with the row
 // that led to it.
-import { h, mount, svg, ICON, posterFallback, poster } from "./dom.js";
+import { h, mount, svg, ICON } from "./dom.js";
 import { state } from "../domain/store.js";
 import { trackedKeys } from "../domain/discover.js";
 import { feedById } from "./discover.js";
 import * as discover from "../io/discover.js";
 import * as cache from "../io/cache.js";
+import { shelfCard } from "./shelf.js";
 
 /* How far down the page a feed was, per feed, for the length of the visit. Coming back to a
    feed you scrolled a long way into and being put at the top again is the same complaint as
@@ -106,15 +107,7 @@ export function renderFeed(root, id, { go, back, top }) {
 // A discovery card opens the show rather than tracking it, the same as in the row it came from.
 function card(c, caption, go) {
   cache.putHint(c);
-  return h("button.shelf-card", {
-    type: "button",
-    onclick: () => go("show", c.key),
-    "aria-label": `${c.name}${c.year ? `, ${c.year}` : ""}`,
-  }, [
-    h("div.shelf-art", [c.poster ? poster("shelf-poster", c.poster) : posterFallback(c.name, "md")]),
-    h("div.shelf-name.t-title", { text: c.name }),
-    caption ? h("div.shelf-cap", { text: caption }) : null,
-  ]);
+  return shelfCard(c, { caption, go });
 }
 
 const notAFeed = (go) => h("div.empty", [

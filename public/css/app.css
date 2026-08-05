@@ -2741,6 +2741,8 @@ button.score {
   border-radius: var(--r);
   overflow: hidden;
   aspect-ratio: 2 / 3;
+  /* The badge hangs off the poster's top-right corner. */
+  position: relative;
   background: var(--panel-2);
   border: 1px solid var(--line);
   transition: border-color 0.14s ease;
@@ -2760,6 +2762,44 @@ button.score {
  * as the one beside it and a row is the same height as the placeholder it replaced. Without
  * it, a row of posters grew by however much its longest title happened to wrap, and everything
  * below it moved. */
+/* Already yours.
+ *
+ * Sits on the artwork rather than beside the title, because the poster is what the eye lands
+ * on in a row and the tick has to be readable in that glance. Filled with the signal colour on
+ * a ring of the page background, so it holds its edge against a bright poster and a dark one
+ * without a drop shadow. */
+.shelf-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--signal);
+  border: 2px solid var(--ink);
+  display: grid;
+  place-items: center;
+}
+
+.shelf-badge-icon {
+  width: 12px;
+  height: 12px;
+  /* The token that exists for exactly this: ink on a signal fill, and it flips with the theme
+   * — dark under the amber, light under the deep gold the light theme uses. */
+  stroke: var(--signal-ink);
+  stroke-width: 3.2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* A status reads as a fact about you, not a fact about the title, so it is not dimmed the way
+ * a year is. */
+.shelf-cap.is-held {
+  color: var(--text);
+  opacity: 1;
+}
+
 .shelf-name {
   margin-top: 8px;
   font-size: 13px;

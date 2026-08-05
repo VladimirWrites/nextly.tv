@@ -4,13 +4,14 @@
 // the catalogue, so it is read-only by construction and its only job is to get you to another
 // show. Tapping one goes to that show's page, which already knows how to handle a show you
 // track and one you don't.
-import { h, svg, ICON, mount, posterFallback, shelfScroller, keepMedia, poster } from "./dom.js";
+import { h, svg, ICON, mount, posterFallback, shelfScroller, keepMedia } from "./dom.js";
 import { shareButton } from "./share-button.js";
 import { anonBar, canGoBack } from "./anon.js";
 import * as meta from "../io/meta.js";
 import { fmtDate } from "../domain/dates.js";
 import { empty } from "./upnext.js";
 import * as view from "./viewstate.js";
+import { shelfCard } from "./shelf.js";
 
 // Held so going back to a person just visited paints at once rather than fetching again.
 const seen = new Map();
@@ -136,23 +137,10 @@ function creditLine(list) {
 }
 
 function showCard(s, go) {
-  // A career holds both, and each half opens its own screen.
-  const route = s.kind === "movie" ? "movie" : "show";
-  return h("button.shelf-card", {
-    type: "button",
-    onclick: () => go(route, s.key),
-    "aria-label": `${s.name}${s.year ? `, ${s.year}` : ""}`,
-  }, [
-    h("div.shelf-art", [
-      s.poster
-        ? poster("shelf-poster", s.poster)
-        : posterFallback(s.name, "md"),
-    ]),
-    h("div.shelf-name.t-title", { text: s.name }),
-    // The part, where the catalogue says — TVmaze doesn't on this endpoint, so it falls back to
-    // the year rather than leaving a gap.
-    h("div.shelf-cap", { text: s.character || (s.year ? String(s.year) : "") }),
-  ]);
+  // The part, where the catalogue says — TVmaze doesn't on this endpoint, so it falls back to
+  // the year rather than leaving a gap. A career holds shows and movies, and shelfCard sends
+  // each half to its own screen.
+  return shelfCard(s, { caption: s.character || (s.year ? String(s.year) : ""), go });
 }
 
 /* Same shape as the loaded page, so nothing moves when it arrives — including the space a

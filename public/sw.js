@@ -10,7 +10,11 @@
  * /api/* is NEVER cached. The vault must always be live — a stale blob merged as if it were
  * current is exactly how you lose data.
  */
-const VERSION = "v1.7.0";
+<<<<<<< HEAD
+const VERSION = "v1.8.0";
+=======
+const VERSION = "v1.8.0";
+>>>>>>> 050bee3 (Say on a discovery card whether you already have it)
 const SHELL = "nextly-shell-" + VERSION;
 const ART = "nextly-art-v1";          // catalogue posters, kept across shell upgrades
 const ART_MAX = 400;
@@ -81,6 +85,7 @@ const FILES = [
   "/js/ui/search.js",
   "/js/ui/settings.js",
   "/js/ui/share-button.js",
+  "/js/ui/shelf.js",
   "/js/ui/shell.js",
   "/js/ui/show-parts.js",
   "/js/ui/show-preview.js",

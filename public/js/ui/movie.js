@@ -20,6 +20,7 @@ import * as cache from "../io/cache.js";
 import { movieCredits, similarMovies } from "../io/meta.js";
 import { castSection, stickyBar, watchTitle } from "./show-parts.js";
 import { shelfScroller } from "./dom.js";
+import { shelfCard } from "./shelf.js";
 
 export function renderMovie(root, key, { go, back, top, repaint }) {
   const held = findShow(state, key)
@@ -197,15 +198,10 @@ async function fillSimilar(box, m, go) {
   if (!like.length || !box.isConnected) return;
   box.replaceChildren(
     h("div.sect", [h("h2.t-label", { text: "If you liked this" })]),
-    shelfScroller(h("div.shelf", like.map((f) => h("button.shelf-card", {
-      type: "button",
-      onclick: () => go("movie", f.key),
-      "aria-label": `${f.name}${f.year ? `, ${f.year}` : ""}`,
-    }, [
-      h("div.shelf-art", [f.poster ? poster("shelf-poster", f.poster) : posterFallback(f.name, "md")]),
-      h("div.shelf-name.t-title", { text: f.name }),
-      h("div.shelf-cap", { text: f.year ? String(f.year) : "" }),
-    ]))), `like:${m.key}`),
+    shelfScroller(h("div.shelf", like.map((f) => shelfCard(
+      { ...f, kind: "movie" },
+      { caption: f.year ? String(f.year) : null, go },
+    ))), `like:${m.key}`),
   );
 }
 
