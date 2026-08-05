@@ -14,7 +14,7 @@ import { movieWatched, moviePlays } from "../domain/model.js";
 import { fmtScore, fmtDuration, movieKey } from "../domain/constants.js";
 import { fmtDate } from "../domain/dates.js";
 import { anonBar } from "./anon.js";
-import { markMovieNow, ensureMovie, untrackShow } from "./actions.js";
+import { markMovieNow, trackMovie, ensureMovie, untrackShow } from "./actions.js";
 import { empty } from "./upnext.js";
 import * as cache from "../io/cache.js";
 import { movieCredits, similarMovies } from "../io/meta.js";
@@ -104,12 +104,29 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
                 class: watched ? "btn-ghost" : "btn-primary",
                 onclick: () => markMovieNow(held.id, !watched),
               }, [svg(ICON.check, "btn-icon"), watched ? "Watched — undo" : "Mark watched"])
-            /* Not tracked, so there is nothing to mark yet. Marking it is also the most likely
-               reason somebody opened a movie they do not hold, so the one button does both. */
+            /* Not tracked, so there is nothing to mark yet, and marking is the most likely reason
+               somebody opened a movie they do not hold — so that button does both at once. */
             : h("button.btn.btn-primary", {
                 type: "button",
                 onclick: () => markMovieNow(key, true),
               }, [svg(ICON.check, "btn-icon"), "Mark watched"]),
+
+          /* The other reason to open a movie you do not hold: you want to see it later. That was
+             only expressible by marking it watched, which is a lie about the past.
+
+             A movie in the library with no mark against it is already exactly what "watch later"
+             means — the Library files it under Planned — so this writes no new state and needs
+             no new status. It is the same record, minus the mark. */
+          !held
+            ? h("button.btn.btn-ghost", {
+                type: "button",
+                onclick: () => trackMovie(key),
+              }, [svg(ICON.plus, "btn-icon"), "Watch later"])
+            : !watched
+              /* Held and unmarked, which is to say already on the watchlist. Said rather than
+                 offered again, so the button does not sit there doing nothing when pressed. */
+              ? h("span.t-dim", { style: { fontSize: "13.5px" }, text: "On your watchlist." })
+              : null,
           plays > 1
             ? h("span.t-dim", { style: { fontSize: "13.5px" }, text: `Watched ${plays} times.` })
             : null,
