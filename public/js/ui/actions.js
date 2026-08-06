@@ -2,7 +2,7 @@
 // so "mark watched" means exactly one thing no matter which screen you tapped it from.
 import { state } from "../domain/store.js";
 import { findShow } from "../domain/schema.js";
-import { markEpisode, markUpTo, markAllAired, markSeason, addShow, setWatchDates, removeShow, setStatus, startRewatch, cancelRewatch, markMovie } from "../domain/model.js";
+import { markEpisode, markUpTo, markAllAired, markSeason, addShow, setWatchDates, removeShow, setStatus, startRewatch, cancelRewatch, markMovie, setRating } from "../domain/model.js";
 import { nextUp, passOf, completion, newlyFinished, showProgress } from "../domain/progress.js";
 import { epCode, parseEpKey, ordinal, parseShowKey, fmtDuration, isMovie } from "../domain/constants.js";
 import { scheduleSync } from "../io/storage.js";
@@ -472,4 +472,23 @@ export function changeStatus(id, st) {
   setStatus(state, id, st);
   scheduleSync();
   repaint();
+}
+
+
+/* Rating something, including the case where it is not tracked yet.
+ *
+ * Same reasoning as marking a movie watched: somebody who opens a title they do not hold and
+ * gives it a number means both things, and making them press "add" first would be pedantry.
+ * The rating is worth as much as the record it hangs on, and there is no record without this. */
+export async function rateNow(key, target, value) {
+  let sh = findShow(state, key);
+  if (!sh) {
+    if (!value) return null;                       // nothing to clear on a title nobody holds
+    sh = await (isMovie({ id: key }) ? trackMovie(key) : trackShow(key)).catch(() => null);
+    if (!sh) return null;
+  }
+  setRating(state, sh.id, target, value);
+  scheduleSync();
+  repaint();
+  return sh;
 }
