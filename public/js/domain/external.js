@@ -195,9 +195,14 @@ export function summarize(state, feed, now) {
     add += plan.add.length;
     raise += plan.raise.length;
   }
+  /* Split by kind, because "596 shows" was counting 593 films among them. The button offered
+     to import shows and their history and said nothing about the films it was about to add,
+     which is a promise that does not match what happens. */
+  const newMovies = unknown.filter((r) => r.kind === "movie").length;
   return {
     shows: known.length,
-    newShows: unknown.length,
+    newShows: unknown.length - newMovies,
+    newMovies,
     marks: add,
     updated: raise,
     // Every episode the feed mentions, whether or not it changes anything here.

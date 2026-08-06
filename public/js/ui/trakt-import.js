@@ -16,6 +16,15 @@ import { importFeed, previewFeed } from "../io/import-feed.js";
 import { hydrateLibrary } from "./actions.js";
 import { state } from "../domain/store.js";
 
+/* What is about to be added, named by kind. One of the two is often zero — an export with no
+   films, or a library that already holds every series in it — and a count of nothing is not
+   worth saying out loud. */
+const newThings = (p) => [
+  p.newShows ? `${fmtInt(p.newShows)} show${p.newShows === 1 ? "" : "s"}` : null,
+  p.newMovies ? `${fmtInt(p.newMovies)} movie${p.newMovies === 1 ? "" : "s"}` : null,
+].filter(Boolean).join(" and ");
+
+
 /* Matched rather than listed: a long history is split across watched-history-1.json and its
    numbered siblings, and how many there are is only known once the zip is open. */
 const WANTED = (name) =>
@@ -43,11 +52,11 @@ export function what(p, held = (state.shows || []).length) {
   if (p.marks || p.updated) {
     return `${fmtInt(p.marks)} new to ${fmtInt(p.shows)} shows you track`
       + (p.updated ? `, ${fmtInt(p.updated)} that would gain a watch date` : "")
-      + (p.newShows ? `, and ${fmtInt(p.newShows)} shows you don't.` : ".");
+      + (newThings(p) ? `, and ${newThings(p)} you don't.` : ".");
   }
   if (!p.newShows) return "Nothing in there that isn't already here.";
   return held
-    ? `Nothing new for the shows you track, and ${fmtInt(p.newShows)} shows you don't.`
+    ? `Nothing new for the shows you track, and ${newThings(p)} you don't.`
     : "None of them are in your library yet.";
 }
 
@@ -60,7 +69,8 @@ export function review(read, out, repaint) {
      history. Somebody who watchlists heavily should see that number before pressing anything. */
   const lines = [
     h("div", {
-      text: `${fmtInt(read.episodes)} episodes across ${fmtInt(read.feed.shows.length - read.planned)} shows in that file`
+      text: // Shows, and only shows: the row count carries the films and the watchlist too.
+      `${fmtInt(read.episodes)} episodes across ${fmtInt(read.feed.shows.length - read.planned - read.movies)} shows in that file`
         + (read.movies ? `, ${fmtInt(read.movies)} movies` : "")
         + (read.planned ? `, and ${fmtInt(read.planned)} on the watchlist` : "")
         + (read.ratings ? `. ${fmtInt(read.ratings)} ratings across ${fmtInt(read.ratedTitles)} titles` : "")
@@ -100,7 +110,7 @@ export function review(read, out, repaint) {
     total
       ? h("button.btn.btn-sm.btn-primary", {
           type: "button",
-          text: p.newShows ? `Import ${fmtInt(p.newShows)} shows and their history` : "Import",
+          text: newThings(p) ? `Import ${newThings(p)} with their history` : "Import",
           onclick: () => run(read.feed, out, repaint),
         })
       : null,
