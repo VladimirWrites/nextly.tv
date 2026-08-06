@@ -29,12 +29,26 @@ export function matchFeed(state, feed) {
   const known = [];
   const unknown = [];
   for (const row of (feed && feed.shows) || []) {
+    /* Which kind this row is, said out loud. Without it every row was matched as a series, so
+       a movie already in the library could never be recognised — findSameShow guards on kind,
+       and a movie record could not answer a question asked about a show.
+
+       It went unnoticed because a first import does not need matching: an unmatched row is
+       added, and adding one already held folds into the record that exists. A second import
+       is where it shows, which is exactly what somebody does to pick up ratings for a library
+       they already imported — and every movie in it was skipped.
+
+       The key is built per kind too. TMDB numbers films and series separately, so 76600 is a
+       different title in each, and a movie's key carries the m that says which. */
+    const movie = row.kind === "movie";
     const show = findSameShow(state, {
+      kind: movie ? "movie" : undefined,
       imdb: row.imdb || null,
-      tvdb: row.tvdb || null,
+      tvdb: movie ? null : row.tvdb || null,
+      tmdb: row.tmdb || null,
       // A TMDB id is also a key here when TMDB is the catalogue in use, so it is offered as
       // one. findSameShow ignores a key it does not recognise.
-      key: row.tmdb ? `tmdb:${row.tmdb}` : null,
+      key: row.tmdb ? (movie ? `tmdb:m${row.tmdb}` : `tmdb:${row.tmdb}`) : null,
     });
     if (show) known.push({ show, row });
     else unknown.push(row);

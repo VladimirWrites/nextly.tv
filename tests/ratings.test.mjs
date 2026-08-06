@@ -143,3 +143,42 @@ test("a library nobody has rated carries no rating field at all", () => {
   const cleared = normShow({ ...wire(), rats: [] }, NOW);
   assert.equal("rats" in cleared, false, "an empty list is not worth syncing");
 });
+
+/* Re-importing the same export to pick up ratings for a library already imported.
+ *
+ * A first import never needs matching: an unmatched row is added, and adding one already held
+ * folds into the record that exists. So a matcher that could not recognise a movie looked
+ * perfectly well behaved until the second import, where every movie in the file was skipped
+ * and its ratings with it. */
+test("a movie already in the library is matched on a second import", async () => {
+  const { matchFeed } = await import("../public/js/domain/external.js");
+  const { addShow } = await import("../public/js/domain/model.js");
+  const st = { shows: [] };
+  addShow(st, { key: "tmdb:m76600", src: "tmdb", ref: "m76600", kind: "movie",
+    name: "Avatar: The Way of Water", year: 2022, imdb: "tt1630029", tmdb: 76600 }, NOW);
+  addShow(st, { key: "tvmaze:169", src: "tvmaze", ref: 169, name: "The Wire", imdb: "tt0306414" }, NOW);
+
+  const feed = { shows: [
+    { kind: "movie", name: "Avatar: The Way of Water", year: 2022, imdb: "tt1630029", tmdb: 76600,
+      episodes: [], ratings: [{ id: "t", v: 10, w: NOW }] },
+    { name: "The Wire", year: 2002, imdb: "tt0306414", tvdb: 79126, episodes: [],
+      ratings: [{ id: "t", v: 9, w: NOW }] },
+  ] };
+  const { known, unknown } = matchFeed(st, feed);
+  assert.equal(unknown.length, 0, "both are already held");
+  assert.equal(known.filter((k) => k.row.kind === "movie").length, 1, "including the movie");
+});
+
+/* TMDB numbers films and series separately, so the same digits name different titles. Matching
+   on the number alone would hand a movie's ratings to a series. */
+test("a movie row does not match a series carrying the same TMDB number", async () => {
+  const { matchFeed } = await import("../public/js/domain/external.js");
+  const { addShow } = await import("../public/js/domain/model.js");
+  const st = { shows: [] };
+  addShow(st, { key: "tmdb:76600", src: "tmdb", ref: 76600, name: "A series", tmdb: 76600 }, NOW);
+  const { known, unknown } = matchFeed(st, { shows: [
+    { kind: "movie", name: "A film", tmdb: 76600, episodes: [], ratings: [{ id: "t", v: 10 }] },
+  ] });
+  assert.equal(known.length, 0);
+  assert.equal(unknown.length, 1);
+});
