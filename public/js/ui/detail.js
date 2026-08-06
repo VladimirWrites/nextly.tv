@@ -23,6 +23,8 @@ import { trailerLink } from "./show-parts.js";
 import { scoresFor, scoreSourceOf, ensureScores } from "../io/meta.js";
 import { toggleEpisode, ensureMeta, opts } from "./actions.js";
 import { empty } from "./upnext.js";
+import { ratingSection } from "./rating.js";
+import { seasonRatingKey } from "../domain/constants.js";
 
 /* Both pages are addressed by the show's key and the numbers within it: "tvmaze:38052/3" and
    "tvmaze:38052/3/1". The key can hold a colon but never a slash, so splitting on slashes is
@@ -117,6 +119,11 @@ export function renderSeason(root, arg, { go, back, top, repaint }) {
   /* The shape of the season: one point per scored episode, joined. Two scored episodes is the
      least that makes a line, so a season nobody has rated yet gets no panel at all — the box
      is dropped after mounting, once the chart has said whether it had anything to draw. */
+  /* Rating a season is rating the run, not the show — the year it turned round, or the one
+     everybody skips. Only where the show is tracked: there is no record to hang it on
+     otherwise, and the marking below has the same rule for the same reason. */
+  const rate = show ? ratingSection(show, show.id, seasonRatingKey(se.n), "Your rating") : null;
+
   const box = h("div.chart-box");
   const chart = avg
     ? h("div", [
@@ -173,6 +180,7 @@ export function renderSeason(root, arg, { go, back, top, repaint }) {
 
     // Filled after mount: a chart has to be measured against the column it lives in, and
     // until the box is in the page there is no column to measure.
+    rate,
     chart,
 
     h("div.sect", [
@@ -262,6 +270,8 @@ export function renderEpisode(root, arg, { go, back, top, repaint }) {
     ]),
 
     ep.overview ? h("p.show-overview", { text: ep.overview }) : null,
+
+    show ? ratingSection(show, show.id, epKey(se.n, ep.e), "Your rating") : null,
 
     // Marking belongs here as much as on the list: this is the page you land on when you're
     // deciding whether you have seen it. Only for a show you track — there is nowhere to
