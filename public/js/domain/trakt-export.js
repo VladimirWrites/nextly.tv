@@ -34,6 +34,8 @@ const isPlay = (e) => e && e.type === "episode" && e.episode && e.show;
 const isMoviePlay = (e) => e && e.type === "movie" && e.movie;
 
 // Absent is not zero, and a season number of 0 is a real season — specials.
+import { RATING_TITLE, RATING_MAX, seasonRatingKey } from "./constants.js";
+
 const num = (v) => (v === null || v === undefined || v === "" ? NaN : Math.trunc(+v));
 
 const idsOf = (o) => {
@@ -260,6 +262,16 @@ export const WATCHLIST_FILE = /^lists-watchlist(?:-(\d+))?\.json$/;
    entries the way everything else in here is. */
 export const WATCHED_MOVIES_FILE = /^watched-movies(?:-(\d+))?\.json$/;
 
+/* Ratings, which Trakt keeps in four files because it rates four things: the movie, the show,
+   a season of it, and one episode. All on the same 1-10 integer scale, all paginated the same
+   way as everything else in here — the movies file was three pages in the export this was
+   written against, and a reader that knew only the unnumbered name would have taken none of
+   them. */
+export const RATINGS_MOVIES_FILE = /^ratings-movies(?:-(\d+))?\.json$/;
+export const RATINGS_SHOWS_FILE = /^ratings-shows(?:-(\d+))?\.json$/;
+export const RATINGS_SEASONS_FILE = /^ratings-seasons(?:-(\d+))?\.json$/;
+export const RATINGS_EPISODES_FILE = /^ratings-episodes(?:-(\d+))?\.json$/;
+
 const pagesOf = (names, re) => [...names]
   .filter((n) => re.test(n))
   .sort((a, b) => (+(a.match(re)[1] || 0)) - (+(b.match(re)[1] || 0)));
@@ -267,6 +279,71 @@ const pagesOf = (names, re) => [...names]
 export const historyFiles = (names) => pagesOf(names, HISTORY_FILE);
 export const watchlistFiles = (names) => pagesOf(names, WATCHLIST_FILE);
 export const watchedMovieFiles = (names) => pagesOf(names, WATCHED_MOVIES_FILE);
+export const ratingFiles = (names) => [
+  ...pagesOf(names, RATINGS_MOVIES_FILE),
+  ...pagesOf(names, RATINGS_SHOWS_FILE),
+  ...pagesOf(names, RATINGS_SEASONS_FILE),
+  ...pagesOf(names, RATINGS_EPISODES_FILE),
+];
+
+/* Every rating in the export, gathered under the title it belongs to.
+ *
+ * A season rating names its show and a season number; an episode rating names its show and both
+ * numbers. So all four files reduce to one question — which title, and which id within it —
+ * and the answer is the key space the vault already stores: "t", "4", "4x13".
+ *
+ * Keyed by the same show and movie keys the history uses, so a rating meets its own record
+ * rather than arriving as a stranger. Trakt numbers films and series separately, which is why
+ * the movie half is keyed apart and not merely by the id. */
+export function ratingsFromExport(files) {
+  const byTitle = new Map();
+  const at = (r) => (r && r.rated_at ? Date.parse(r.rated_at) || 0 : 0);
+
+  const put = (subject, kind, id, row) => {
+    const ids = idsOf(subject);
+    const key = kind === "movie" ? movieKeyOf(ids) : showKeyOf(ids);
+    if (!key || !subject) return;
+    if (!byTitle.has(key)) {
+      byTitle.set(key, {
+        kind,
+        name: subject.title || "",
+        year: num(subject.year) || null,
+        imdb: ids.imdb, tvdb: ids.tvdb, tmdb: ids.tmdb, trakt: ids.trakt,
+        ratings: [],
+      });
+    }
+    byTitle.get(key).ratings.push({ id, v: num(row.rating), w: at(row) });
+  };
+
+  const rows = (re) => pagesOf(Object.keys(files || {}), re)
+    .flatMap((name) => (Array.isArray(files[name]) ? files[name] : []));
+
+  for (const r of rows(RATINGS_MOVIES_FILE)) {
+    if (r && r.movie) put(r.movie, "movie", RATING_TITLE, r);
+  }
+  for (const r of rows(RATINGS_SHOWS_FILE)) {
+    if (r && r.show) put(r.show, "show", RATING_TITLE, r);
+  }
+  for (const r of rows(RATINGS_SEASONS_FILE)) {
+    const n = r && r.season ? num(r.season.number) : NaN;
+    if (r && r.show && Number.isFinite(n) && n >= 0) put(r.show, "show", seasonRatingKey(n), r);
+  }
+  for (const r of rows(RATINGS_EPISODES_FILE)) {
+    const se = r && r.episode ? num(r.episode.season) : NaN;
+    const ep = r && r.episode ? num(r.episode.number) : NaN;
+    if (r && r.show && Number.isFinite(se) && Number.isFinite(ep) && se >= 0 && ep >= 0) {
+      put(r.show, "show", `${se}x${ep}`, r);
+    }
+  }
+
+  // A rating of zero is not something Trakt writes, and it means "cleared" in the vault. A file
+  // carrying one is describing nothing, and taking it would silently unrate the title.
+  for (const [key, row] of byTitle) {
+    row.ratings = row.ratings.filter((x) => Number.isFinite(x.v) && x.v > 0 && x.v <= RATING_MAX);
+    if (!row.ratings.length) byTitle.delete(key);
+  }
+  return byTitle;
+}
 
 export function readExport(files) {
   const pages = historyFiles(Object.keys(files || {}));
@@ -295,6 +372,32 @@ export function readExport(files) {
     .filter((r) => !seen.has(showKeyOf(r)));
   feed.shows.push(...planned);
 
+  /* Ratings, hung on the rows they belong to.
+   *
+   * Something rated is usually something watched, so most of these meet a row that is already
+   * here and simply join it. What is left is a title rated without a single play recorded —
+   * Trakt takes a rating from anybody, watched or not — and those become rows of their own,
+   * carrying no episodes. Treated the same as a watchlisted show for the same reason: it is a
+   * real opinion held about a real title, and dropping it would mean re-importing later to get
+   * something that was in the file all along. */
+  const ratings = ratingsFromExport(files);
+  let ratedTitles = 0;
+  let ratedRows = 0;
+  const rowKey = (r) => (r.kind === "movie" ? movieKeyOf(r) : showKeyOf(r));
+  for (const row of feed.shows) {
+    const found = ratings.get(rowKey(row));
+    if (!found) continue;
+    row.ratings = found.ratings;
+    ratedTitles++;
+    ratedRows += found.ratings.length;
+    ratings.delete(rowKey(row));
+  }
+  for (const [, row] of ratings) {
+    feed.shows.push({ ...row, episodes: [], kind: row.kind === "movie" ? "movie" : undefined });
+    ratedTitles++;
+    ratedRows += row.ratings.length;
+  }
+
   const episodes = feed.shows.reduce((t, s) => t + s.episodes.length, 0);
   const plays = feed.shows.reduce((t, s) => t + s.episodes.reduce((n, e) => n + e.plays, 0), 0);
   return {
@@ -305,6 +408,8 @@ export function readExport(files) {
     pages: pages.length,
     planned: planned.length,
     movies: movies.length,
+    ratings: ratedRows,
+    ratedTitles,
     missing: shortfall(feed, files["watched-shows.json"], watchedMovieFiles(Object.keys(files || {}))
       .flatMap((name) => (Array.isArray(files[name]) ? files[name] : []))),
   };

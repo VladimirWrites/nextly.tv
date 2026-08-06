@@ -31,6 +31,7 @@ import {
 import { season, historySection } from "./show-seasons.js";
 import { renderPreview } from "./show-preview.js";
 import * as view from "./viewstate.js";
+import { ratingSection } from "./rating.js";
 
 /* The same series under another key, if the library holds it. The portable ids come from
    whichever of the record or the card we have — a search result carries them where its
@@ -137,6 +138,10 @@ export function renderShow(root, id, { go, back }) {
             rewatchControls(show, progress),
           ]),
     ]),
+
+    /* Yours, then theirs. A score with no source is folklore, and the reader's own number is
+       the one source they can be sure of — so it sits above the crowd's rather than under it. */
+    ratingSection(show, show.id),
 
     ratings(meta, fill),
 

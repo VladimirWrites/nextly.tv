@@ -62,7 +62,9 @@ export function review(read, out, repaint) {
     h("div", {
       text: `${fmtInt(read.episodes)} episodes across ${fmtInt(read.feed.shows.length - read.planned)} shows in that file`
         + (read.movies ? `, ${fmtInt(read.movies)} movies` : "")
-        + (read.planned ? `, and ${fmtInt(read.planned)} on the watchlist.` : "."),
+        + (read.planned ? `, and ${fmtInt(read.planned)} on the watchlist` : "")
+        + (read.ratings ? `. ${fmtInt(read.ratings)} ratings across ${fmtInt(read.ratedTitles)} titles` : "")
+        + ".",
     }),
     h("div", { text: what(p) }),
   ];
@@ -119,6 +121,7 @@ async function run(feed, out, repaint) {
     toast(`${fmtInt(r.marks)} marks imported`);
     out.replaceChildren(h("span", {
       text: `${fmtInt(r.marks)} marks, ${fmtInt(r.added)} shows added`
+        + (r.rated ? `, ${fmtInt(r.rated)} ratings` : "")
         + (r.missed ? `, ${fmtInt(r.missed)} the catalogue couldn't place` : "")
         + ".",
     }));

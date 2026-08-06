@@ -14,6 +14,8 @@ import { fullBarcode } from "./barcode.js";
 import { toggleEpisode, catchUpTo, toggleSeason, opts } from "./actions.js";
 import { infoButton } from "./show-parts.js";
 import * as view from "./viewstate.js";
+import { ratingChip } from "./rating.js";
+import { seasonRatingKey } from "../domain/constants.js";
 
 /* Left out entirely for a show too long to have a readable one — see fullBarcode. A heading
    over an empty panel is worse than no heading. */
@@ -54,6 +56,7 @@ export function season(show, se, next, go) {
     svg(ICON.caret, "season-caret"),
     h("span.season-name.t-title", { text: se.n === 0 ? "Specials" : `Season ${se.n}` }),
     infoButton(`Details for season ${se.n}`, (e) => { e.stopPropagation(); go("season", `${show.id}/${se.n}`); }),
+    ratingChip(show, seasonRatingKey(se.n)),
     h("span.season-prog.t-mono", { text: `${p.watched}/${p.aired}` }),
   ]);
 
@@ -145,6 +148,8 @@ function episodeRow(show, se, ep, next, levels, pass, isAhead, go) {
     h("span.ep-code", { text: epCode(se.n, ep.e) }),
     h("span.ep-name", { text: ep.name || "—", title: ep.name || null }),
     level > 1 ? h("span.ep-times", { text: level + "×" }) : null,
+    // Reported here, given on the episode's own page. A row is a tap target for one thing.
+    ratingChip(show, k),
   ]);
 
   // Offered only where it does something: a watchable, unwatched episode with unwatched

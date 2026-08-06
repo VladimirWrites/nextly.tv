@@ -21,6 +21,7 @@ import { movieCredits, similarMovies } from "../io/meta.js";
 import { castSection, stickyBar, watchTitle } from "./show-parts.js";
 import { shelfScroller } from "./dom.js";
 import { shelfCard } from "./shelf.js";
+import { ratingSection } from "./rating.js";
 
 export function renderMovie(root, key, { go, back, top, repaint }) {
   const held = findShow(state, key)
@@ -133,6 +134,8 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
             : null,
         ]),
       ]),
+
+      ratingSection(held, key),
 
       /* Whose number this is, said out loud. 7.5 on IMDb and 7.5 on TMDB are different claims by
          different crowds, and a score with no source is folklore. */

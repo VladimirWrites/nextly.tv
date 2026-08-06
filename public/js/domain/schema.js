@@ -6,7 +6,7 @@
 // ids — so the blob stays meaningful and re-resolvable if the provider it came from
 // disappears. Episode titles, posters and air dates are NOT stored: they're cache (see
 // io/cache.js), and "Breaking Bad S03E07" is already unambiguous without them.
-import { SCHEMA_VERSION, DEL_KINDS, DEFAULT_STATUS, SHOW_STATUS, MOVIE_MARK, showKey, parseShowKey,
+import { SCHEMA_VERSION, DEL_KINDS, DEFAULT_STATUS, SHOW_STATUS, MOVIE_MARK, isRatingId, clampRating, showKey, parseShowKey,
          fold as foldText, levelOf, setLevel, passOf } from "./constants.js";
 
 export function defSettings() {
@@ -121,6 +121,28 @@ export function normShow(sh) {
       if (watched > 0) out.w = watched;
       return out;
     });
+
+  /* Ratings sit beside the marks rather than inside them, because an entry existing is what
+     "watched" means and a rating is not a claim about having watched anything — Trakt lets you
+     rate what you have only heard about, and folding the two together would make every watched
+     test wrong.
+ 
+     Same shape as a mark, on purpose: same per-id merge, same m-versus-w split. Zero is a real
+     value here and means the rating was taken back, which is what saves this from needing its
+     own tombstone map. */
+  if (Array.isArray(sh.rats)) {
+    sh.rats = sh.rats
+      .filter((r) => r && typeof r.id === "string" && isRatingId(r.id))
+      .map((r) => {
+        const { id, v, m, w, ...rest } = r;
+        const out = { ...rest, id, v: clampRating(v), m: +m || 0 };
+        const at = +w || 0;
+        if (at > 0) out.w = at;
+        return out;
+      });
+  }
+  // Absent rather than empty, so a library nobody has rated is the same bytes it always was.
+  if (!sh.rats || !sh.rats.length) delete sh.rats;
   return sh;
 }
 

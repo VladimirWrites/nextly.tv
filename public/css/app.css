@@ -3976,3 +3976,69 @@ button.score {
   background: var(--line);
   margin: 0 2px;
 }
+
+/* ---- rating ----
+ *
+ * Ten bars for a scale of ten. They rise left to right, which is what keeps this from reading
+ * as the barcode two sections above it — a flat row of equal ticks already means "how much of
+ * this have you seen" everywhere else in the app. */
+.rate-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.rate-n { font-variant-numeric: tabular-nums; line-height: 1; }
+.rate-n-v { font-size: 30px; font-weight: 700; }
+.rate-n-max { font-size: 14px; color: var(--dimmer); font-weight: 500; }
+.rate-n-none { font-size: 15px; color: var(--dim); }
+.rate-word { font-size: 13px; color: var(--dim); }
+
+.rate-bars {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  height: 46px;
+}
+
+.rate-bar {
+  flex: 1;
+  border: 0;
+  padding: 0;
+  min-width: 0;
+  background: var(--tick-faint);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.rate-bar.is-on { background: var(--signal); }
+
+/* Three or less is the half of the scale that means "I did not like this", and saying so in
+ * the colour costs nothing and is readable before the number is. */
+.rate-bar.is-on.is-low { background: var(--danger); }
+
+.rate-bar:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 2px; }
+
+/* Beside an episode number, where 46px of bars would own the row. */
+.rate.is-sm .rate-head { margin-bottom: 6px; }
+.rate.is-sm .rate-n-v { font-size: 17px; }
+.rate.is-sm .rate-bars { height: 22px; gap: 3px; }
+
+/* The number without the control, for a place that reports a rating rather than takes one. */
+.rate-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: var(--r-sm);
+  background: var(--signal-soft);
+  color: var(--signal);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
