@@ -60,7 +60,14 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
     let done = 0;
     const place = async (row) => {
       try {
-        const meta = await pick(row).lookup({ imdb: row.imdb, tvdb: row.tvdb });
+        /* A catalogue that files films and series apart answers about them apart. TMDB's find
+           endpoint returns movie_results and tv_results, and its lookup reads the second — so
+           asking it about a film with the show lookup searched the television half and came
+           back with nothing, every time, for every film. Cinemeta has one lookup because it
+           has only movies, which is why the keyless path worked and the keyed one did not. */
+        const at = pick(row);
+        const find = row.kind === "movie" && at.lookupMovie ? at.lookupMovie : at.lookup;
+        const meta = await find({ imdb: row.imdb, tvdb: row.tvdb });
         if (meta) {
           /* Kept, not just used. The lookup returns the whole record — episodes, artwork,
              scores — and dropping it meant every imported show arrived blank: no poster in the

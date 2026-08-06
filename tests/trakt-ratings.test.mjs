@@ -133,3 +133,37 @@ test("an export with no ratings at all still reads", () => {
   assert.equal(r.ratedTitles, 0);
   assert.equal(r.feed.shows[0].ratings, undefined);
 });
+
+/* Which lookup a movie row is sent to.
+ *
+ * TMDB files films and series apart and answers about them apart: its find endpoint returns
+ * movie_results and tv_results, and `lookup` reads the second. Asking it about a film with the
+ * show lookup searched the television half and returned nothing — every film, every time —
+ * while the keyless path worked, because Cinemeta has one lookup and only movies. */
+test("a movie row goes to the movie lookup where the catalogue has one", async () => {
+  const { importFeed } = await import("../public/js/io/import-feed.js");
+  const asked = [];
+  const tmdbLike = {
+    lookup: (q) => { asked.push(["tv", q.imdb]); return Promise.resolve(null); },
+    lookupMovie: (q) => { asked.push(["movie", q.imdb]); return Promise.resolve(null); },
+  };
+  await importFeed(
+    { shows: [
+      { kind: "movie", name: "Avatar", imdb: "tt1630029", episodes: [] },
+      { name: "The Wire", imdb: "tt0306414", episodes: [] },
+    ] },
+    { addMissing: true, pick: () => tmdbLike },
+  );
+  assert.deepEqual(asked.sort(), [["movie", "tt1630029"], ["tv", "tt0306414"]]);
+});
+
+test("a catalogue with only one lookup still gets asked", async () => {
+  const { importFeed } = await import("../public/js/io/import-feed.js");
+  const asked = [];
+  const cinemetaLike = { lookup: (q) => { asked.push(q.imdb); return Promise.resolve(null); } };
+  await importFeed(
+    { shows: [{ kind: "movie", name: "Avatar", imdb: "tt1630029", episodes: [] }] },
+    { addMissing: true, pick: () => cinemetaLike },
+  );
+  assert.deepEqual(asked, ["tt1630029"]);
+});
