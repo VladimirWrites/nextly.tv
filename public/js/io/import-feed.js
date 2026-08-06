@@ -8,7 +8,7 @@
 // Nothing here talks to this app's server. The catalogue lookups go from the browser to
 // whichever catalogue is in use, exactly as every other lookup in the app does.
 import { state } from "../domain/store.js";
-import { addShow } from "../domain/model.js";
+import { addShow, setRating, ratingOf } from "../domain/model.js";
 import { matchFeed, planMarks, applyMarks, summarize } from "../domain/external.js";
 import { activeProvider, movieProvider } from "./meta.js";
 import * as cache from "./cache.js";
@@ -43,9 +43,11 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
   let marks = 0;
   let added = 0;
   let missed = 0;
+  let rated = 0;
 
   for (const { show, row } of known) {
     marks += applyMarks(show, planMarks(show, row.episodes, now, row), now);
+    rated += applyRatings(show, row, now);
   }
   onProgress({ phase: "matched", done: known.length, total: known.length });
 
@@ -63,6 +65,7 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
           const show = addShow(state, meta, now);
           added++;
           marks += applyMarks(show, planMarks(show, row.episodes, now, row), now);
+          rated += applyRatings(show, row, now);
         } else missed++;
       } catch (e) {
         // One show the catalogue cannot place must not abandon the other nine hundred.
@@ -72,8 +75,29 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
     });
   }
 
-  if (marks || added) scheduleSync();
-  return { shows: known.length, added, marks, missed, skipped: addMissing ? 0 : unknown.length };
+  if (marks || added || rated) scheduleSync();
+  return { shows: known.length, added, marks, rated, missed, skipped: addMissing ? 0 : unknown.length };
+}
+
+/* The numbers the export carried for this title, written against the record that was matched
+   to it.
+ *
+ * The day it was rated travels with each one. An import happens on a Tuesday and describes
+ * years of opinions, so the mtime says Tuesday and `w` says when it was really given — the
+ * same split the marks draw, and the reason statistics can say anything true about a library
+ * that arrived all at once.
+ *
+ * A rating already held is left alone when it says the same thing. Re-importing the same zip
+ * should not touch a single mtime, or every device would resync a library that has not
+ * changed. */
+function applyRatings(show, row, now) {
+  let n = 0;
+  for (const r of (row && row.ratings) || []) {
+    if (ratingOf(show, r.id) === r.v) continue;
+    setRating(state, show.id, r.id, r.v, now, { ratedAt: r.w || 0 });
+    n++;
+  }
+  return n;
 }
 
 // A few at a time. A library of five hundred unknown shows must not open five hundred
