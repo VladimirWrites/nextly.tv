@@ -219,7 +219,7 @@ test("a summary counts what an import would do before it does it", () => {
 test("summarising an empty feed promises nothing", () => {
   const state = libraryWith([show()]);
   assert.deepEqual(summarize(state, feed([]), NOW),
-    { shows: 0, newShows: 0, marks: 0, updated: 0, seen: 0 });
+    { shows: 0, newShows: 0, newMovies: 0, marks: 0, updated: 0, seen: 0 });
 });
 
 test("a feed that is missing or malformed is survived rather than thrown at", () => {
