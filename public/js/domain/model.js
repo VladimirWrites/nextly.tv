@@ -4,7 +4,8 @@
 // Deletions just remove the record; merge.js turns that into a tombstone at sync time by
 // diffing against the last-synced baseline. Nothing here needs to know about tombstones.
 import { makeShow, findShow, findSameShow, rememberAlias, normShow } from "./schema.js";
-import { SHOW_STATUS, DEFAULT_STATUS, passOf, levelOf, setLevel, parseEpKey, isMovie, MOVIE_MARK } from "./constants.js";
+import { SHOW_STATUS, DEFAULT_STATUS, passOf, levelOf, setLevel, parseEpKey, isMovie, MOVIE_MARK,
+  RATING_TITLE, clampRating, isRatingId } from "./constants.js";
 import { episodeList } from "./progress.js";
 import { isUpcoming } from "./dates.js";
 
@@ -350,3 +351,43 @@ export function shelfState(state, card) {
     : (SHELF_STATUS[held.st] || "In library");
   return { held, label };
 }
+
+
+/* ---- ratings ---- */
+
+/* One number, 1 to 10, against a title, a season or an episode.
+ *
+ * `at` is when the rating was written and settles merges. `ratedAt` is when it was actually
+ * given, and is only recorded when it says something the mtime does not — an import carries
+ * real dates from years ago, while a rating made here and now is described perfectly well by
+ * its own mtime. The same distinction the marks draw between m and w, for the same reason.
+ *
+ * Zero clears it. The entry stays behind carrying zero and a newer mtime, which is what beats
+ * the old number on a device that has not heard yet, and is why taking a rating back needs no
+ * tombstone of its own. */
+export function setRating(state, id, target, value, at = Date.now(), { ratedAt = 0 } = {}) {
+  const sh = findShow(state, id);
+  if (!sh || !isRatingId(target)) return null;
+  const v = clampRating(value);
+  if (!Array.isArray(sh.rats)) sh.rats = [];
+  const ex = sh.rats.find((r) => r.id === target);
+  const rec = ex || { id: target };
+  rec.v = v;
+  rec.m = at;
+  if (ratedAt > 0) rec.w = ratedAt;
+  else delete rec.w;
+  if (!ex) sh.rats.push(rec);
+  /* The record's own mtime is deliberately left alone. A rating carries its own, so rating a
+     show on one device and moving it to Paused on another keeps both — where bumping the
+     record would have let whichever happened second overwrite the other outright. */
+  return rec;
+}
+
+// The number, or 0 for "not rated" — which is what a cleared rating and an absent one both are.
+export function ratingOf(sh, target = RATING_TITLE) {
+  const r = ((sh && sh.rats) || []).find((x) => x.id === target);
+  return r ? clampRating(r.v) : 0;
+}
+
+// Every rating actually held, cleared ones dropped. For statistics and for export.
+export const ratingsOf = (sh) => ((sh && sh.rats) || []).filter((r) => clampRating(r.v) > 0);

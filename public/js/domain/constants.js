@@ -98,6 +98,27 @@ export const isMovie = (rec) => !!rec && (rec.kind === "movie" || isMovieKey(rec
 
 // Episode key: "<season>x<episode>". Human-readable on purpose — a raw export stays legible
 // without any catalogue, and it survives the provider going away.
+/* ---- ratings ---- */
+
+/* Trakt's scale, and the one the app stores. Integers 1-10, with 0 meaning "not rated" — which
+   is what lets a rating be taken back without a tombstone: the entry stays, carrying zero and a
+   newer mtime, and beats the old number on any device that still has it. */
+export const RATING_MAX = 10;
+export const isRating = (v) => Number.isInteger(v) && v >= 0 && v <= RATING_MAX;
+export const clampRating = (v) => Math.max(0, Math.min(RATING_MAX, Math.trunc(+v) || 0));
+
+/* Three key spaces in one list, none of which can be mistaken for another: a title is "t", a
+   season is its number, an episode is "<season>x<episode>". The same trick that keeps a movie's
+   mark apart from an episode's — epKey always contains an "x", a season number never does, and
+   neither of them is ever the letter t. */
+export const RATING_TITLE = "t";
+export const seasonRatingKey = (s) => String(s);
+export const isRatingId = (id) =>
+  id === RATING_TITLE || /^\d+$/.test(id) || /^\d+x\d+$/.test(id);
+
+export const ratingKind = (id) =>
+  id === RATING_TITLE ? "title" : /^\d+$/.test(id) ? "season" : "episode";
+
 export const epKey = (s, e) => `${s}x${e}`;
 
 export function parseEpKey(key) {

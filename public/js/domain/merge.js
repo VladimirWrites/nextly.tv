@@ -137,7 +137,27 @@ export function mergeStates(a, b) {
     ((pa && pa.entries) || []).forEach(addMark);
     ((pb && pb.entries) || []).forEach(addMark);
 
-    shows.push({ ...meta, entries: [...marks.values()].sort(byEpKey) });
+    /* Ratings merge per id, like marks, so the newer number wins wherever it was given and the
+       rest of the record is not dragged along with it. No tombstones: a rating taken back is
+       stored as zero, so clearing is an ordinary edit that competes on its mtime like any
+       other. A tie keeps the higher number rather than picking arbitrarily — the same rule the
+       marks use for a tied pass level, and it makes merge(a, b) and merge(b, a) agree. */
+    const rats = new Map();
+    const addRating = (r) => {
+      const ex = rats.get(r.id);
+      if (!ex) { rats.set(r.id, r); return; }
+      const em = +ex.m || 0;
+      const m = +r.m || 0;
+      if (em < m) rats.set(r.id, r);
+      else if (em === m && (+r.v || 0) > (+ex.v || 0)) rats.set(r.id, r);
+    };
+    ((pa && pa.rats) || []).forEach(addRating);
+    ((pb && pb.rats) || []).forEach(addRating);
+
+    const merged = { ...meta, entries: [...marks.values()].sort(byEpKey) };
+    if (rats.size) merged.rats = [...rats.values()].sort((x, y) => (x.id < y.id ? -1 : 1));
+    else delete merged.rats;
+    shows.push(merged);
   });
 
   const sa = a.settings || defSettings();
