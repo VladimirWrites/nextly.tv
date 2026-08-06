@@ -272,6 +272,28 @@ export const RATINGS_SHOWS_FILE = /^ratings-shows(?:-(\d+))?\.json$/;
 export const RATINGS_SEASONS_FILE = /^ratings-seasons(?:-(\d+))?\.json$/;
 export const RATINGS_EPISODES_FILE = /^ratings-episodes(?:-(\d+))?\.json$/;
 
+/* The totals file, which is one file and never paginated — the only name in the export this
+   reader takes literally. */
+export const TOTALS_FILE = /^watched-shows\.json$/;
+
+/* Every file this reader can do anything with.
+ *
+ * A zip holds thirty-odd files and unpacking all of them is work nobody asked for, so the
+ * reader is handed only the ones it wants — and that list lived in the screen, hand-written,
+ * next to the code that opens the zip. The four ratings files were never added to it. So the
+ * whole ratings feature, fifty tests deep, read an export that had been stripped of every
+ * rating before it arrived, reported no ratings, and wrote none. The tests could not see it:
+ * every one of them hands readExport a files object and never goes near a zip.
+ *
+ * It lives here now, beside the names it is made of, so that adding a file kind is one edit
+ * rather than two, and so the list is reachable from a test. */
+export const EXPORT_FILES = [
+  HISTORY_FILE, TOTALS_FILE, WATCHLIST_FILE, WATCHED_MOVIES_FILE,
+  RATINGS_MOVIES_FILE, RATINGS_SHOWS_FILE, RATINGS_SEASONS_FILE, RATINGS_EPISODES_FILE,
+];
+
+export const wantedFile = (name) => EXPORT_FILES.some((re) => re.test(name));
+
 const pagesOf = (names, re) => [...names]
   .filter((n) => re.test(n))
   .sort((a, b) => (+(a.match(re)[1] || 0)) - (+(b.match(re)[1] || 0)));

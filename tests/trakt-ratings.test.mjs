@@ -167,3 +167,55 @@ test("a catalogue with only one lookup still gets asked", async () => {
   );
   assert.deepEqual(asked, ["tt1630029"]);
 });
+
+/* From the zip, which is the only way anybody actually imports one.
+ *
+ * Everything above hands readExport a files object, and so did every test written for ratings.
+ * That is one layer above where the export is really opened: the zip is unpacked selectively,
+ * against a list of file names, and the four ratings files were not on it. Six hundred ratings
+ * were discarded before the reader saw a single one — a feature with fifty passing tests behind
+ * it that had never once worked. These are the tests that go through the door the user does. */
+test("the ratings files are unpacked from the zip at all", async () => {
+  const { readJSONZip } = await import("../public/js/io/zip.js");
+  const { wantedFile } = await import("../public/js/domain/trakt-export.js");
+  const { makeZip } = await import("./helpers.mjs");
+
+  const zip = makeZip({
+    "watched-history.json": JSON.stringify([play()]),
+    "watched-shows.json": JSON.stringify([{ plays: 1, show }]),
+    "ratings-movies.json": JSON.stringify([{ rating: 10, rated_at: AT, movie }]),
+    "ratings-shows.json": JSON.stringify([{ rating: 9, rated_at: AT, show }]),
+    "ratings-seasons.json": JSON.stringify([{ rating: 8, rated_at: AT, season: { number: 4 }, show }]),
+    "ratings-episodes.json": JSON.stringify([{ rating: 7, rated_at: AT, episode: { season: 4, number: 13 }, show }]),
+    // The forty-odd files nobody wants, which is why the unpack is selective in the first place.
+    "user-profile.json": JSON.stringify({ email: "x@example.com" }),
+    "network-followers.json": JSON.stringify([{ user: "someone" }]),
+  });
+
+  const files = await readJSONZip(zip, wantedFile);
+  assert.ok(files["ratings-movies.json"], "the movie ratings came out of the zip");
+  assert.ok(files["ratings-shows.json"] && files["ratings-seasons.json"] && files["ratings-episodes.json"]);
+  assert.equal(files["user-profile.json"], undefined, "and somebody's account did not");
+
+  const r = readExport(files);
+  assert.equal(r.ratings, 4, "all four kinds reached the reader");
+  assert.equal(r.ratedTitles, 2);
+});
+
+/* The list of names and the reader have to agree, and they did not. Written against the
+   patterns rather than a fixed list so a file kind added to one has to be added to the other. */
+test("every file the reader can read is a file the zip is asked for", async () => {
+  const { wantedFile } = await import("../public/js/domain/trakt-export.js");
+  const names = [
+    "watched-history.json", "watched-history-1.json", "watched-history-12.json",
+    "watched-shows.json", "watched-movies.json", "watched-movies-3.json",
+    "lists-watchlist.json", "lists-watchlist-4.json",
+    "ratings-movies.json", "ratings-movies-3.json", "ratings-shows.json",
+    "ratings-seasons.json", "ratings-episodes.json", "ratings-episodes-2.json",
+  ];
+  for (const n of names) assert.equal(wantedFile(n), true, `${n} must be unpacked`);
+  for (const n of ["user-profile.json", "notes-ratings.json", "comments-shows.json",
+    "network-followers.json", "lists-lists.json", "collection-shows.json"]) {
+    assert.equal(wantedFile(n), false, `${n} is nobody's business here`);
+  }
+});

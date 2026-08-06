@@ -11,7 +11,7 @@
 // discovered halfway through a progress bar.
 import { h, toast } from "./dom.js";
 import { readJSONZip } from "../io/zip.js";
-import { readExport, HISTORY_FILE, WATCHLIST_FILE, WATCHED_MOVIES_FILE } from "../domain/trakt-export.js";
+import { readExport, wantedFile } from "../domain/trakt-export.js";
 import { importFeed, previewFeed } from "../io/import-feed.js";
 import { hydrateLibrary } from "./actions.js";
 import { state } from "../domain/store.js";
@@ -24,12 +24,6 @@ const newThings = (p) => [
   p.newMovies ? `${fmtInt(p.newMovies)} movie${p.newMovies === 1 ? "" : "s"}` : null,
 ].filter(Boolean).join(" and ");
 
-
-/* Matched rather than listed: a long history is split across watched-history-1.json and its
-   numbered siblings, and how many there are is only known once the zip is open. */
-const WANTED = (name) =>
-  name === "watched-shows.json" || HISTORY_FILE.test(name) || WATCHLIST_FILE.test(name)
-  || WATCHED_MOVIES_FILE.test(name);
 
 const fmtInt = (n) => Number(n || 0).toLocaleString();
 
@@ -44,7 +38,9 @@ const fmtInt = (n) => Number(n || 0).toLocaleString();
    "Import from Trakt", holding a row labelled "Trakt export" — which reads as a contradiction,
    and sat nowhere near the import and export this app already had. */
 export async function importTraktZip(buffer, out, repaint) {
-  const files = await readJSONZip(buffer, WANTED);
+  /* Which files come out of the zip is decided beside the names themselves, not here: this list
+     was hand-kept in this file and fell a whole feature behind the reader. */
+  const files = await readJSONZip(buffer, wantedFile);
   review(readExport(files), out, repaint);
 }
 
