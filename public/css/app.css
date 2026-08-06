@@ -3990,7 +3990,17 @@ button.score {
   margin-bottom: 10px;
 }
 
-.rate-n { font-variant-numeric: tabular-nums; line-height: 1; }
+/* Held at the height of the number whether or not there is one, so taking a rating back does
+ * not shorten the panel and pull everything below it up the page. "Not rated" is smaller type
+ * than a score, and letting the box shrink to it made removing a rating look like the page
+ * jumping rather than like a field emptying. */
+.rate-n {
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  min-height: 30px;
+  display: flex;
+  align-items: baseline;
+}
 .rate-n-v { font-size: 30px; font-weight: 700; }
 .rate-n-max { font-size: 14px; color: var(--dimmer); font-weight: 500; }
 .rate-n-none { font-size: 15px; color: var(--dim); }
@@ -4025,6 +4035,7 @@ button.score {
 /* Beside an episode number, where 46px of bars would own the row. */
 .rate.is-sm .rate-head { margin-bottom: 6px; }
 .rate.is-sm .rate-n-v { font-size: 17px; }
+.rate.is-sm .rate-n { min-height: 17px; }
 .rate.is-sm .rate-bars { height: 22px; gap: 3px; }
 
 /* The number without the control, for a place that reports a rating rather than takes one. */
