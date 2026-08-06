@@ -73,8 +73,21 @@ export function ratingBar(show, target, onset, { size = "md", label = null } = {
     word.textContent = "";
   }
 
+  /* Pressing the bar already set clears it, and that gesture is worth keeping — but it is
+     invisible, and an invisible way out of an accident is no way out at all. Somebody who taps
+     8 by mistake looks for a button, not for a gesture they were never told about. Shown only
+     when there is something to clear, so it is never a control that does nothing. */
+  const clear = now
+    ? h("button.rate-clear", {
+        type: "button",
+        text: "Clear",
+        "aria-label": "Remove this rating",
+        onclick: () => onset(0),
+      })
+    : null;
+
   return h(`div.rate${size === "sm" ? ".is-sm" : ""}`, [
-    h("div.rate-head", [value, word]),
+    h("div.rate-head", [value, h("div.rate-right", [word, clear])]),
     row,
   ]);
 }

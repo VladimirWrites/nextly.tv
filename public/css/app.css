@@ -4042,3 +4042,21 @@ button.score {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+.rate-right { display: flex; align-items: baseline; gap: 12px; }
+
+/* The way out of an accident. Quiet, because rating is the action here and clearing is the
+ * correction — but a real control, because the gesture that also clears (pressing the bar
+ * already set) is one nobody discovers on their own. */
+.rate-clear {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  color: var(--dim);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.rate-clear:hover { color: var(--text); }
