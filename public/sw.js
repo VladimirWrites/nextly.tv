@@ -10,7 +10,7 @@
  * /api/* is NEVER cached. The vault must always be live — a stale blob merged as if it were
  * current is exactly how you lose data.
  */
-const VERSION = "v1.9.4";
+const VERSION = "v1.9.5";
 const SHELL = "nextly-shell-" + VERSION;
 const ART = "nextly-art-v1";          // catalogue posters, kept across shell upgrades
 const ART_MAX = 400;
@@ -180,6 +180,15 @@ self.addEventListener("fetch", (e) => {
   if (url.origin !== location.origin) return;
   if (url.pathname.startsWith("/api/")) return;
 
+  /* Whatever happens, a Response.
+   *
+   * respondWith takes a promise of a Response and nothing else. Both handlers below could
+   * resolve to undefined — a navigation with no shell cached yet, or an asset that was never
+   * cached and whose fetch was refused — and the worker then throws "Failed to convert value
+   * to 'Response'" and the page it was answering for gets a network error. Seen in the wild
+   * when a request was blocked: the block took out the navigation as well. */
+  const orElse = (res) => res || new Response("", { status: 503, statusText: "Offline" });
+
   /* The landing after a share, and any other arrival at /share. Answered from the cached
      shell without asking the network, because the address may still be carrying what was
      shared — the redirect above strips it, but an iOS Shortcut or a hand-typed link can put
@@ -188,7 +197,7 @@ self.addEventListener("fetch", (e) => {
      A deploy therefore reaches this screen one load later than the others. Sharing into the
      app is not where anyone notices a version. */
   if (req.mode === "navigate" && url.pathname === "/share") {
-    e.respondWith(caches.match("/app.html").then((hit) => hit || fetch("/app.html")));
+    e.respondWith(caches.match("/app.html").then((hit) => hit || fetch("/app.html")).then(orElse));
     return;
   }
 
@@ -202,7 +211,8 @@ self.addEventListener("fetch", (e) => {
           caches.open(SHELL).then((c) => c.put("/app.html", copy));
           return res;
         })
-        .catch(() => caches.match("/app.html").then((hit) => hit || caches.match("/"))),
+        .catch(() => caches.match("/app.html").then((hit) => hit || caches.match("/")))
+        .then(orElse),
     );
     return;
   }
@@ -221,7 +231,7 @@ self.addEventListener("fetch", (e) => {
         })
         .catch(() => hit);
       return hit || refresh;
-    }),
+    }).then(orElse),
   );
 });
 

@@ -125,6 +125,15 @@ async function run(feed, out, repaint) {
         + (r.missed ? `, ${fmtInt(r.missed)} the catalogue couldn't place` : "")
         + ".",
     }));
+    /* Said out loud, because it is the difference between "ratings do not work" and "those
+       titles are not in your library". Both look identical from the outside, and the first is
+       what gets reported. */
+    if (r.lost) {
+      out.append(h("p.t-dim", { style: { marginTop: "6px", fontSize: "12.5px" },
+        text: `${fmtInt(r.lost)} ratings had no title to attach to — those films and shows `
+          + "couldn't be placed by the catalogue in use. Switching catalogue in You and "
+          + "importing again will pick them up." }));
+    }
     repaint();
     /* And fill in whatever is still bare. Shows added here arrive with the record their lookup
        returned, but a show that was already tracked and never opened has none — importing

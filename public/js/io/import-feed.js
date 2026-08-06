@@ -44,6 +44,11 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
   let added = 0;
   let missed = 0;
   let rated = 0;
+  /* Ratings that went nowhere, because a rating can only be written against a record and the
+     catalogue could not place the title to make one. Counted rather than swallowed: an import
+     that quietly drops six hundred numbers and reports success is indistinguishable from one
+     where rating is broken, which is exactly the report this came from. */
+  let lost = 0;
 
   for (const { show, row } of known) {
     marks += applyMarks(show, planMarks(show, row.episodes, now, row), now);
@@ -53,7 +58,7 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
 
   if (addMissing && unknown.length) {
     let done = 0;
-    await pool(unknown, async (row) => {
+    const place = async (row) => {
       try {
         const meta = await pick(row).lookup({ imdb: row.imdb, tvdb: row.tvdb });
         if (meta) {
@@ -66,17 +71,34 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
           added++;
           marks += applyMarks(show, planMarks(show, row.episodes, now, row), now);
           rated += applyRatings(show, row, now);
-        } else missed++;
+        } else { missed++; lost += ratingsIn(row); }
       } catch (e) {
         // One show the catalogue cannot place must not abandon the other nine hundred.
         missed++;
+        lost += ratingsIn(row);
       }
       onProgress({ phase: "adding", done: ++done, total: unknown.length });
-    });
+    };
+
+    /* One queue per catalogue, run at the same time.
+     *
+     * They were one queue, and a queue is only as fast as whatever is at the front of it.
+     * TVmaze rate-limits a large import — 429, which arrives without CORS headers and so looks
+     * like a network error — and the client answers by pausing every request for up to eight
+     * seconds. Movies go to a different catalogue entirely and are not throttled, but they sat
+     * behind five hundred TVmaze lookups and never came up: an import of six hundred films made
+     * not one request for a film, and every rating that belonged to one was discarded with its
+     * row. Two queues means the throttled catalogue slows only itself. */
+    const movies = unknown.filter((r) => r.kind === "movie");
+    const series = unknown.filter((r) => r.kind !== "movie");
+    await Promise.all([pool(series, place), pool(movies, place)]);
   }
 
+  // Nothing was even attempted for these, so their ratings are unaccounted for too.
+  if (!addMissing) lost += unknown.reduce((n, r) => n + ratingsIn(r), 0);
+
   if (marks || added || rated) scheduleSync();
-  return { shows: known.length, added, marks, rated, missed, skipped: addMissing ? 0 : unknown.length };
+  return { shows: known.length, added, marks, rated, lost, missed, skipped: addMissing ? 0 : unknown.length };
 }
 
 /* The numbers the export carried for this title, written against the record that was matched
@@ -90,6 +112,8 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
  * A rating already held is left alone when it says the same thing. Re-importing the same zip
  * should not touch a single mtime, or every device would resync a library that has not
  * changed. */
+const ratingsIn = (row) => ((row && row.ratings) || []).length;
+
 function applyRatings(show, row, now) {
   let n = 0;
   for (const r of (row && row.ratings) || []) {
