@@ -522,5 +522,8 @@ export function readExport(files) {
     ratedTitles,
     missing: shortfall(feed, files["watched-shows.json"], watchedMovieFiles(Object.keys(files || {}))
       .flatMap((name) => (Array.isArray(files[name]) ? files[name] : []))),
+    // Who wrote it, for the sentences that have to name somebody: an export that does not add
+    // up is the service's shortfall to explain, and there are two services now.
+    source: "Trakt",
   };
 }

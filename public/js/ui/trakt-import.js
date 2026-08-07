@@ -22,17 +22,12 @@ import { readTvTimeExport, isTvTimeExport, wantedFile as tvtimeFile } from "../d
 import { importFeed, previewFeed } from "../io/import-feed.js";
 import { hydrateLibrary } from "./actions.js";
 import { state } from "../domain/store.js";
+/* The sentences are next door, in domain/, and this file only arranges them. They were here,
+   where nothing can load them without a document — so none of them were ever tested, and one
+   was a call to a function that had never been written. */
+import { fmtInt, newThings, what, shortfallLine } from "../domain/import-copy.js";
 
-/* What is about to be added, named by kind. One of the two is often zero — an export with no
-   films, or a library that already holds every series in it — and a count of nothing is not
-   worth saying out loud. */
-const newThings = (p) => [
-  p.newShows ? `${fmtInt(p.newShows)} show${p.newShows === 1 ? "" : "s"}` : null,
-  p.newMovies ? `${fmtInt(p.newMovies)} movie${p.newMovies === 1 ? "" : "s"}` : null,
-].filter(Boolean).join(" and ");
-
-
-const fmtInt = (n) => Number(n || 0).toLocaleString();
+export { what };
 
 /* Offered from the Import row in Settings rather than from a section of its own.
 
@@ -66,18 +61,6 @@ export async function importTraktZip(buffer, out, repaint) {
   review(readExport(files), out, repaint);
 }
 
-export function what(p, held = (state.shows || []).length) {
-  if (p.marks || p.updated) {
-    return `${fmtInt(p.marks)} new to ${fmtInt(p.shows)} shows you track`
-      + (p.updated ? `, ${fmtInt(p.updated)} that would gain a watch date` : "")
-      + (newThings(p) ? `, and ${newThings(p)} you don't.` : ".");
-  }
-  if (!p.newShows) return "Nothing in there that isn't already here.";
-  return held
-    ? `Nothing new for the shows you track, and ${newThings(p)} you don't.`
-    : "None of them are in your library yet.";
-}
-
 /* What it holds and what importing it would do, before anything is done.
    "Added 1,412 marks" is not something anyone should learn afterwards. */
 export function review(read, out, repaint) {
@@ -95,7 +78,7 @@ export function review(read, out, repaint) {
         + (read.ratings ? `. ${fmtInt(read.ratings)} ratings across ${fmtInt(read.ratedTitles)} titles` : "")
         + ".",
     }),
-    h("div", { text: what(p) }),
+    h("div", { text: what(p, (state.shows || []).length) }),
   ];
 
   /* Movies come in whether or not they are switched on, so somebody with them off should be
@@ -122,7 +105,7 @@ export function review(read, out, repaint) {
      silently covers two thirds of a library is worse than one that admits it. */
   if (read.missing.length) {
     lines.push(h("div", { style: { marginTop: "6px" }, text:
-      shortfallLine(read.missing) }));
+      shortfallLine(read.missing, read.source || "Trakt") }));
   }
 
   /* One button, which imports.
