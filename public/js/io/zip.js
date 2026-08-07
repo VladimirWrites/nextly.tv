@@ -110,6 +110,16 @@ export async function readZip(buffer, wanted) {
   return out;
 }
 
+/* What is in there, without taking anything out.
+ *
+ * Two services answer a data request with a zip, and which one this is has to be decided before
+ * anything is unpacked: the readers want different files, and handing the wrong list to the
+ * right zip yields an empty import rather than an error. Reading the directory is cheap — it is
+ * a few hundred bytes at the end of the file, and no entry is decompressed to do it. */
+export function zipNames(buffer) {
+  return entries(new DataView(buffer)).map((e) => e.name).filter((n) => !n.endsWith("/"));
+}
+
 // The files a Trakt export is read for, parsed. A file that is present but not JSON is a
 // broken export rather than an empty one, so it is not quietly treated as absent.
 export async function readJSONZip(buffer, wanted) {

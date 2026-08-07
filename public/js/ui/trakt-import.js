@@ -1,17 +1,24 @@
-// Importing a Trakt export, from the Import row in Settings.
+// Importing somebody else's watch history, from the Import row in Settings.
 //
-// Trakt charges for the API application you would otherwise connect, and does not charge for
-// the download of your own data. So this reads the download: no account to link, no token to
-// keep, no credentials to store, and nothing about it that this app's server could learn if it
-// wanted to — the file never leaves the browser it was opened in.
+// Two services so far, and the same argument for both: they charge for the API application you
+// would otherwise connect, and do not charge for the download of your own data. So this reads
+// the download. No account to link, no token to keep, no credentials to store, and nothing
+// about it that this app's server could learn if it wanted to — the file never leaves the
+// browser it was opened in.
+//
+// Which export a zip is gets decided from its file list, before anything is unpacked. Each
+// reader takes the handful of files it can use and leaves the rest inside: a TV Time zip holds
+// forty-one files, most of them device identifiers and access tokens, and the strongest thing
+// this can say about them is that they were never taken out.
 //
 // Two steps, because the second one costs something. Reading the file and matching it against
 // the library is free and instant. Adding shows the library has never heard of is one
 // catalogue lookup each, so it is offered as its own button with its own number rather than
 // discovered halfway through a progress bar.
 import { h, toast } from "./dom.js";
-import { readJSONZip } from "../io/zip.js";
+import { readJSONZip, readZip, zipNames } from "../io/zip.js";
 import { readExport, wantedFile } from "../domain/trakt-export.js";
+import { readTvTimeExport, isTvTimeExport, wantedFile as tvtimeFile } from "../domain/tvtime-export.js";
 import { importFeed, previewFeed } from "../io/import-feed.js";
 import { hydrateLibrary } from "./actions.js";
 import { state } from "../domain/store.js";
@@ -39,7 +46,15 @@ const fmtInt = (n) => Number(n || 0).toLocaleString();
    and sat nowhere near the import and export this app already had. */
 export async function importTraktZip(buffer, out, repaint) {
   /* Which files come out of the zip is decided beside the names themselves, not here: this list
-     was hand-kept in this file and fell a whole feature behind the reader. */
+     was hand-kept in this file and fell a whole feature behind the reader.
+
+     TV Time answers in CSV, so its files come out as text rather than parsed — the only
+     difference between the two paths, and the reason the reader is chosen before the unpack
+     rather than after it. */
+  if (isTvTimeExport(zipNames(buffer))) {
+    review(readTvTimeExport(await readZip(buffer, tvtimeFile)), out, repaint);
+    return;
+  }
   const files = await readJSONZip(buffer, wantedFile);
   review(readExport(files), out, repaint);
 }
