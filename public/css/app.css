@@ -121,6 +121,16 @@
   top: var(--wco-off);
 }
 
+/* And the detail pages' own bar, which is a second sticky top edge and was left out of this.
+   It pinned at the window's top, which on an installed desktop window is behind the title
+   strip — a fixed, opaque, higher band. So scrolling a show or a movie slid the bar half under
+   it and left it there: half a back arrow, half a title, for the rest of the page. Offsetting
+   it lands it directly below the strip, whole, with the artwork and the page running under it
+   the way they already do everywhere else. */
+:root[data-wco] .show-bar {
+  top: var(--wco-off);
+}
+
 /* Scoped to the desktop layout deliberately: the overlay is a desktop-window feature, but a
    desktop window can be dragged narrow, and down there the nav is a bar welded to the bottom
    edge. Giving that a `top` as well would stretch it up the side of the window. */
