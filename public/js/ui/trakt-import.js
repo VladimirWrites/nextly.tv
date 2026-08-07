@@ -128,6 +128,10 @@ async function run(feed, out, repaint) {
     out.replaceChildren(h("span", {
       text: `${fmtInt(r.marks)} marks, ${fmtInt(r.added)} shows added`
         + (r.rated ? `, ${fmtInt(r.rated)} ratings` : "")
+        /* An import used to call everything it touched "Watching". Now it reads the dates and
+           files what it can as paused or dropped, and that is a change to somebody's library
+           they should hear about here rather than find in the filters. */
+        + (r.filed ? `, ${fmtInt(r.filed)} filed as paused or dropped` : "")
         + (r.missed ? `, ${fmtInt(r.missed)} the catalogue couldn't place` : "")
         + ".",
     }));

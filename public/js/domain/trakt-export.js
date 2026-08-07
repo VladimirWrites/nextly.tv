@@ -262,6 +262,15 @@ export const WATCHLIST_FILE = /^lists-watchlist(?:-(\d+))?\.json$/;
    entries the way everything else in here is. */
 export const WATCHED_MOVIES_FILE = /^watched-movies(?:-(\d+))?\.json$/;
 
+/* Hidden from progress: Trakt's own words for "I am not watching this any more".
+ *
+ * Its apps offer it as "hide from progress", and hiding a show is the nearest thing that
+ * service has to dropping one. The reset file is the same statement made another way — a
+ * history reset with the show hidden afterwards. Rare in practice, one show in a library of a
+ * hundred and thirteen, but it is somebody saying so outright rather than a date being read
+ * into, and that is worth more than the whole rest of the guess. */
+export const HIDDEN_PROGRESS_FILE = /^hidden-progress-watched(?:-reset)?\.json$/;
+
 /* Ratings, which Trakt keeps in four files because it rates four things: the movie, the show,
    a season of it, and one episode. All on the same 1-10 integer scale, all paginated the same
    way as everything else in here — the movies file was three pages in the export this was
@@ -290,6 +299,7 @@ export const TOTALS_FILE = /^watched-shows\.json$/;
 export const EXPORT_FILES = [
   HISTORY_FILE, TOTALS_FILE, WATCHLIST_FILE, WATCHED_MOVIES_FILE,
   RATINGS_MOVIES_FILE, RATINGS_SHOWS_FILE, RATINGS_SEASONS_FILE, RATINGS_EPISODES_FILE,
+  HIDDEN_PROGRESS_FILE,
 ];
 
 export const wantedFile = (name) => EXPORT_FILES.some((re) => re.test(name));
@@ -367,6 +377,42 @@ export function ratingsFromExport(files) {
   return byTitle;
 }
 
+/* When each show was last watched, as the totals file states it.
+ *
+ * The history says the same thing and says it per episode, so this is not needed for marks. It
+ * is needed for the guess at what somebody is doing with a show, and it is the better source
+ * for it: a history truncated by whatever Trakt was willing to export still leaves this line
+ * intact, and a show whose plays did not all come through would otherwise look older than it is.
+ *
+ * `reset_at` travels with it. A reset history is somebody starting again from nothing on that
+ * service, which is not a thing this app can reproduce, but it does say the old dates no longer
+ * describe anything. */
+export function lastWatchedFromTotals(watchedShows) {
+  const out = new Map();
+  for (const row of watchedShows || []) {
+    if (!row || !row.show) continue;
+    const key = showKeyOf(idsOf(row.show));
+    if (!key) continue;
+    const at = row.last_watched_at ? Date.parse(row.last_watched_at) || 0 : 0;
+    out.set(key, { at, reset: !!row.reset_at });
+  }
+  return out;
+}
+
+// The shows hidden from progress, by the same keys everything else here uses.
+export function hiddenShows(files) {
+  const out = new Set();
+  for (const name of Object.keys(files || {})) {
+    if (!HIDDEN_PROGRESS_FILE.test(name)) continue;
+    for (const row of Array.isArray(files[name]) ? files[name] : []) {
+      if (!row || !row.show) continue;
+      const key = showKeyOf(idsOf(row.show));
+      if (key) out.add(key);
+    }
+  }
+  return out;
+}
+
 export function readExport(files) {
   const pages = historyFiles(Object.keys(files || {}));
   const history = pages.flatMap((name) => (Array.isArray(files[name]) ? files[name] : []));
@@ -418,6 +464,27 @@ export function readExport(files) {
     feed.shows.push({ ...row, episodes: [], kind: row.kind === "movie" ? "movie" : undefined });
     ratedTitles++;
     ratedRows += row.ratings.length;
+  }
+
+  /* What each row says about how it is being watched, rather than what was watched.
+   *
+   * Two facts, both already in the zip and neither of them a mark: when the show was last
+   * watched, and whether it has been hidden from progress. An import files a show by them
+   * instead of calling a thousand years-old histories "Watching". The reading is done here, in
+   * one pass, and the deciding is done in domain/status-guess.js, which also needs to know how
+   * much of the show is left and can only be asked that with a catalogue in hand. */
+  const totals = lastWatchedFromTotals(files["watched-shows.json"]);
+  const hidden = hiddenShows(files);
+  for (const row of feed.shows) {
+    if (row.kind === "movie") continue;
+    const key = showKeyOf(row);
+    const stated = key ? totals.get(key) : null;
+    // The totals file first, the history second: a history Trakt truncated still leaves the
+    // stated date whole, and a row read only from marks would look older than the show is.
+    const fromMarks = row.episodes.reduce((m, ep) => Math.max(m, +ep.at || 0), 0);
+    const lastAt = Math.max((stated && stated.at) || 0, fromMarks);
+    if (lastAt) row.lastAt = lastAt;
+    if ((key && hidden.has(key)) || (stated && stated.reset)) row.hidden = true;
   }
 
   const episodes = feed.shows.reduce((t, s) => t + s.episodes.length, 0);

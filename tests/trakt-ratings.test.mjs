@@ -219,3 +219,52 @@ test("every file the reader can read is a file the zip is asked for", async () =
     assert.equal(wantedFile(n), false, `${n} is nobody's business here`);
   }
 });
+
+/* The two facts an import files a show by, both of which were sitting unread in the zip.
+ *
+ * Neither is a mark, which is why neither was taken: the reader's whole job was the history.
+ * But a history applied without them files a library of finished shows as "Watching", so they
+ * are read here and decided on in domain/status-guess.js. */
+test("each row carries when it was last watched", () => {
+  const r = readExport({
+    "watched-history.json": [play("2019-03-04T21:00:00.000Z")],
+    "watched-shows.json": [{ plays: 1, last_watched_at: AT, reset_at: null, show }],
+  });
+  const row = r.feed.shows.find((s) => s.name === "The Wire");
+  assert.equal(row.lastAt, ms, "the totals file states it, and states it later than the play");
+});
+
+/* A history Trakt truncated still leaves the totals line whole, and a row dated only from its
+   marks would look older than the show is — which is the difference between paused and dropped. */
+test("the stated date wins over the marks, and the marks stand in when it is absent", () => {
+  const older = "2011-01-01T00:00:00.000Z";
+  const withTotals = readExport({
+    "watched-history.json": [play(older)],
+    "watched-shows.json": [{ plays: 1, last_watched_at: AT, show }],
+  });
+  assert.equal(withTotals.feed.shows[0].lastAt, ms);
+
+  const without = readExport({ "watched-history.json": [play(older)] });
+  assert.equal(without.feed.shows[0].lastAt, Date.parse(older));
+});
+
+test("a show hidden from progress says so on its row", () => {
+  const r = readExport({
+    "watched-history.json": [play()],
+    "hidden-progress-watched.json": [{ hidden_at: AT, type: "show", show }],
+  });
+  assert.equal(r.feed.shows[0].hidden, true);
+});
+
+test("a history reset is the same statement in different words", () => {
+  const r = readExport({
+    "watched-history.json": [play()],
+    "watched-shows.json": [{ plays: 1, last_watched_at: AT, reset_at: AT, show }],
+  });
+  assert.equal(r.feed.shows[0].hidden, true);
+});
+
+test("an export saying nothing about either leaves both off the row", () => {
+  const r = readExport({ "watched-history.json": [play()] });
+  assert.equal(r.feed.shows[0].hidden, undefined);
+});

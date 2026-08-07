@@ -8,8 +8,11 @@
 // Nothing here talks to this app's server. The catalogue lookups go from the browser to
 // whichever catalogue is in use, exactly as every other lookup in the app does.
 import { state } from "../domain/store.js";
-import { addShow, setRating, ratingOf } from "../domain/model.js";
+import { addShow, setRating, ratingOf, setStatus } from "../domain/model.js";
 import { matchFeed, planMarks, applyMarks, summarize } from "../domain/external.js";
+import { showProgress } from "../domain/progress.js";
+import { guessStatus } from "../domain/status-guess.js";
+import { isOver } from "../domain/constants.js";
 import { activeProvider, movieProvider } from "./meta.js";
 import * as cache from "./cache.js";
 import { scheduleSync } from "./storage.js";
@@ -44,6 +47,9 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
   let added = 0;
   let missed = 0;
   let rated = 0;
+  /* Shows filed as something other than "Watching" — paused, dropped, or watched to the end.
+     Counted for the same reason the marks are: it is a change the import made. */
+  let filed = 0;
   /* Ratings that went nowhere, because a rating can only be written against a record and the
      catalogue could not place the title to make one. Counted rather than swallowed: an import
      that quietly drops six hundred numbers and reports success is indistinguishable from one
@@ -51,8 +57,10 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
   let lost = 0;
 
   for (const { show, row } of known) {
+    const was = show.st;
     marks += applyMarks(show, planMarks(show, row.episodes, now, row), now);
     rated += applyRatings(show, row, now);
+    if (fileStatus(show, row, was, cache.getMeta(show.id), now)) filed++;
   }
   onProgress({ phase: "matched", done: known.length, total: known.length });
 
@@ -75,9 +83,11 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
              this never wrote down. The request has already been paid for. */
           await cache.putMeta(meta);
           const show = addShow(state, meta, now);
+          const was = show.st;
           added++;
           marks += applyMarks(show, planMarks(show, row.episodes, now, row), now);
           rated += applyRatings(show, row, now);
+          if (fileStatus(show, row, was, meta, now)) filed++;
         } else { missed++; lost += ratingsIn(row); }
       } catch (e) {
         // One show the catalogue cannot place must not abandon the other nine hundred.
@@ -104,8 +114,35 @@ export async function importFeed(feed, { addMissing = false, onProgress = () => 
   // Nothing was even attempted for these, so their ratings are unaccounted for too.
   if (!addMissing) lost += unknown.reduce((n, r) => n + ratingsIn(r), 0);
 
-  if (marks || added || rated) scheduleSync();
-  return { shows: known.length, added, marks, rated, lost, missed, skipped: addMissing ? 0 : unknown.length };
+  if (marks || added || rated || filed) scheduleSync();
+  return { shows: known.length, added, marks, rated, filed, lost, missed, skipped: addMissing ? 0 : unknown.length };
+}
+
+/* Where a show lands, once its marks are in.
+ *
+ * applyMarks has already promoted it from "planned" to "active", which is the right answer for
+ * a tap and the wrong one for a history: a library imported whole arrived entirely as
+ * "Watching", including shows finished in 2011 and shows abandoned after two episodes.
+ *
+ * `was` is the status before the marks landed, and the guard is the same one applyMarks uses —
+ * only a show that was still "planned" is filed here. So a show somebody paused or dropped
+ * themselves keeps their answer, and a second import of the same zip changes nothing.
+ *
+ * The metadata is what makes "is there anything left" answerable, and it is not always there:
+ * a show already in the library has whatever the cache holds, which may be nothing until it is
+ * next opened. The guess falls back to the dates alone in that case rather than being skipped. */
+function fileStatus(show, row, was, meta, now) {
+  if (was !== "planned" || show.kind === "movie") return false;
+  const st = guessStatus({
+    lastAt: row.lastAt || 0,
+    progress: meta ? showProgress(show, meta, { now }) : null,
+    ended: !!(meta && isOver(meta.status)),
+    hidden: !!row.hidden,
+    now,
+  });
+  if (!st || st === show.st) return false;
+  setStatus(state, show.id, st, now);
+  return true;
 }
 
 /* The numbers the export carried for this title, written against the record that was matched
