@@ -2913,6 +2913,42 @@ button.score {
   margin-top: 8px;
 }
 
+/* A film's two actions, where a series has one.
+ *
+ * "Track" is a sentence about a series — follow this, tell me when the next episode lands — and
+ * a film has no next episode. There are two things anybody does with one, so there are two
+ * buttons, and on a phone they are their icons alone: a row already carrying a poster, a title,
+ * a score and a summary has no width left for "Mark watched" spelled out beside "Watch later".
+ * The words come back where there is room for them, which is the same width the rail moves at. */
+.result-acts {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+
+/* Square, and no smaller than a fingertip. .btn-sm trims the height for buttons that carry
+   words to lean on; an icon on its own has nothing to be read from, so it keeps the full
+   target. */
+.result-acts .act {
+  padding: 10px;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.result-acts .act-label {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .result-acts .act {
+    padding: 10px 14px;
+  }
+
+  .result-acts .act-label {
+    display: inline;
+  }
+}
+
 .result-poster {
   width: 52px;
   flex: none;

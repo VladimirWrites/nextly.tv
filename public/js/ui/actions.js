@@ -361,7 +361,9 @@ export async function trackMovie(key) {
     toast(`Already in your library as ${sh.name}`);
     return sh;
   }
-  toast(`Tracking ${sh.name}`);
+  // Not "tracking": a film is not followed, it is set aside. The word has to match the button
+  // that was pressed, which says Watch later.
+  toast(`${sh.name} — watch later`);
   return sh;
 }
 

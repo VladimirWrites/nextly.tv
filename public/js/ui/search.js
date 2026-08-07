@@ -5,7 +5,7 @@ import * as cache from "../io/cache.js";
 import { findShow, findLikeShow } from "../domain/schema.js";
 import { fmtScore, isMovie } from "../domain/constants.js";
 import * as meta from "../io/meta.js";
-import { trackShow, trackMovie } from "./actions.js";
+import { trackShow, trackMovie, markMovieNow } from "./actions.js";
 import { empty } from "./upnext.js";
 import { renderDiscover } from "./discover.js";
 
@@ -179,22 +179,57 @@ function result(r, go) {
     ]),
     tracked
       ? h("button.btn.btn-sm.btn-ghost", { type: "button", text: "In library", onclick: () => go(route, held.id) })
-      : h("button.btn.btn-sm.btn-primary", {
-          type: "button",
-          onclick: async (e) => {
-            const btn = e.currentTarget;
-            btn.disabled = true;
-            try {
-              const sh = movie ? await trackMovie(r.key) : await trackShow(r.key);
-              // Adding can turn out to be a show already held under the other catalogue's
-              // numbering. Opening it is the thing wanted; a refusal on its own is a dead end.
-              if (sh && sh.id !== r.key) go(route, sh.id);
-            } catch (err) {
-              toast(err.message);
-              btn.disabled = false;
-            }
-          },
-        }, [svg(ICON.plus), "Track"]),
+      : movie ? movieActions(r, go) : h("button.btn.btn-sm.btn-primary", {
+        type: "button",
+        onclick: async (e) => {
+          const btn = e.currentTarget;
+          btn.disabled = true;
+          try {
+            const sh = await trackShow(r.key);
+            // Adding can turn out to be a show already held under the other catalogue's
+            // numbering. Opening it is the thing wanted; a refusal on its own is a dead end.
+            if (sh && sh.id !== r.key) go(route, sh.id);
+          } catch (err) {
+            toast(err.message);
+            btn.disabled = false;
+          }
+        },
+      }, [svg(ICON.plus), "Track"]),
+  ]);
+}
+
+/* What a film offers, which is not what a series offers.
+ *
+ * "Track" is a sentence about a series: it means follow this, and tell me when the next episode
+ * lands. A film has no next episode. There are only two things anybody does with one — say they
+ * have seen it, or put it aside for later — and a single button labelled Track answered neither
+ * of them, then filed the film as planned and hoped that was the one meant.
+ *
+ * The same two words and the same two icons the film's own page uses, so the row and the page it
+ * opens do not name the same action differently. */
+function movieActions(r, go) {
+  const act = (label, icon, run, primary) => h(`button.btn.btn-sm${primary ? ".btn-primary" : ""}.act`, {
+    type: "button",
+    // Carried whether or not the label is drawn: below the desktop width these are icons alone,
+    // and an icon alone is unreadable to anything that does not have eyes.
+    "aria-label": label,
+    title: label,
+    onclick: async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      try {
+        const sh = await run();
+        if (sh && sh.id !== r.key) go("movie", sh.id);
+      } catch (err) {
+        toast(err.message);
+        btn.disabled = false;
+      }
+    },
+  }, [svg(icon, "btn-icon"), h("span.act-label", { text: label })]);
+
+  return h("div.result-acts", [
+    act("Watch later", ICON.plus, () => trackMovie(r.key), false),
+    act("Mark watched", ICON.check, () => markMovieNow(r.key, true), true),
   ]);
 }
 
