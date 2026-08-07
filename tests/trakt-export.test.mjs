@@ -6,7 +6,7 @@
 // the other file is only ever a cross-check.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { feedFromHistory, shortfall, readExport, historyFiles, watchlistFiles, watchlistShows } from "../public/js/domain/trakt-export.js";
+import { feedFromHistory, shortfall, readExport, historyFiles, watchlistFiles, watchlistTitles } from "../public/js/domain/trakt-export.js";
 
 const play = (show, s, e, at, extra = {}) => ({
   id: Math.round(Math.random() * 1e6),
@@ -188,23 +188,31 @@ const HOTD = { ids: { trakt: 154574, imdb: "tt11198330", tvdb: 371572, tmdb: 949
                title: "House of the Dragon", year: 2022 };
 
 test("a watchlisted show arrives with no episodes at all", () => {
-  const rows = watchlistShows([{ type: "show", show: HOTD, listed_at: "2026-08-05T12:41:01.000Z" }]);
+  const rows = watchlistTitles([{ type: "show", show: HOTD, listed_at: "2026-08-05T12:41:01.000Z" }]);
   assert.equal(rows.length, 1);
   assert.equal(rows[0].name, "House of the Dragon");
   assert.equal(rows[0].imdb, "tt11198330");
   assert.deepEqual(rows[0].episodes, [], "which is what keeps it unstarted");
 });
 
-/* A Trakt watchlist holds movies and single episodes too. This app has neither. */
-test("only shows are taken off the watchlist", () => {
-  const rows = watchlistShows([
-    { type: "movie", movie: { title: "Heat", ids: { trakt: 1 } } },
+/* A Trakt watchlist holds films as well as series, and this app has both. It took shows only,
+   which was true when it was written and quietly false ever after: one export tested against
+   carried 412 shows and 414 films on its watchlist, and half of it was dropped in silence.
+
+   Seasons and single episodes are still skipped — there is no shelf here for "the third season
+   of something, later". */
+test("shows and movies are both taken off the watchlist, and nothing else is", () => {
+  const rows = watchlistTitles([
+    { type: "movie", movie: { title: "Heat", year: 1995, ids: { trakt: 1, imdb: "tt0113277" } } },
     { type: "episode", episode: { ids: { trakt: 2 } }, show: HOTD },
     { type: "season", season: { ids: { trakt: 3 } }, show: HOTD },
     { type: "show", show: HOTD },
     { type: "show", show: { title: "Nameless", ids: {} } },
   ]);
-  assert.deepEqual(rows.map((r) => r.name), ["House of the Dragon"]);
+  assert.deepEqual(rows.map((r) => r.name), ["Heat", "House of the Dragon"]);
+  assert.equal(rows[0].kind, "movie", "and a film says it is one");
+  assert.deepEqual(rows[0].episodes, [], "carrying no claim to have seen it");
+  assert.equal(rows[1].kind, undefined);
 });
 
 /* Watched beats planned. Something in both is something being watched, and the history is the

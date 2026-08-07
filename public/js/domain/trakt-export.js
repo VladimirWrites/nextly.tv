@@ -160,28 +160,37 @@ export function moviesFromHistory(history) {
   return [...movies.values()];
 }
 
-/* The watchlist: shows meant for later.
+/* The watchlist: titles meant for later.
 
    These carry no episodes, which is the whole point of them, and that is exactly how they are
    handed on — a row with an empty episode list. Everything downstream then does the right thing
    without being told about watchlists at all: matching finds nothing to mark, adding files the
-   show under this app's default status, which is "planned", and applying an empty plan promotes
-   nothing, so a show meant for later stays meant for later.
+   title under this app's default status, which is "planned", and applying an empty plan promotes
+   nothing, so something meant for later stays meant for later.
 
-   Movies, seasons and single episodes can sit in a Trakt watchlist too. Only shows are taken. */
-export function watchlistShows(list) {
+   Shows and movies both. It read shows only, and said so in a comment — written when this app
+   had no movies in it, and left alone when it gained them. One export tested against held 412
+   shows and 414 films on its watchlist, and imported half a watchlist without a word.
+
+   Seasons and single episodes can sit in a Trakt watchlist too, and are still skipped: this
+   app has no shelf for "the third season of something, later". */
+export function watchlistTitles(list) {
   const out = [];
   for (const row of list || []) {
-    if (!row || row.type !== "show" || !row.show) continue;
-    const ids = idsOf(row.show);
-    if (!showKeyOf(ids)) continue;
+    if (!row) continue;
+    const movie = row.type === "movie";
+    const subject = movie ? row.movie : row.show;
+    if ((!movie && row.type !== "show") || !subject) continue;
+    const ids = idsOf(subject);
+    if (!(movie ? movieKeyOf(ids) : showKeyOf(ids))) continue;
     out.push({
-      name: row.show.title || "",
-      year: num(row.show.year) || null,
+      name: subject.title || "",
+      year: num(subject.year) || null,
       imdb: ids.imdb,
       tvdb: ids.tvdb,
       tmdb: ids.tmdb,
       trakt: ids.trakt,
+      ...(movie ? { kind: "movie" } : {}),
       episodes: [],
     });
   }
@@ -433,11 +442,14 @@ export function readExport(files) {
   /* Watchlisted shows are appended, and only where the history has not already accounted for
      them. Something both watched and planned is something being watched — the history is the
      stronger claim, and it is the one carrying the marks. */
-  const seen = new Set(feed.shows.map((r) => (r.kind === "movie" ? movieKeyOf(r) : showKeyOf(r))));
+  const rowKeyOf = (r) => (r.kind === "movie" ? movieKeyOf(r) : showKeyOf(r));
+  const seen = new Set(feed.shows.map(rowKeyOf));
   const watchlist = watchlistFiles(Object.keys(files || {}))
     .flatMap((name) => (Array.isArray(files[name]) ? files[name] : []));
-  const planned = watchlistShows(watchlist)
-    .filter((r) => !seen.has(showKeyOf(r)));
+  /* Keyed by kind, like everything else here: a film and a series can carry the same Trakt
+     number, and a watchlisted film matched against the show keys would look like a title
+     already accounted for and be dropped. */
+  const planned = watchlistTitles(watchlist).filter((r) => !seen.has(rowKeyOf(r)));
   feed.shows.push(...planned);
 
   /* Ratings, hung on the rows they belong to.
@@ -489,6 +501,12 @@ export function readExport(files) {
 
   const episodes = feed.shows.reduce((t, s) => t + s.episodes.length, 0);
   const plays = feed.shows.reduce((t, s) => t + s.episodes.reduce((n, e) => n + e.plays, 0), 0);
+  /* Counted by kind rather than worked out by subtraction. The screen used to derive its show
+     count as "everything, less the films, less the watchlist", which held only while the
+     watchlist was shows and the films were watched ones — and stopped holding the moment the
+     watchlist gained its films back. */
+  const movieRows = feed.shows.filter((s) => s.kind === "movie").length;
+  const showsWithHistory = feed.shows.filter((s) => s.kind !== "movie" && s.episodes.length).length;
   return {
     feed,
     episodes,
@@ -496,7 +514,10 @@ export function readExport(files) {
     events: history.length,
     pages: pages.length,
     planned: planned.length,
-    movies: movies.length,
+    plannedMovies: planned.filter((r) => r.kind === "movie").length,
+    shows: showsWithHistory,
+    movies: movieRows,
+    watchedMovies: movies.length,
     ratings: ratedRows,
     ratedTitles,
     missing: shortfall(feed, files["watched-shows.json"], watchedMovieFiles(Object.keys(files || {}))

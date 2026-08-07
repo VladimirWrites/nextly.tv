@@ -75,8 +75,15 @@ export function planMarks(show, episodes, now, row = null) {
      instead is a play count and a date, which is the same pair every episode carries — so the
      plan is built by hand here and applied by exactly the same code. */
   if (row && row.kind === "movie") {
-    const level = Math.max(1, Math.trunc(+row.plays) || 1);
+    const plays = Math.max(0, Math.trunc(+row.plays) || 0);
     const at = +row.at || 0;
+    /* A movie row is not a claim to have seen it. A watchlisted film and a film rated without
+       being watched both arrive as rows with no plays and no date, and marking those watched
+       would put a film somebody means to see into the pile of films they have — the one place
+       a tracker must not be wrong. Nothing to mark, so nothing is marked; the row still lands
+       in the library, planned, carrying whatever rating came with it. */
+    if (!plays && !at) return { add: [], raise: [] };
+    const level = Math.max(1, plays);
     const held = have.get(MOVIE_MARK);
     if (!held) {
       return { add: [{ id: MOVIE_MARK, m: now, ...(level > 1 ? { n: level } : {}), ...(at > 0 ? { w: at } : {}) }], raise: [] };

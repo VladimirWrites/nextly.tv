@@ -364,3 +364,55 @@ test("cast and recommendations follow the chosen catalogue, not a stored key", a
   assert.deepEqual(await meta.movieCredits(movie), [], "TVmaze chosen: no cast, as on a show page");
   assert.deepEqual(await meta.similarMovies(movie), [], "and no recommendations");
 });
+
+/* Films meant for later.
+ *
+ * A Trakt watchlist holds films and series side by side — one export tested against had 412
+ * shows and 414 films on it — and the reader took the shows and dropped the films without a
+ * word. Letting them through is only half of it: a movie row is marked watched from its play
+ * count, and a watchlisted film has none, so the naive fix files every film somebody means to
+ * see among the films they have seen. That is the one direction a tracker must not be wrong in.
+ */
+test("a watchlisted film arrives planned, not watched", async () => {
+  const { readExport } = await import("../public/js/domain/trakt-export.js");
+  const { planMarks } = await import("../public/js/domain/external.js");
+  const { makeShow, normShow } = await import("../public/js/domain/schema.js");
+
+  const r = readExport({
+    "watched-history.json": [moviePlay("2023-01-01T20:00:00Z")],
+    "lists-watchlist.json": [{ type: "movie", listed_at: "2026-02-23T17:52:10.000Z",
+      movie: { title: "The Edge of Seventeen", year: 2016, ids: { trakt: 237987, imdb: "tt1878870", tmdb: 376660 } } }],
+  });
+
+  const row = r.feed.shows.find((s) => s.name === "The Edge of Seventeen");
+  assert.ok(row, "the film came off the watchlist");
+  assert.equal(row.kind, "movie");
+  assert.equal(r.planned, 1);
+  assert.equal(r.plannedMovies, 1);
+
+  const rec = normShow(makeShow({ key: "tmdb:m376660", src: "tmdb", ref: "m376660", kind: "movie",
+    name: "The Edge of Seventeen" }, 1_700_000_000_000), 1_700_000_000_000);
+  const plan = planMarks(rec, row.episodes, 1_700_000_000_000, row);
+  assert.deepEqual(plan, { add: [], raise: [] }, "nothing about it says it was seen");
+});
+
+/* The same fault, reached another way: Trakt takes a rating from anybody, watched or not. */
+test("a film rated but never watched is not marked watched either", async () => {
+  const { planMarks } = await import("../public/js/domain/external.js");
+  const { makeShow, normShow } = await import("../public/js/domain/schema.js");
+  const NOW = 1_700_000_000_000;
+  const rec = normShow(makeShow({ key: "tmdb:m1", src: "tmdb", ref: "m1", kind: "movie", name: "X" }, NOW), NOW);
+  assert.deepEqual(planMarks(rec, [], NOW, { kind: "movie", ratings: [{ id: "t", v: 8 }] }),
+    { add: [], raise: [] });
+});
+
+test("a film with a play behind it is still marked, exactly as before", async () => {
+  const { planMarks } = await import("../public/js/domain/external.js");
+  const { makeShow, normShow } = await import("../public/js/domain/schema.js");
+  const NOW = 1_700_000_000_000;
+  const rec = normShow(makeShow({ key: "tmdb:m2", src: "tmdb", ref: "m2", kind: "movie", name: "Y" }, NOW), NOW);
+  const plan = planMarks(rec, [], NOW, { kind: "movie", plays: 2, at: NOW - 1000 });
+  assert.equal(plan.add.length, 1);
+  assert.equal(plan.add[0].n, 2, "and its rewatches came with it");
+  assert.equal(plan.add[0].w, NOW - 1000);
+});

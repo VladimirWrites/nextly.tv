@@ -65,8 +65,9 @@ export function review(read, out, repaint) {
      history. Somebody who watchlists heavily should see that number before pressing anything. */
   const lines = [
     h("div", {
-      text: // Shows, and only shows: the row count carries the films and the watchlist too.
-      `${fmtInt(read.episodes)} episodes across ${fmtInt(read.feed.shows.length - read.planned - read.movies)} shows in that file`
+      // Each number counted for itself. This was arithmetic — everything, less the films, less
+      // the watchlist — which quietly stopped being the show count once the watchlist held films.
+      text: `${fmtInt(read.episodes)} episodes across ${fmtInt(read.shows)} shows in that file`
         + (read.movies ? `, ${fmtInt(read.movies)} movies` : "")
         + (read.planned ? `, and ${fmtInt(read.planned)} on the watchlist` : "")
         + (read.ratings ? `. ${fmtInt(read.ratings)} ratings across ${fmtInt(read.ratedTitles)} titles` : "")
