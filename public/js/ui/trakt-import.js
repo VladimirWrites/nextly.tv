@@ -25,7 +25,7 @@ import { state } from "../domain/store.js";
 /* The sentences are next door, in domain/, and this file only arranges them. They were here,
    where nothing can load them without a document — so none of them were ever tested, and one
    was a call to a function that had never been written. */
-import { fmtInt, newThings, what, shortfallLine } from "../domain/import-copy.js";
+import { fmtInt, newThings, what, shortfallLine, unimportedMoviesLine } from "../domain/import-copy.js";
 
 export { what };
 
@@ -88,17 +88,13 @@ export function review(read, out, repaint) {
       text: "Movies are imported too. They stay hidden until you switch movies on in You." }));
   }
 
-  /* Films the export names and cannot identify — TV Time gives a show a TVDB id and gives a
-     film a title and a release date. Matching on a name is how a library gains a second copy of
-     something it holds, or a claim to have seen a film somebody has not, so they are left. Said
-     here, with the number, because an omission nobody mentions is one discovered weeks later as
-     an absence. */
-  const left = read.unimported;
-  if (left && left.total) {
-    lines.push(h("div.t-dim", { style: { marginTop: "6px", fontSize: "12.5px" },
-      text: `${fmtInt(left.total)} movie${left.total === 1 ? "" : "s"} in that file `
-        + `${left.total === 1 ? "is" : "are"} named without an id anything could look up, `
-        + "so none are imported. Shows carry one and come in whole." }));
+  /* Films the export names and cannot identify. Matching one on its name is how a library gains
+     a second copy of something it holds, or a claim to have seen a film nobody watched, so they
+     are left — and said, with the number, because an omission nobody mentions is one discovered
+     weeks later as an absence. */
+  const left = unimportedMoviesLine(read.unimported, read.source || "The export");
+  if (left) {
+    lines.push(h("div.t-dim", { style: { marginTop: "6px", fontSize: "12.5px" }, text: left }));
   }
 
   /* A history that does not add up to what Trakt says it holds. Said plainly: an import that

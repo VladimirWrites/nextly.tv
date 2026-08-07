@@ -34,6 +34,22 @@ export function what(p, held = 0) {
     : "None of them are in your library yet.";
 }
 
+/* Films the export names and cannot identify.
+ *
+ * TV Time gives a show a TVDB number and gives a film a title and a release date, which is not
+ * enough to be sure which film it means — so they are left out, and this says so.
+ *
+ * The first version of this sentence said the export named them "without an id anything could
+ * look up", and that shows are "carried one and come in whole". Both are the code's account of
+ * the problem rather than the reader's: nobody outside this repository is thinking about ids. */
+export function unimportedMoviesLine(unimported, source = "the service") {
+  const n = (unimported && unimported.total) || 0;
+  if (!n) return "";
+  return `${fmtInt(n)} movie${n === 1 ? "" : "s"} in that file ${n === 1 ? "wasn't" : "weren't"} imported. `
+    + `${source} identifies the shows you watch, but gives a film only a title and a release `
+    + "date — not enough to be sure which film it means. Shows are unaffected.";
+}
+
 /* A history that does not add up to what the service says it holds.
  *
  * Said plainly, because an import that silently covers two thirds of a library is worse than
@@ -55,7 +71,11 @@ export function shortfallLine(missing, source = "the service") {
   ].filter(Boolean).join(" and ");
 
   const names = rows.slice(0, 3).map((m) => m.name).filter(Boolean).join(", ");
-  return `${kinds} ${rows.length === 1 ? "has" : "have"} fewer plays in the file than ${source} counted`
+  /* Said as what it will do rather than as what it is. "Fewer plays in the file than Trakt
+     counted" is a true sentence about two numbers nobody has seen, in a word — plays — that is
+     Trakt's and not this app's. What somebody actually needs to know is that these titles are
+     about to arrive with episodes missing. */
+  return `${kinds} will import with gaps: the file has less history in it than ${source}'s own count`
     + (names ? ` (${names}${rows.length > 3 ? ", …" : ""})` : "")
-    + `. ${source}'s export may not go all the way back.`;
+    + `. Older watches may not be in the export.`;
 }
