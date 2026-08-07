@@ -11,6 +11,7 @@ import { fmtDate, fmtDay, relTime, whenPhrase } from "../domain/dates.js";
 import { episodeBlurb } from "../domain/labels.js";
 import { upcomingList, groupByDate, isPremiere } from "../domain/schedule.js";
 import * as cache from "../io/cache.js";
+import * as view from "./viewstate.js";
 import { miniBarcode } from "./barcode.js";
 import { watchNext, opts } from "./actions.js";
 
@@ -36,14 +37,52 @@ export function renderUpNext(root, { go }) {
   }
 
   const [first, ...rest] = rows;
+  const queue = rest.length
+    ? h(`div.queue${view.isOn(QUEUE_OPEN) ? "" : ".is-clamped"}`, rest.map((r) => queueRow(r, go)))
+    : null;
   mount(root, h("div.stack", [
     rows.length ? h("div.sect", [h("h2.t-label", { text: "Watch next" })]) : null,
     rows.length ? heroCard(first, go) : caughtUpNote(soon),
     rest.length ? h("div.sect.vt", { style: { "--vt": "waiting-head" } },
       [h("h2.t-label", { text: "Also waiting" }), h("span.sect-count", { text: `${rest.length}` })]) : null,
-    rest.length ? h("div.queue", rest.map((r) => queueRow(r, go))) : null,
+    queue,
+    // Drawn whenever the shorter of the two limits could be biting. Which rows are actually
+    // held back, and whether this is needed at all, is the stylesheet's business.
+    rest.length > CLAMP ? queueMore(queue, rest.length) : null,
     comingUp(soon, go),
   ]));
+}
+
+/* How much of the queue stands between the hero and what is coming.
+ *
+ * Two rows on a phone, five where the rail has moved to the side; the numbers are in the
+ * stylesheet, beside the breakpoint they belong to. This is the smaller of them, and all this
+ * file needs to know — below it nothing can be hidden, so there is nothing to offer.
+ *
+ * It measured the space under the hero once, and re-measured on resize. On a phone that is an
+ * event which fires whenever the address bar slides away, so rows appeared while scrolling.
+ * Nothing here reads a height any more.
+ *
+ * Every row is still in the document. The section head goes on saying seven while two are
+ * shown, and nothing is hidden from the reader except the rows themselves. */
+const CLAMP = 2;
+
+/* Open for this visit only, like every other thing a screen has unfolded. Persisting it would
+   turn one tap into a permanent setting nobody asked to change, which is the opposite of what
+   an expander is for. */
+const QUEUE_OPEN = "queue:open";
+
+function queueMore(queue, total) {
+  const label = () => (view.isOn(QUEUE_OPEN) ? "Show fewer" : `Show all (${total})`);
+  const btn = h("button.btn.btn-sm.queue-more", {
+    type: "button",
+    text: label(),
+    onclick: () => {
+      queue.classList.toggle("is-clamped", !view.toggle(QUEUE_OPEN));
+      btn.textContent = label();
+    },
+  });
+  return btn;
 }
 
 // Caught up, but with something on the way. Says so briefly rather than taking over the

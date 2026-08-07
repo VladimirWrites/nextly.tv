@@ -1663,6 +1663,46 @@ div.bar-row {
   gap: 8px;
 }
 
+/* How much of the queue stands between the hero and "Coming up".
+ *
+ * Up next listed everything waiting, and a queue of seven put the schedule a full screen below
+ * the fold on a phone: the part of this screen that says what is on the way could only be found
+ * by somebody who already knew it was there.
+ *
+ * Two rows where the rail sits along the bottom, five where it has moved to the side — the same
+ * 900px line the rail itself turns on, because a window wide enough for a side rail is a window
+ * tall enough for the rows. Fixed counts, and deliberately: the version before this measured
+ * the space under the hero and re-measured on resize, which on a phone is an event that fires
+ * every time the address bar slides away. Rows appeared as you scrolled.
+ *
+ * Every row stays in the document, so the count in the section head and what the expander
+ * offers cannot disagree, and expanding is a class coming off rather than a render. */
+.queue.is-clamped .qrow:nth-child(n + 3) {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .queue.is-clamped .qrow:nth-child(n + 3) { display: flex; }
+  .queue.is-clamped .qrow:nth-child(n + 6) { display: none; }
+}
+
+/* Offered by how long the queue is, never by whether it is clamped: the button takes that class
+   off, and a rule that depended on it would remove the button the instant it worked. Where
+   :has() is missing the button simply stays — a control that expands what is already expanded
+   is a far smaller fault than rows nothing can reach. */
+.queue-more {
+  display: none;
+  align-self: flex-start;
+  margin-top: 10px;
+}
+
+.queue:has(.qrow:nth-child(3)) + .queue-more { display: inline-flex; }
+
+@media (min-width: 900px) {
+  .queue:has(.qrow:nth-child(3)) + .queue-more { display: none; }
+  .queue:has(.qrow:nth-child(6)) + .queue-more { display: inline-flex; }
+}
+
 .qrow {
   display: flex;
   min-width: 0;
