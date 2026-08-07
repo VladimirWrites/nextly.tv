@@ -28,15 +28,17 @@ test("a zip is recognised by the one file no other service writes", () => {
   assert.equal(isTvTimeExport([]), false);
 });
 
-/* The three files that describe what was watched, and only those. The rest of that zip is
-   somebody's access tokens and IP addresses, and the strongest thing this app can say about
-   them is that they were never taken out of the archive. */
-test("only the three files that say anything about watching are unpacked", () => {
-  for (const n of ["tracking-prod-records-v2.csv", "user_tv_show_data.csv", "followed_tv_show.csv"]) {
+/* The four files that say something about what was watched, and only those. The rest of that
+   zip is somebody's access tokens, IP addresses and device identifiers, and the strongest thing
+   this app can say about them is that they are never taken out of the archive. */
+test("only the files that say something about watching are unpacked", () => {
+  for (const n of ["tracking-prod-records-v2.csv", "user_tv_show_data.csv", "followed_tv_show.csv",
+    "tracking-prod-records.csv"]) {
     assert.equal(wantedFile(n), true, `${n} is read`);
   }
   for (const n of ["access_token.csv", "refresh_token.csv", "ip_address.csv", "user.csv",
-    "device_token.csv", "user_connection.csv", "tracking-prod-records.csv"]) {
+    "device_token.csv", "user_connection.csv", "_user_creation_ip.csv", "user_session.csv",
+    "notifications-prod-notifications.csv"]) {
     assert.equal(wantedFile(n), false, `${n} is nobody's business here`);
   }
 });
@@ -172,4 +174,45 @@ test("rows carry the portable id both television catalogues understand", () => {
   assert.equal(row.tvdb, 79126);
   assert.equal(row.imdb, null);
   assert.equal(row.tmdb, null);
+});
+
+/* Films.
+ *
+ * TV Time tracks them — the correction that produced this: a show arrives with a TVDB id, and a
+ * film arrives with a title, a release date and TV Time's own uuid. Nothing there identifies a
+ * film to a catalogue, and matching one by name is how a library gains a second copy of what it
+ * already holds, or a claim to have seen something nobody watched. So they are counted and left,
+ * and the count is what lets the screen say so. */
+test("a film is counted once, however many rows it has", async () => {
+  const { moviesNamed } = await import("../public/js/domain/tvtime-export.js");
+  const got = moviesNamed([
+    { entity_type: "movie", type: "follow", uuid: "a", movie_name: "Mountainhead", release_date: "2025-05-31 00:00:00" },
+    { entity_type: "movie", type: "watch", uuid: "a", movie_name: "Mountainhead", release_date: "2025-05-31 00:00:00" },
+    { entity_type: "movie", type: "follow", uuid: "b", movie_name: "Heat", release_date: "1995-12-15 00:00:00" },
+    { entity_type: "series", type: "watch", uuid: "c", series_name: "The Wire" },
+  ]);
+  assert.deepEqual(got, { total: 2, watched: 1 }, "two films, one of them seen");
+});
+
+test("an export with no films says so with a zero", async () => {
+  const { moviesNamed } = await import("../public/js/domain/tvtime-export.js");
+  assert.deepEqual(moviesNamed([]), { total: 0, watched: 0 });
+  assert.deepEqual(moviesNamed(null), { total: 0, watched: 0 });
+});
+
+/* The older records file is read for the films and for nothing else. Its episode rows describe
+   the same history the newer file states, and reading both would count every play twice. */
+test("the legacy file contributes films and not one mark", () => {
+  const r = readTvTimeExport({
+    ...records(play(), series()),
+    "tracking-prod-records.csv": [
+      "type,entity_type,uuid,movie_name,release_date,series_name,season_number,episode_number,created_at,watch_count",
+      "watch,movie,a,Mountainhead,2025-05-31 00:00:00,,,,2025-05-27 08:54:38,",
+      "watch,series,b,,,The Wire,4,13,2019-01-01 00:00:00,1",
+    ].join("\n"),
+  });
+  assert.deepEqual(r.unimported, { total: 1, watched: 1 });
+  assert.equal(r.plays, 1, "the one play came from the newer file, and only once");
+  assert.equal(r.shows, 1);
+  assert.equal(r.movies, 0, "and nothing about a film was imported");
 });

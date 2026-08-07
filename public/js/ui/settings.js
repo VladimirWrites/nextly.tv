@@ -485,7 +485,11 @@ function importRow(repaint) {
   return h("div.set-row", { style: { alignItems: "flex-start" } }, [
     h("div.set-text", [
       h("div.set-name", { text: "Import" }),
-      h("div.set-hint", { text: "A nextly export, or a Trakt data export — watched history and watchlist both. Merged into what's here: nothing is overwritten, and the newer mark wins per episode." }),
+      /* Named, all three, because somebody with a zip from one of them should be able to see
+         that it will work without having to try it — and because "a data export" says nothing
+         about whose. What each one carries differs, so the screen says that afterwards, once
+         the file has been read and there is something true to say. */
+      h("div.set-hint", { text: "A nextly export, or a data export from Trakt or TV Time — watched history and watchlist both. Merged into what's here: nothing is overwritten, and the newer mark wins per episode." }),
       out,
     ]),
     h("button.btn.btn-sm", { type: "button", text: "Open file", onclick: () => doImport(out, repaint) }),

@@ -51,9 +51,16 @@ export async function importTraktZip(buffer, out, repaint) {
      TV Time answers in CSV, so its files come out as text rather than parsed — the only
      difference between the two paths, and the reason the reader is chosen before the unpack
      rather than after it. */
-  if (isTvTimeExport(zipNames(buffer))) {
+  const names = zipNames(buffer);
+  if (isTvTimeExport(names)) {
     review(readTvTimeExport(await readZip(buffer, tvtimeFile)), out, repaint);
     return;
+  }
+  /* Neither, named as neither. A zip that is not one of the two would otherwise be refused in
+     Trakt's words — "that doesn't look like a Trakt export" — which is true and useless to
+     somebody who was handing over a TV Time one, or a folder of holiday photographs. */
+  if (!names.some((n) => /^watched-history/.test(n))) {
+    throw new Error("That zip isn't a Trakt or a TV Time export — neither service's history is inside it.");
   }
   const files = await readJSONZip(buffer, wantedFile);
   review(readExport(files), out, repaint);
@@ -96,6 +103,19 @@ export function review(read, out, repaint) {
   if (read.movies && !(state.settings || {}).movies) {
     lines.push(h("div", { style: { marginTop: "6px" },
       text: "Movies are imported too. They stay hidden until you switch movies on in You." }));
+  }
+
+  /* Films the export names and cannot identify — TV Time gives a show a TVDB id and gives a
+     film a title and a release date. Matching on a name is how a library gains a second copy of
+     something it holds, or a claim to have seen a film somebody has not, so they are left. Said
+     here, with the number, because an omission nobody mentions is one discovered weeks later as
+     an absence. */
+  const left = read.unimported;
+  if (left && left.total) {
+    lines.push(h("div.t-dim", { style: { marginTop: "6px", fontSize: "12.5px" },
+      text: `${fmtInt(left.total)} movie${left.total === 1 ? "" : "s"} in that file `
+        + `${left.total === 1 ? "is" : "are"} named without an id anything could look up, `
+        + "so none are imported. Shows carry one and come in whole." }));
   }
 
   /* A history that does not add up to what Trakt says it holds. Said plainly: an import that

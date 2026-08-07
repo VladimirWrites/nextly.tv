@@ -14,6 +14,9 @@
 //                                 which is why it is only ever a cross-check.
 //   followed_tv_show.csv          names and follow dates. Read for the shows that appear in
 //                                 neither of the others.
+//   tracking-prod-records.csv     the older records file, read for one thing only: the movie
+//                                 rows, which exist nowhere else. Counted, never imported —
+//                                 see below.
 //
 // What makes this work at all is that TV Time numbers shows by TVDB. Buffy is 70327 there and
 // 70327 in TheTVDB, and this app's matcher already reconciles on portable ids — so a show found
@@ -21,9 +24,14 @@
 //
 // What it does not carry: ratings, of any kind. The scores in that zip are TV Time's own —
 // an "addiction score" and a gamification total — and neither is an opinion anybody gave.
-// Movies are technically present and practically absent: the export tested against had two
-// movie rows against six thousand episodes, in a file whose shape says the feature was an
-// afterthought. Neither is read, and both are said out loud rather than quietly skipped.
+//
+// Movies it does track, and this does not import them, which is a decision rather than a
+// shortcoming of the export. A show comes with a TVDB id; a movie comes with a title and a
+// release date and TV Time's own uuid, and nothing else. Matching a film on its name is how a
+// library ends up with a second copy of something it already holds, or with the wrong film
+// marked watched — and a false claim to have seen something is the one direction a tracker must
+// not be wrong in. So they are counted, named as unimportable, and left alone. If a later
+// export carries an id, this is the place that changes.
 //
 // Pure, like the rest of domain/: handed text, returns a feed and a report.
 import { csvObjects } from "./csv.js";
@@ -32,7 +40,12 @@ export const RECORDS_FILE = /^tracking-prod-records-v2\.csv$/;
 export const TOTALS_FILE = /^user_tv_show_data\.csv$/;
 export const FOLLOWED_FILE = /^followed_tv_show\.csv$/;
 
-export const TVTIME_FILES = [RECORDS_FILE, TOTALS_FILE, FOLLOWED_FILE];
+/* The older records file. Its episode rows are the same history the v2 file states better, and
+   are deliberately not read from here — one source for the marks, or a play counts twice. What
+   only it has is the films. */
+export const LEGACY_FILE = /^tracking-prod-records\.csv$/;
+
+export const TVTIME_FILES = [RECORDS_FILE, TOTALS_FILE, FOLLOWED_FILE, LEGACY_FILE];
 
 export const wantedFile = (name) => TVTIME_FILES.some((re) => re.test(name));
 
@@ -132,6 +145,29 @@ export function showsFromRecords(records) {
   return out;
 }
 
+/* The films the export names and does not identify.
+ *
+ * Counted so the screen can say what it is leaving behind. A movie row carries a title, a
+ * release date and TV Time's own uuid — no IMDb, no TMDB, nothing this app or any catalogue
+ * could resolve without guessing from the name. Watched and merely followed are counted apart,
+ * because they are different claims and only one of them would be a lie to get wrong.
+ *
+ * Keyed by uuid: TV Time writes a follow row and a watch row for the same film, and two rows
+ * are not two films. */
+export function moviesNamed(legacy) {
+  const seen = new Map();
+  for (const r of legacy || []) {
+    if (r.entity_type !== "movie") continue;
+    const id = r.uuid || `${r.movie_name}|${r.release_date}`;
+    if (!id) continue;
+    const held = seen.get(id) || { name: String(r.movie_name || "").trim(), watched: false };
+    if (r.type === "watch") held.watched = true;
+    seen.set(id, held);
+  }
+  const all = [...seen.values()].filter((m) => m.name);
+  return { total: all.length, watched: all.filter((m) => m.watched).length };
+}
+
 /* What the history does not account for.
  *
  * user_tv_show_data.csv states a count per show and nothing else, which makes it the only way
@@ -214,10 +250,13 @@ export function readTvTimeExport(files) {
     planned: planned.length,
     plannedMovies: 0,
     shows: rows.length,
-    // TV Time keeps films in a corner of the same file — two rows against six thousand — and
-    // this reads none of them. Nothing is dropped silently that anybody would look for.
+    /* Nought films imported, and however many the file names — two different numbers, kept
+       apart on purpose. "Movies" everywhere else in this app means films that arrive; saying
+       nothing at all about the ones left behind is how somebody discovers the omission by
+       noticing an absence weeks later. */
     movies: 0,
     watchedMovies: 0,
+    unimported: moviesNamed(csvObjects(String((files || {})["tracking-prod-records.csv"] || ""))),
     // Nor ratings: the only scores in that export are TV Time's own measures of engagement.
     ratings: 0,
     ratedTitles: 0,
