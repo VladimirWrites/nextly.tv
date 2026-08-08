@@ -4157,9 +4157,14 @@ button.score {
 .set-row.top{align-items:flex-start}
 .set-ctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 
-/* The section headings above each group. */
+/* The section headings above each group.
+ *
+ * No :first-child rule here. There is one higher up, scoped to `.main >` and `.stack >`, and the
+ * comment beside it says why: unscoped, it matches any section that happens to open a wrapper,
+ * and then the wrapper's heading loses its margin and collides with whatever is above it. That
+ * was fixed once for "Coming up" and reintroduced here, which is how Install came to sit flush
+ * against the card above it in You — installRow returns a div, so its heading is a first child. */
 .sect{margin:26px 0 10px}
-.sect:first-child{margin-top:4px}
 
 /* The account number: the one string here that has to be read character by character and
    copied without error. It wraps at its own dashes rather than shrinking to fit — at 320px the
