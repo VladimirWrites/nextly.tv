@@ -11,6 +11,7 @@ import { stampMtimes, setBaseline, mergeStates } from "../domain/merge.js";
 import { migrate, emptyState, fingerprint } from "../domain/schema.js";
 import { encS, decS, keysReady, getAccountId } from "./crypto.js";
 import { MAX_BLOB } from "../../lib/limits.js";
+import { APP_ID } from "../brand.js";
 
 const LS_STATE = "nx_state";
 const LS_STATE_BAK = "nx_state_bak";
@@ -332,7 +333,7 @@ export function exportJSON({ keys = true } = {}) {
     delete settings.sync;
   }
   return JSON.stringify(
-    { app: "nextly", exported: new Date().toISOString(), ...state, settings },
+    { app: APP_ID, exported: new Date().toISOString(), ...state, settings },
     null, 2);
 }
 

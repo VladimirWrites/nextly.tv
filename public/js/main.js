@@ -34,6 +34,7 @@ import { deriveKeys, keysReady } from "./io/crypto.js";
 import { openLocal, syncVault, loadServer, flushSync, rememberedToken, rememberToken, setSyncReporter, setDataListener, askToPersist, readTheme } from "./io/storage.js";
 import * as cache from "./io/cache.js";
 import * as meta from "./io/meta.js";
+import { APP_NAME } from "./brand.js";
 
 const app = document.getElementById("app");
 let route = { name: "next", arg: null };
@@ -253,9 +254,9 @@ function render() {
 }
 
 /* Installed, the window title is appended to the app's name, so repeating the brand there
-   produced "nextly — TV show tracker - nextly". The app is called nextly; the title says
-   where you are. In a browser tab the brand is added back, because "Library" on its own does
-   not identify the tab among a dozen others. */
+   produced "nextly — TV show tracker - nextly". The window already says which app it is; the
+   title says where you are. In a browser tab the brand is added back, because "Library" on its
+   own does not identify the tab among a dozen others. */
 let lastRoute = null;
 let resolvingShare = false;
 
@@ -275,7 +276,7 @@ function setDocumentTitle(titles) {
   // An untracked show isn't in the library, but the card it was opened from names it.
   const hint = !show && route.name === "show" ? cache.getHint(route.arg) : null;
   const where = show ? show.name : hint ? hint.name : titles[route.name] || "";
-  document.title = !where ? "nextly" : isStandalone() ? where : `${where} · nextly`;
+  document.title = !where ? APP_NAME : isStandalone() ? where : `${where} · ${APP_NAME}`;
 }
 
 /* ---- a shared link ----

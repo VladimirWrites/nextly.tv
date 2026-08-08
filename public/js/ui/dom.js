@@ -3,6 +3,7 @@
 
 import { initials } from "../domain/constants.js";
 import * as view from "./viewstate.js";
+import { APP_NAME } from "../brand.js";
 
 // h("div.card", {onclick}, [children]) — the tag string carries classes so views read as
 // structure rather than as a wall of setAttribute calls.
@@ -329,7 +330,7 @@ export function watchTitlebar() {
 export const IOS_STORAGE_WARNING =
   "Safari clears a site's stored data after seven days without a visit, and your account "
   + "number is part of that. Your watch history is safe on the server either way, but you "
-  + "would need the number to sign in again. Adding nextly to your Home Screen keeps it.";
+  + `would need the number to sign in again. Adding ${APP_NAME} to your Home Screen keeps it.`;
 
 /* Firefox on a computer is the one browser with no install of any kind: no beforeinstallprompt,
    and no menu item that produces a standalone window with its own icon. Telling someone to look

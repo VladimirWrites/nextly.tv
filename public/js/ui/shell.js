@@ -2,6 +2,7 @@
 // desktop. Same markup and same order at both sizes, so the app doesn't have to be
 // relearned when the window changes.
 import { h, svg, ICON } from "./dom.js";
+import { APP_NAME } from "../brand.js";
 
 const TABS = [
   { id: "next", label: "Up next", icon: ICON.play },
@@ -20,7 +21,7 @@ const TABS = [
    this bar needs that the rail underneath does not already have. */
 export function renderTitlebar() {
   return h("div.titlebar", { "aria-hidden": "true" }, [
-    h("div.brand", [h("i.brand-lamp"), "nextly"]),
+    h("div.brand", [h("i.brand-lamp"), APP_NAME]),
   ]);
 }
 
@@ -34,7 +35,7 @@ export function renderNav(active, onGo, badge = 0) {
   const nav = h("nav.nav.vt", { "aria-label": "Sections", style: { "--vt": "nav" } });
 
   nav.append(h("div.nav-brand", [
-    h("div.brand", [h("i.brand-lamp"), "nextly"]),
+    h("div.brand", [h("i.brand-lamp"), APP_NAME]),
     h("span.sr-only", { id: "sync-sr", role: "status", "aria-live": "polite" }),
   ]));
 

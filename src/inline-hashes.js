@@ -4,6 +4,6 @@ export const INLINE_HASHES = {
     "'sha256-xhj/6qtcbfMxt7Sc4VibFpI8qDGxuMzT9L12nxH69Fc='"
   ],
   "index.html": [
-    "'sha256-50gVRXIMY7p8TCLIV/C6rxu8vW9Yem4om+WR9GJgOTU='"
+    "'sha256-Ib82lYcXnBlOaWwc1FEhM7msya1Adoa0HGrqe+uvLno='"
   ]
 };

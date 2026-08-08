@@ -1,12 +1,15 @@
 {
-  "name": "nextly",
-  "short_name": "nextly",
+  "name": "nextly.tv",
+  "short_name": "nextly.tv",
   "description": "A private TV show tracker. Encrypted in your browser; no email, no password, no tracking.",
   "id": "/",
   "scope": "/",
   "start_url": "/",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone"],
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
   "orientation": "any",
   "background_color": "#12141b",
   "theme_color": "#12141b",

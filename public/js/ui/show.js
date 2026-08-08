@@ -32,6 +32,7 @@ import { season, historySection } from "./show-seasons.js";
 import { renderPreview } from "./show-preview.js";
 import * as view from "./viewstate.js";
 import { ratingSection } from "./rating.js";
+import { APP_NAME } from "../brand.js";
 
 /* The same series under another key, if the library holds it. The portable ids come from
    whichever of the record or the card we have — a search result carries them where its
@@ -194,7 +195,7 @@ function openPortable(root, key, { go, back }) {
    The second line arrives only if the wait runs long. Saying "checking other catalogues"
    immediately would be a lie in the common case, where the first one answers. */
 const resolving = () => h("div.finding", [
-  h("div.brand", [h("i.brand-lamp.is-sync"), "nextly"]),
+  h("div.brand", [h("i.brand-lamp.is-sync"), APP_NAME]),
   h("div.updating-bar", { "aria-hidden": "true" }),
   h("div.finding-text", { role: "status", text: "Finding this show…" }),
   h("div.finding-more", { text: "The link doesn't name a catalogue, so it's being looked for in each one this device can reach." }),

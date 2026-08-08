@@ -16,6 +16,7 @@ import { clearAll as clearMetaCache } from "../io/cache.js";
 import { refreshLibrary, retimeLibrary } from "./actions.js";
 import * as meta from "../io/meta.js";
 import * as discover from "../io/discover.js";
+import { APP_NAME } from "../brand.js";
 
 export function renderSettings(root, { go, repaint }) {
   const s = state.settings;
@@ -189,7 +190,7 @@ export function renderSettings(root, { go, repaint }) {
       h("div.set-row", [
         h("div.set-text", [
           h("div.set-name", { text: "Buy me a coffee" }),
-          h("div.set-hint", { text: "nextly is free and has no ads, no tracking and nothing "
+          h("div.set-hint", { text: `${APP_NAME} is free and has no ads, no tracking and nothing `
             + "held back for a paid tier. If it saved your watch history, you can put something "
             + "towards the bills." }),
         ]),
@@ -209,7 +210,7 @@ export function renderSettings(root, { go, repaint }) {
        devices showing different histories turned out to be two devices on different builds,
        and neither of them could say so. */
     h("p.t-dim", { style: { marginTop: "24px", fontSize: "12.5px" } }, [
-      `nextly ${VERSION} · `,
+      `${APP_NAME} ${VERSION} · `,
       h("span", { text: "Show data from TVmaze and TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB." }),
     ]),
   );
@@ -309,7 +310,7 @@ function manualSteps() {
   if (isFirefoxDesktop()) {
     return "Firefox on a computer cannot install web apps: there is no menu item for it, and "
       + "Add to taskbar makes a shortcut to a tab rather than an app in its own window. "
-      + "Bookmark it, or install from Chrome, Edge or Safari. Nothing about nextly needs "
+      + `Bookmark it, or install from Chrome, Edge or Safari. Nothing about ${APP_NAME} needs `
       + "installing to work here.";
   }
   return "In your browser menu, look for Install app or Add to Home screen. In Chrome on a "
@@ -339,7 +340,7 @@ function installRow(repaint) {
     h("div.set-group", [
       h("div.set-row", [
         h("div.set-text", [
-          h("div.set-name", { text: "Add nextly to your home screen" }),
+          h("div.set-name", { text: `Add ${APP_NAME} to your home screen` }),
           h("div.set-hint", {
             text: canPromptInstall()
               ? "Runs in its own window, works offline, and opens straight to Up next."
@@ -489,7 +490,7 @@ function importRow(repaint) {
          that it will work without having to try it — and because "a data export" says nothing
          about whose. What each one carries differs, so the screen says that afterwards, once
          the file has been read and there is something true to say. */
-      h("div.set-hint", { text: "A nextly export, or a data export from Trakt or TV Time — watched history and watchlist both. Merged into what's here: nothing is overwritten, and the newer mark wins per episode." }),
+      h("div.set-hint", { text: `A ${APP_NAME} export, or a data export from Trakt or TV Time — watched history and watchlist both. Merged into what's here: nothing is overwritten, and the newer mark wins per episode.` }),
       out,
     ]),
     h("button.btn.btn-sm", { type: "button", text: "Open file", onclick: () => doImport(out, repaint) }),

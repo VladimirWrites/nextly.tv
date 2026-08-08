@@ -9,6 +9,7 @@ import {
   isStandalone, isIOS, IOS_STORAGE_WARNING, canPromptInstall, promptInstall, onInstallStateChange,
 } from "./dom.js";
 import { generateToken, validToken, canonToken, copyText } from "../io/crypto.js";
+import { APP_NAME } from "../brand.js";
 
 /* ---- credential fields ----
    What a browser needs before it will offer to save a password, per web.dev's sign-in form
@@ -81,7 +82,7 @@ async function askManager(token, form) {
       cred = new window.PasswordCredential({
         id: VAULT_USER,
         password: canonToken(token),
-        name: "nextly account number",
+        name: `${APP_NAME} account number`,
       });
     }
     await navigator.credentials.store(cred);
@@ -173,7 +174,7 @@ function installOffer() {
 
     if (canPromptInstall()) {
       box.append(
-        h("div.gate-install-text", { text: "Install nextly for offline access and its own window." }),
+        h("div.gate-install-text", { text: `Install ${APP_NAME} for offline access and its own window.` }),
         h("button.btn.btn-sm", {
           type: "button",
           text: "Install",
@@ -196,7 +197,7 @@ function installOffer() {
     if (isIOS()) {
       box.append(
         h("div.gate-install-text", {
-          text: "Add nextly to your Home Screen: tap Share, then Add to Home Screen.",
+          text: `Add ${APP_NAME} to your Home Screen: tap Share, then Add to Home Screen.`,
         }),
         // The reason, not just the steps. On this platform it is the difference between the
         // app still being signed in next month and not, and nobody guesses that unprompted.
@@ -239,7 +240,7 @@ export function renderGate(root, { onSignIn }) {
 
   function choice() {
     card.replaceChildren(
-      h("div.brand", [h("i.brand-lamp"), "nextly"]),
+      h("div.brand", [h("i.brand-lamp"), APP_NAME]),
       h("h1.t-display", { style: { fontSize: "clamp(28px,7vw,44px)", marginTop: "18px" }, text: "Never lose your watch history again." }),
       h("p.gate-lede", {
         text: "Your episodes are encrypted on this device before they're stored. No email, no password, no tracking — and an export button that always works.",
@@ -379,7 +380,7 @@ export function renderGate(root, { onSignIn }) {
 // A plain text file, because a recovery key you can't open isn't a recovery key.
 function download(token) {
   const body = [
-    "nextly — account number",
+    `${APP_NAME} — account number`,
     "",
     token,
     "",

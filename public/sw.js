@@ -10,7 +10,7 @@
  * /api/* is NEVER cached. The vault must always be live — a stale blob merged as if it were
  * current is exactly how you lose data.
  */
-const VERSION = "v1.9.18";
+const VERSION = "v1.10.0";
 const SHELL = "nextly-shell-" + VERSION;
 const ART = "nextly-art-v1";          // catalogue posters, kept across shell upgrades
 const ART_MAX = 400;
@@ -38,6 +38,7 @@ const FILES = [
   // The ES-module graph. main.js imports all of these, so every one has to be present for
   // the app to boot with no network.
   "/js/main.js",
+  "/js/brand.js",
   "/js/domain/constants.js",
   "/js/domain/csv.js",
   "/js/domain/dates.js",
