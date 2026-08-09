@@ -10,7 +10,7 @@ import { state } from "../domain/store.js";
 import { VERSION } from "../version.js";
 import { totalWatched, totalEpisodes } from "../domain/model.js";
 import { relTime } from "../domain/dates.js";
-import { canonToken, copyText } from "../io/crypto.js";
+import { canonToken, copyText, clearKeys } from "../io/crypto.js";
 import { exportJSON, importJSON, syncedAt, rememberedToken, forgetToken, deleteVault, scheduleSync, flushSync, storageUse, readView, writeView, readTheme, writeTheme } from "../io/storage.js";
 import { clearAll as clearMetaCache } from "../io/cache.js";
 import { refreshLibrary, retimeLibrary } from "./actions.js";
@@ -143,17 +143,51 @@ export function renderSettings(root, { go, repaint }) {
             tone: "danger",
           });
           if (!ok) return;
+          /* Flushed first. Signing out drops the key from memory, and anything not yet pushed
+             would be encrypted with a key this device no longer has. */
+          await flushSync();
+          await clearMetaCache().catch(() => {});
           forgetToken();
-          clearMetaCache();
+          clearKeys();
           location.reload();
         } })),
       row("Delete the vault", "Erases the stored blob for good. There is no backup and no recovery.",
         h("button.btn.btn-sm.btn-danger", { type: "button", text: "Delete everything", onclick: async () => {
-          if (!confirmWord("DELETE", `Delete your vault and all ${totalEpisodes(state)} watch marks? This cannot be undone. Export first if you want a copy.`)) return;
+          /* A copy offered before the point of no return, not after it.
+           *
+           * Nobody here can give this back — the server only ever held ciphertext, and it is
+           * about to hold nothing. A file on your own disk is the only copy that survives, and
+           * the moment somebody is about to delete years of watching is the moment to say so.
+           * Declining is allowed; being asked is not optional. */
+          if (await confirmDialog({
+            title: "Keep a copy first?",
+            body: "Nobody here can give this back. A file on your own disk is the only copy that can survive this.",
+            confirm: "Export a copy",
+          })) {
+            doExport();
+            // Handed to the browser rather than awaited. A breath, so the file is on its way
+            // before the reload below tears the page down.
+            await new Promise((r) => setTimeout(r, 600));
+          }
+
+          if (!confirmWord("DELETE", `Delete your vault and all ${totalEpisodes(state)} watch marks? This cannot be undone.`)) return;
           const ok = await deleteVault();
           if (!ok) return toast("Delete failed — nothing was removed");
+
+          /* The key goes before the reload, and this is not tidiness.
+           *
+           * `pagehide` flushes the vault whenever keys are in memory, and flushSync pushes
+           * unconditionally — so the reload on the next line was re-uploading the whole library
+           * milliseconds after the row was deleted. Deleting your vault put it straight back,
+           * from the very device you deleted it on.
+           *
+           * The metadata cache is awaited for a smaller version of the same reason: it is an
+           * IndexedDB transaction, and an un-awaited one is cancelled by the unload. Show names
+           * and posters for everything ever watched are a record of what somebody watched, and
+           * they were surviving "delete everything" untouched. */
+          clearKeys();
+          await clearMetaCache().catch(() => {});
           forgetToken();
-          clearMetaCache();
           location.reload();
         } })),
     ]),

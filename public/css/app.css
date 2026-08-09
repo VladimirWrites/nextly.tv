@@ -4175,3 +4175,20 @@ button.score {
 .token-out .s{color:var(--dimmer)}
 .token-out .d{color:var(--accent)}
 .token-out .a{color:var(--signal)}
+
+/* The vault was deleted somewhere else.
+ *
+ * Sits between the toolbar and the screen, so it is the first thing read on whichever screen the
+ * app happens to open on, and scrolls away with the page rather than pinning itself over the
+ * library. Danger colouring rather than the amber used for notes: this one is not an aside. */
+.gone {
+  margin: 12px var(--edge-r) 4px var(--edge-l);
+  padding: 16px;
+  border: 1px solid var(--danger);
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--danger) 10%, var(--panel));
+}
+
+.gone-title { font-size: 17px; }
+.gone-text { margin: 6px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--dim); max-width: 62ch; }
+.gone-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }

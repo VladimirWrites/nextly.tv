@@ -107,6 +107,21 @@ let onDataChanged = () => {};
 export function setSyncReporter(fn) { setSync = fn; }
 export function setDataListener(fn) { onDataChanged = fn; }
 
+/* ---- a vault that used to be there ----
+ *
+ * Deleting the vault removes the row, and a device that still holds the account number cannot be
+ * told about it: there is no session to end, nothing here knows what devices exist, and one that
+ * has been shut in a drawer for a month cannot be reached at all. The account number is the only
+ * credential and deleting data does not revoke it.
+ *
+ * What can be got right is not quietly putting the old library back. Once this device knows the
+ * vault is gone it stops pushing — otherwise the next edit, or merely closing the tab, recreates
+ * the whole thing under the same account number — and asks rather than acts. */
+let gone = false;
+let onGone = () => {};
+export function setGoneListener(fn) { onGone = fn; }
+export const vaultGone = () => gone;
+
 /* ---- the account number ----
    Remembered on this device so the app opens straight into the library. It's the only
    credential, so "sign out" means forgetting it here — the vault itself is untouched. */
@@ -149,6 +164,9 @@ export function scheduleSync() {
   stampMtimes();
   saveLocal();
   clearTimeout(syncTimer);
+  // Still saved here, never sent: a deleted vault must not be rebuilt by somebody carrying on
+  // watching. The app keeps working; it just stops arguing with a vault that was thrown away.
+  if (gone) return;
   syncTimer = setTimeout(() => pushServer(), 1200);
 }
 
@@ -167,7 +185,7 @@ async function putBlob(blob, keepalive) {
 }
 
 export async function pushServer(manual = false, keepalive = false, retry = 0) {
-  if (!keysReady()) return false;
+  if (!keysReady() || gone) return false;
   try {
     stampMtimes();
     const blob = await encS();
@@ -251,6 +269,16 @@ export async function loadServer() {
       signal: giveUpAfter(VAULT_TIMEOUT),
     });
     if (r.status === 404) {
+      /* Two very different things arrive as the same 404: an account number nobody has used
+         yet, and one whose vault has just been deleted somewhere else. The difference is
+         whether this device has ever seen a row — `nx_seen_at` is only ever written from a real
+         server response, so holding one is proof there was something to delete. */
+      if (seenAt() > 0) {
+        gone = true;
+        setSync("off", "Deleted elsewhere");
+        onGone();
+        return null;
+      }
       setSync("ok", "New vault");
       setBaseline(state);
       return null;                       // nothing stored yet; first push creates the row
@@ -264,6 +292,22 @@ export async function loadServer() {
     setSync("off", "Offline");
     return null;
   }
+}
+
+/* Putting back a vault that was deleted elsewhere.
+ *
+ * An explicit choice and never automatic. The 404 that got us here is nearly always a real
+ * deletion, but it is also what a bad restore or a server having a bad morning looks like, and
+ * this app has no other copy — so the decision belongs to the person whose shelf it is.
+ *
+ * The last-seen timestamp goes first. It describes a row that no longer exists, and sending it
+ * as `prev` would be claiming to be the newer version of something gone. */
+export async function restoreVault() {
+  gone = false;
+  LS.rem(LS_SEEN);
+  const ok = await pushServer(true);
+  if (!ok) gone = true;                  // still gone, and still nobody's decision but theirs
+  return ok;
 }
 
 /* ---- bringing a session up, in two halves ----

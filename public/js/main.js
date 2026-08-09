@@ -4,7 +4,7 @@
 // DOM: an action mutates the state, calls scheduleSync, and asks for a repaint. At this
 // scale that's less code than a framework's setup, and it keeps the whole data path — tap,
 // mutate, encrypt, push — readable end to end.
-import { h, mount, setSync, toast, onInstallStateChange, isStandalone, watchTitlebar } from "./ui/dom.js";
+import { h, mount, setSync, toast, onInstallStateChange, isStandalone, watchTitlebar, confirmWord } from "./ui/dom.js";
 import { renderNav, renderTopbar, renderTitlebar } from "./ui/shell.js";
 import { renderGate } from "./ui/gate.js";
 import { signedOut } from "./ui/anon.js";
@@ -30,8 +30,8 @@ import { upNextList } from "./domain/progress.js";
 import { showKey } from "./domain/constants.js";
 import { parseShared } from "./domain/share.js";
 import { parseRoute, pathFor } from "./domain/routes.js";
-import { deriveKeys, keysReady } from "./io/crypto.js";
-import { openLocal, syncVault, loadServer, flushSync, rememberedToken, rememberToken, setSyncReporter, setDataListener, askToPersist, readTheme } from "./io/storage.js";
+import { deriveKeys, keysReady, clearKeys } from "./io/crypto.js";
+import { openLocal, syncVault, loadServer, flushSync, rememberedToken, rememberToken, setSyncReporter, setDataListener, askToPersist, readTheme, setGoneListener, vaultGone, restoreVault, forgetToken } from "./io/storage.js";
 import * as cache from "./io/cache.js";
 import * as meta from "./io/meta.js";
 import { APP_NAME } from "./brand.js";
@@ -190,6 +190,46 @@ addEventListener("popstate", () => {
 
 /* ---- render ---- */
 
+/* The vault this device is signed into no longer exists on the server.
+ *
+ * Above the screen rather than over it: what is on this device is still readable, and locking
+ * somebody out of their own library to make them answer a question would be a strange way to
+ * handle data they may have just lost. Two answers, and no third quiet one — doing nothing
+ * leaves the app working locally and syncing nothing, which is the honest resting state.
+ *
+ * Erasing is the destructive one, so it asks; putting it back is not, so it does not. */
+function goneNotice() {
+  return h("div.gone", [
+    h("div.gone-title.t-title", { text: "This vault was deleted somewhere else" }),
+    h("p.gone-text", {
+      text: "Your account number still works, but there is nothing stored under it. Nothing on "
+        + "this device is being sent anywhere until you decide which copy is the real one.",
+    }),
+    h("div.gone-acts", [
+      h("button.btn.btn-sm.btn-primary", {
+        type: "button",
+        text: "Put this copy back",
+        onclick: async () => {
+          const ok = await restoreVault();
+          toast(ok ? "Your library is back on the server." : "Couldn't put it back — try again.");
+          render();
+        },
+      }),
+      h("button.btn.btn-sm.btn-danger", {
+        type: "button",
+        text: "Erase this device",
+        onclick: async () => {
+          if (!confirmWord("ERASE", "This clears the library held on this device. The deletion stands.")) return;
+          await cache.clearAll().catch(() => {});
+          forgetToken();
+          clearKeys();
+          location.reload();
+        },
+      }),
+    ]),
+  ]);
+}
+
 function render() {
   /* No keys means one of two things and they need opposite treatment. Signing in has not
      finished, in which case painting a screen from an empty store would show an empty library
@@ -224,7 +264,7 @@ function render() {
     renderNav(["show", "movie", "person", "season", "episode"].includes(route.name) ? "library"
       : route.name === "stats" ? "you" : route.name === "feed" ? "search" : route.name,
     goTab, waiting),
-    h("div.shell-main", [top ? top.bar : null, body]),
+    h("div.shell-main", [top ? top.bar : null, vaultGone() ? goneNotice() : null, body]),
   ]));
 
   const ctx = { go, back, repaint: render, top };
@@ -404,6 +444,9 @@ async function signIn(token) {
 }
 
 async function boot() {
+  // The vault can be found missing mid-session, on a sync nobody asked for; the screen has to
+  // say so the moment it happens rather than the next time something else redraws.
+  setGoneListener(render);
   setSyncReporter(setSync);
   // Data can arrive after boot — a sync on foregrounding, or a merge with another device —
   // and those shows need their metadata fetched too, not just a repaint.
