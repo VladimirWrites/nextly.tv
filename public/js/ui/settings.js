@@ -151,8 +151,10 @@ export function renderSettings(root, { go, repaint }) {
           clearKeys();
           location.reload();
         } })),
-      row("Delete the vault", "Erases the stored blob for good. There is no backup and no recovery.",
-        h("button.btn.btn-sm.btn-danger", { type: "button", text: "Delete everything", onclick: async () => {
+      row("Delete the vault",
+        "Removes the encrypted blob from the server for good, and clears this device with it. "
+        + "There is no undo, and no copy anybody here could give you back.",
+        h("button.btn.btn-sm.btn-danger", { type: "button", text: "Delete", onclick: async () => {
           /* A copy offered before the point of no return, not after it.
            *
            * Nobody here can give this back — the server only ever held ciphertext, and it is
