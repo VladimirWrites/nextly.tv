@@ -3,7 +3,7 @@
 //
 // Deletions just remove the record; merge.js turns that into a tombstone at sync time by
 // diffing against the last-synced baseline. Nothing here needs to know about tombstones.
-import { makeShow, findShow, findSameShow, rememberAlias, normShow } from "./schema.js";
+import { makeShow, findShow, findSameShow, findLikeShow, rememberAlias, normShow } from "./schema.js";
 import { SHOW_STATUS, DEFAULT_STATUS, passOf, levelOf, setLevel, parseEpKey, isMovie, MOVIE_MARK,
   RATING_TITLE, clampRating, isRatingId } from "./constants.js";
 import { episodeList } from "./progress.js";
@@ -344,7 +344,21 @@ export const SHELF_STATUS = {
 
 export function shelfState(state, card) {
   if (!card || !card.key) return { held: null, label: null };
-  const held = findShow(state, card.key) || findSameShow(state, { ...card, key: card.key });
+  /* Matched the same way the search screen matches, which it was not.
+   *
+   * The ids do not line up across catalogues for series. A TVmaze record carries an IMDb and a
+   * TVDB id and no TMDB one; a TMDB card carries its own id and no IMDb one, because the search
+   * and credits endpoints do not return one. So a series held from one catalogue and shown in a
+   * row built from the other has no identifier in common, and the tick never appeared. Opening
+   * the show is what wrote the other catalogue's key down as an alias, which is why coming back
+   * from it made every later row agree.
+   *
+   * Movies never showed the fault because their ids do line up: Cinemeta files a movie under its
+   * IMDb id and hands over TMDB's number alongside it.
+   *
+   * The fallback is title and year, guarded by kind, which is the same weaker match the search
+   * results have used all along. One question asked in two places should not get two answers. */
+  const held = findShow(state, card.key) || findLikeShow(state, { ...card, key: card.key });
   if (!held) return { held: null, label: null };
   const label = isMovie(held)
     ? (movieWatched(held) ? "Watched" : "Watchlist")

@@ -96,3 +96,33 @@ test("a title tracked from a row is held by the next card that asks", () => {
   addShow(st, { key: "tvmaze:169", src: "tvmaze", ref: 169, name: "The Wire" }, NOW);
   assert.ok(shelfState(st, { key: "tvmaze:169", name: "The Wire" }).held);
 });
+
+/* The fault this row of tests was written for, in the one shape it did not cover: a series.
+ *
+ * Movies reconcile because their ids overlap — Cinemeta files one under its IMDb id and hands
+ * over TMDB's number with it. Series do not. TVmaze knows IMDb and TVDB and has never heard of
+ * TMDB's numbering; TMDB's search and credits endpoints return no IMDb id at all. So a show
+ * held from one and offered by the other has nothing in common to match on, and the tick was
+ * missing until the show had been opened once — opening it is what recorded the alias.
+ *
+ * Title and year, guarded by kind, is what search has always fallen back to. */
+test("a series held from one catalogue is recognised in a row built by another", () => {
+  const heldFromTvmaze = makeShow({
+    key: "tvmaze:82", src: "tvmaze", ref: 82, name: "Game of Thrones", year: 2011,
+    imdb: "tt0944947", tvdb: 121361,
+  }, NOW);
+
+  // Exactly what a TMDB credits or "similar" row hands over: its own id, a name, a year.
+  const cardFromTmdb = { key: "tmdb:1399", src: "tmdb", ref: 1399, name: "Game of Thrones", year: 2011 };
+
+  const s = shelfState(stateWith(heldFromTvmaze), cardFromTmdb);
+  assert.ok(s.held, "the show is in the library and the row should say so");
+  assert.equal(s.held.id, "tvmaze:82");
+});
+
+/* The guard on that fallback: a series and a movie sharing a name and a year are two titles. */
+test("a movie does not answer for a series of the same name and year", () => {
+  const series = makeShow({ key: "tvmaze:100", src: "tvmaze", ref: 100, name: "Fargo", year: 2014 }, NOW);
+  const asMovie = { key: "tmdb:m9999", src: "tmdb", ref: "m9999", kind: "movie", name: "Fargo", year: 2014 };
+  assert.equal(shelfState(stateWith(series), asMovie).held, null);
+});
