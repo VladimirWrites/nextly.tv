@@ -18,7 +18,7 @@ import { markMovieNow, trackMovie, ensureMovie, untrackShow } from "./actions.js
 import { empty } from "./upnext.js";
 import * as cache from "../io/cache.js";
 import { movieCredits, similarMovies } from "../io/meta.js";
-import { castSection, stickyBar, watchTitle } from "./show-parts.js";
+import { castSection, stickyBar, watchTitle, skel } from "./show-parts.js";
 import { shelfScroller } from "./dom.js";
 import { shelfCard } from "./shelf.js";
 import { ratingSection } from "./rating.js";
@@ -55,7 +55,14 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
     shareKey: imdb ? movieKey("cinemeta", imdb) : key,
   });
 
-  if (!m) return mount(root, bar, failed.has(key) ? unplaceable(go) : waiting());
+  if (!m) {
+    return failed.has(key)
+      ? mount(root, bar, unplaceable(go))
+      // Spread rather than wrapped: the hero is full-bleed and reaches the top of the screen by
+      // being a child of the page, so a div around it would box it in exactly as the old
+      // skeleton was boxed in.
+      : mount(root, bar, ...waiting());
+  }
 
   const watched = movieWatched(held);
   const plays = moviePlays(held);
@@ -221,10 +228,43 @@ function unplaceable(go) {
   );
 }
 
-// The record arrives in a moment; hold the shape it will take.
-const waiting = () => h("div", [
-  h("div.skeleton", { style: { height: "30px", width: "48%", borderRadius: "6px" } }),
-  h("div.skeleton", { style: { height: "13px", width: "62%", marginTop: "14px", borderRadius: "6px" } }),
-  h("div.skeleton", { style: { height: "13px", width: "88%", marginTop: "8px", borderRadius: "6px" } }),
-]);
+/* The record arrives in a moment; hold the shape it will take.
+ *
+ * Three grey bars in a bare div, which is what this was, is not that shape. It had none of the
+ * page's own structure, so it sat against the very top of the screen underneath the floating
+ * bar, in a place no part of the finished page ever occupies, and then the whole layout jumped
+ * when the record landed.
+ *
+ * The same bones as the page below: the hero, the poster column, the title, the facts, the
+ * blurb, and one panel of actions. Built the same way the show page builds its own waiting
+ * state, so the two screens hold still in the same way.
+ *
+ * Returned as a list because these are siblings of the bar rather than one box: the hero is
+ * full-bleed and only reaches the top of the screen while it is a child of the page. */
+const waiting = () => [
+  h("section.show-hero", [
+    h("div.show-veil"),
+    h("div.show-body", [
+      h("div.show-art-col", [h("div.show-poster.skeleton")]),
+      h("div", { style: { minWidth: 0, flex: "1 1 0" } }, [
+        skel("62%", "30px"),
+        h("div.show-facts", { style: { marginTop: "12px" } }, [skel("42px", "13px"), skel("62px", "13px")]),
+        h("div.show-overview", { style: { display: "grid", gap: "7px" } }, [
+          skel("100%", "13px"), skel("88%", "13px"), skel("54%", "13px"),
+        ]),
+      ]),
+    ]),
+  ]),
+
+  /* Held back by .pending until the wait is long enough to be worth showing, the way the show
+     page holds its own back. A skeleton that flashes for eighty milliseconds is just a flicker. */
+  h("div.show-rest", [
+    h("div.panel.pending", { style: { marginTop: "18px" } }, [
+      h("div.panel-actions", { style: { marginTop: "0" } }, [
+        skel("150px", "40px", "999px"),
+        skel("128px", "40px", "999px"),
+      ]),
+    ]),
+  ]),
+];
 
