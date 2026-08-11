@@ -2202,6 +2202,17 @@ div.bar-row {
   align-items: center;
 }
 
+/* A remark standing where a button stood.
+ *
+ * Marking a movie as on the watchlist replaces the button with a sentence, and the sentence
+ * began exactly where the button's box began — which is not where its label began, so the words
+ * appeared to jump left into the gap. The inset matches a button's own padding, so the two read
+ * as occupying the same place. */
+.act-note {
+  margin-left: 8px;
+  font-size: 13.5px;
+}
+
 .stat-n {
   font-family: var(--mono);
   font-size: 21px;

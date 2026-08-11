@@ -11,7 +11,7 @@ import { h, svg, ICON, mount, keepMedia, posterFallback } from "./dom.js";
 import { state } from "../domain/store.js";
 import { findShow, findSameShow } from "../domain/schema.js";
 import { movieWatched, moviePlays } from "../domain/model.js";
-import { fmtScore, fmtDuration, movieKey } from "../domain/constants.js";
+import { fmtScore, fmtDuration, movieKey, releasedYet } from "../domain/constants.js";
 import { fmtDate } from "../domain/dates.js";
 import { anonBar } from "./anon.js";
 import { markMovieNow, trackMovie, ensureMovie, untrackShow } from "./actions.js";
@@ -66,6 +66,7 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
 
   const watched = movieWatched(held);
   const plays = moviePlays(held);
+  const out = releasedYet(m);
   const facts = [
     m.year,
     m.runtime ? fmtDuration(m.runtime) : null,
@@ -107,7 +108,12 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
     h("div.show-rest", [
       h("div.panel", { style: { marginTop: "18px" } }, [
         h("div.panel-actions", { style: { marginTop: "0" } }, [
-          held
+          /* Nothing that has not come out yet can have been watched, so the button that says so
+             is not offered. Left out rather than disabled: a dead control invites a press and
+             then explains itself, and there is nothing here to explain beyond the date, which
+             the line beside it gives. Watch later is the whole of what an unreleased film can
+             honestly offer. */
+          out && held
             ? h("button.btn", {
                 type: "button",
                 class: watched ? "btn-ghost" : "btn-primary",
@@ -115,29 +121,42 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
               }, [svg(ICON.check, "btn-icon"), watched ? "Watched — undo" : "Mark watched"])
             /* Not tracked, so there is nothing to mark yet, and marking is the most likely reason
                somebody opened a movie they do not hold — so that button does both at once. */
-            : h("button.btn.btn-primary", {
-                type: "button",
-                onclick: () => markMovieNow(key, true),
-              }, [svg(ICON.check, "btn-icon"), "Mark watched"]),
+            : out
+              ? h("button.btn.btn-primary", {
+                  type: "button",
+                  onclick: () => markMovieNow(key, true),
+                }, [svg(ICON.check, "btn-icon"), "Mark watched"])
+              : null,
 
           /* The other reason to open a movie you do not hold: you want to see it later. That was
              only expressible by marking it watched, which is a lie about the past.
 
              A movie in the library with no mark against it is already exactly what "watch later"
              means — the Library files it under Planned — so this writes no new state and needs
-             no new status. It is the same record, minus the mark. */
+             no new status. It is the same record, minus the mark.
+
+             It leads for something unreleased, because there it is the only thing on offer. */
           !held
-            ? h("button.btn.btn-ghost", {
+            ? h("button.btn", {
                 type: "button",
+                class: out ? "btn-ghost" : "btn-primary",
                 onclick: () => trackMovie(key),
               }, [svg(ICON.plus, "btn-icon"), "Watch later"])
             : !watched
               /* Held and unmarked, which is to say already on the watchlist. Said rather than
                  offered again, so the button does not sit there doing nothing when pressed. */
-              ? h("span.t-dim", { style: { fontSize: "13.5px" }, text: "On your watchlist." })
+              ? h("span.t-dim.act-note", { text: "On your watchlist." })
               : null,
+
+          // What it is waiting for, where that is known. A date is more use than "not yet".
+          !out
+            ? h("span.t-dim.act-note", {
+                text: m.released ? `Out ${fmtDate(m.released)}.` : "Not out yet.",
+              })
+            : null,
+
           plays > 1
-            ? h("span.t-dim", { style: { fontSize: "13.5px" }, text: `Watched ${plays} times.` })
+            ? h("span.t-dim.act-note", { text: `Watched ${plays} times.` })
             : null,
         ]),
       ]),

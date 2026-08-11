@@ -257,3 +257,21 @@ export function indexLetter(name) {
   const up = first.toLocaleUpperCase();
   return /\p{L}/u.test(up) ? up : "#";
 }
+
+/* Whether the thing has actually come out.
+ *
+ * A dated release in the future is the clear case. A year alone is enough for the rest: a
+ * catalogue that has heard of a film two years out often has nothing but the year, and a movie
+ * whose only date is a year later than this one has not been seen by anybody.
+ *
+ * Deliberately generous about today. A release date is the day it opens somewhere, and where
+ * that somewhere is depends on who is reading; treating the day itself as released is the kinder
+ * of the two mistakes, since the other one calls somebody a liar about a film they just saw. */
+export function releasedYet(m, today = new Date()) {
+  const day = String((m && m.released) || "").slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    return day <= today.toISOString().slice(0, 10);
+  }
+  const year = +(m && m.year) || 0;
+  return !year || year <= today.getFullYear();
+}
