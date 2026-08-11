@@ -10,10 +10,11 @@
 import { h, svg, ICON, mount, keepMedia, posterFallback } from "./dom.js";
 import { state } from "../domain/store.js";
 import { findShow, findSameShow } from "../domain/schema.js";
-import { movieWatched, moviePlays } from "../domain/model.js";
+import { movieWatched, moviePlays, ratingOf } from "../domain/model.js";
 import { fmtScore, fmtDuration, movieKey, releasedYet } from "../domain/constants.js";
 import { fmtDate } from "../domain/dates.js";
 import { anonBar } from "./anon.js";
+import { confirmDialog } from "./overlay.js";
 import { markMovieNow, trackMovie, ensureMovie, untrackShow } from "./actions.js";
 import { empty } from "./upnext.js";
 import * as cache from "../io/cache.js";
@@ -206,7 +207,26 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
               h("button.btn.btn-sm.btn-ghost", {
                 type: "button",
                 text: "Remove from library",
-                onclick: () => { if (untrackShow(held.id)) go("library"); },
+                /* Asked, the way a show asks. A movie carries less than a series does, but a
+                   rating and the fact you watched it are still things nothing can rebuild —
+                   and this button sat one stray tap away from taking them. */
+                onclick: async () => {
+                  const gone = [
+                    plays ? `${plays} watch${plays === 1 ? "" : "es"}` : null,
+                    ratingOf(held) ? "your rating" : null,
+                  ].filter(Boolean);
+
+                  const ok = await confirmDialog({
+                    title: `Remove ${name}?`,
+                    body: gone.length
+                      ? `This deletes ${gone.join(" and ")}. You can add it again later, but that is gone.`
+                      : "You can add it again at any time.",
+                    confirm: "Remove",
+                    tone: "danger",
+                  });
+                  if (!ok) return;
+                  if (untrackShow(held.id)) go("library");
+                },
               }),
             ]),
           ])
