@@ -20,15 +20,26 @@ const badge = () => h("div.shelf-badge", { "aria-hidden": "true" }, [svg(ICON.ch
 /* The card, everywhere.
  *
  * `caption` is what the row wants said when the title is not yours — a year, a part played, an
- * air date. Holding it overrides that, because "Watching" is the more useful of the two and
- * both do not fit.
+ * air date. Holding it usually overrides that, because "Watching" is the more useful of the two
+ * and both do not fit.
+ *
+ * Usually, not always. Where the caption is the part somebody played, overriding it puts the
+ * word "Watching" in the place a role goes and it reads as the role: Monica Bellucci's page
+ * offered Twin Peaks with "Watching" underneath, which says she is credited as Watching. The
+ * tick in the corner already says the title is yours, so on those rows the status is the
+ * repetition and the part is the news. `preferCaption` is how a row says which of the two its
+ * caption is.
  *
  * The route follows the card's kind rather than the row's, since a row can hold both: a
  * career on the person page does, and so does a feed of popular movies. */
-export function shelfCard(card, { caption = null, go, route } = {}) {
+export function shelfCard(card, { caption = null, go, route, preferCaption = false } = {}) {
   const { held, label } = shelfState(state, card);
   const at = route || (card.kind === "movie" ? "movie" : "show");
-  const said = [card.name, card.year ? `, ${card.year}` : "", label ? `, ${label}` : ""].join("");
+  // Both, here, because nothing is competing for room in a spoken label.
+  const said = [card.name, card.year ? `, ${card.year}` : "", caption ? `, ${caption}` : "",
+    label ? `, ${label}` : ""].join("");
+
+  const shown = preferCaption && caption ? caption : (label || caption);
 
   return h("button.shelf-card", {
     type: "button",
@@ -40,8 +51,8 @@ export function shelfCard(card, { caption = null, go, route } = {}) {
       held ? badge() : null,
     ]),
     h("div.shelf-name.t-title", { text: card.name }),
-    label
-      ? h("div.shelf-cap.is-held", { text: label })
-      : caption ? h("div.shelf-cap", { text: caption }) : null,
+    shown
+      ? h("div.shelf-cap", { class: shown === label ? "is-held" : null, text: shown })
+      : null,
   ]);
 }

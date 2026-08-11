@@ -147,7 +147,14 @@ function showCard(s, go) {
   // The part, where the catalogue says — TVmaze doesn't on this endpoint, so it falls back to
   // the year rather than leaving a gap. A career holds shows and movies, and shelfCard sends
   // each half to its own screen.
-  return shelfCard(s, { caption: s.character || (s.year ? String(s.year) : ""), go });
+  /* The part wins over the status here. This is the one row in the app whose caption is a role,
+     and "Watching" standing in that slot reads as the name of the part. The tick still says the
+     title is yours. */
+  return shelfCard(s, {
+    caption: s.character || (s.year ? String(s.year) : ""),
+    preferCaption: !!s.character,
+    go,
+  });
 }
 
 /* Same shape as the loaded page, so nothing moves when it arrives — including the space a
