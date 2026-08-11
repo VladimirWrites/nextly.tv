@@ -121,7 +121,11 @@ const SIDE_TABS = ["library", "search", "you"];
 
 function goTab(name) {
   const depth = (history.state && history.state.depth) || 0;
-  if (name === "next" && SIDE_TABS.includes(route.name) && depth > 0) return history.back();
+  /* Exactly one step out, not merely more than none. A tab reached by going into something and
+     back out again — a show, then a person, then a search for one of their genres — is several
+     entries deep, and stepping back one from there lands on whatever that was rather than on Up
+     next. One step is the only case where the entry behind is known to be Up next. */
+  if (name === "next" && SIDE_TABS.includes(route.name) && depth === 1) return history.back();
   // Deep-linked straight into a tab, so there is no Up next underneath to go back to.
   go(name, null, { replace: route.name !== "next" });
 }

@@ -120,7 +120,7 @@ function paint(root, who, go, top) {
 
     who.shows.length ? h("div.sect", [h("h2.t-label", { text: "Also in" }),
         h("span.sect-count", { text: creditLine(who.shows) })]) : null,
-    who.shows.length ? shelfScroller(h("div.shelf", who.shows.map((s) => showCard(s, go))), `also:${who.key}`) : null,
+    who.shows.length ? shelfScroller(h("div.shelf", who.shows.map((s) => showCard(s, go, who.name))), `also:${who.key}`) : null,
 
     // Only ever drawn for somebody who arrived without a vault; returns null otherwise.
     anonBar(),
@@ -143,16 +143,40 @@ function creditLine(list) {
   ].filter(Boolean).join(" · ");
 }
 
-function showCard(s, go) {
+/* Compared with the punctuation and the accents off, because a credit and a name are typed by
+   different people on different days: "Monica Bellucci" and "Monica Belluci", "Self" and "self". */
+const fold = (x) => String(x || "").toLowerCase().normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+
+const AS_SELF = /^(self|herself|himself|themselves|themself)\b/;
+
+/* What to call the part, on the page belonging to the person who played it.
+ *
+ * A catalogue writes a self-appearance as the person's own name, which is true and is also the
+ * one place that sentence is worth nothing: on Monica Bellucci's page, Twin Peaks captioned
+ * "Monica Bellucci" tells a reader who already knew. She really does appear as herself, so the
+ * fact is worth keeping and only the wording was wrong.
+ *
+ * "Themselves" rather than a guess at anybody's pronoun: the catalogue's gender field is often
+ * unset and is not worth being wrong about for one word of caption. */
+function roleOf(character, personName) {
+  const part = String(character || "").trim();
+  if (!part) return "";
+  if (AS_SELF.test(fold(part)) || fold(part) === fold(personName)) return "As themselves";
+  return part;
+}
+
+function showCard(s, go, personName) {
   // The part, where the catalogue says — TVmaze doesn't on this endpoint, so it falls back to
   // the year rather than leaving a gap. A career holds shows and movies, and shelfCard sends
   // each half to its own screen.
+  const part = roleOf(s.character, personName);
   /* The part wins over the status here. This is the one row in the app whose caption is a role,
      and "Watching" standing in that slot reads as the name of the part. The tick still says the
      title is yours. */
   return shelfCard(s, {
-    caption: s.character || (s.year ? String(s.year) : ""),
-    preferCaption: !!s.character,
+    caption: part || (s.year ? String(s.year) : ""),
+    preferCaption: !!part,
     go,
   });
 }
