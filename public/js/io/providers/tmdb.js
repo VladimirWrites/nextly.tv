@@ -380,6 +380,8 @@ export async function person(ref) {
     // single ones, since the page renders it as one block of text.
     bio: (d.biography || "").trim().replace(/\n{2,}/g, "\n") || null,
     url: `https://www.themoviedb.org/person/${d.id}`,
+    // Comes back with the details for free, and is the id every other site knows them by.
+    imdb: d.imdb_id || null,
     shows,
   };
 }

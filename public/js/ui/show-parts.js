@@ -147,8 +147,10 @@ export function header(show, m, go, hint) {
           ? keepMedia(`poster:${show.id}`, "img", { src: posterSrc, class: "show-poster" })
           // Still coming: hold the slot. Meta with no poster: there is none, so hold nothing.
           : waiting ? h("div.show-poster.skeleton.pending") : null,
-        // Empty until the trailer is found, and gone if there is none.
-        h("div.row-gap.show-links"),
+        /* The trailer arrives here later; the IMDb chip is known from the record and goes in
+           now. Taken from the record first and the catalogue second, since a tracked show
+           carries the id whether or not the full metadata has landed. */
+        h("div.row-gap.show-links", [imdbChip(show.imdb || (m && m.imdb))]),
       ]),
       h("div", { style: { minWidth: 0 } }, [
         h("h1.t-display.show-name", { text: show.name }),
@@ -216,6 +218,27 @@ const found = new Map();
    Filled after the fact: for a show numbered by the catalogue in use the trailer came with the
    record, and for one numbered elsewhere it takes a request, and the page must not wait on
    either. */
+/* Out to IMDb, where there is an id to go out on.
+ *
+ * The one page everybody already has an account on and an opinion about, and the app holds the
+ * id for most titles anyway: TVmaze files it under externals, Cinemeta keys movies by it. It is
+ * a way out rather than a feature — this app is not trying to be the last page you look at.
+ *
+ * Only for an id of the right shape. A title is tt-something and a person is nm-something, and
+ * a link built from anything else is a 404 wearing a chip. */
+export function imdbChip(imdb, kind = "title") {
+  const id = String(imdb || "").trim();
+  const ok = kind === "name" ? /^nm\d+$/.test(id) : /^tt\d+$/.test(id);
+  if (!ok) return null;
+  return h("a.chip", {
+    href: `https://www.imdb.com/${kind === "name" ? "name" : "title"}/${id}/`,
+    target: "_blank",
+    rel: "noreferrer noopener",
+    title: "Open on IMDb",
+    text: "IMDb",
+  });
+}
+
 export function trailerLink(root, m, n = null) {
   const row = root.querySelector(".show-links");
   if (!row || !m) return;

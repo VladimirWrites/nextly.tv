@@ -12,6 +12,7 @@ import { fmtDate } from "../domain/dates.js";
 import { empty } from "./upnext.js";
 import * as view from "./viewstate.js";
 import { shelfCard } from "./shelf.js";
+import { imdbChip } from "./show-parts.js";
 
 // Held so going back to a person just visited paints at once rather than fetching again.
 const seen = new Map();
@@ -101,9 +102,15 @@ function paint(root, who, go, top) {
       h("div", { style: { minWidth: 0 } }, [
         h("h1.t-display.person-name", { text: who.name }),
         facts.length ? h("div.show-facts.sep-row", facts.map((f) => h("span.sep-item", { text: f }))) : null,
-        who.url
+        /* Out to the catalogue that described them, and to IMDb where the catalogue knows the
+           id. Two ways out rather than one: the profile is where this page's facts came from,
+           and IMDb is where most people are actually going next. */
+        who.url || who.imdb
           ? h("div.row-gap", { style: { marginTop: "12px" } }, [
-              h("a.chip", { href: who.url, target: "_blank", rel: "noreferrer noopener", text: "Profile" }),
+              who.url
+                ? h("a.chip", { href: who.url, target: "_blank", rel: "noreferrer noopener", text: "Profile" })
+                : null,
+              imdbChip(who.imdb, "name"),
             ])
           : null,
       ]),

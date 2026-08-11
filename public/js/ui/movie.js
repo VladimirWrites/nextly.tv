@@ -18,7 +18,7 @@ import { markMovieNow, trackMovie, ensureMovie, untrackShow } from "./actions.js
 import { empty } from "./upnext.js";
 import * as cache from "../io/cache.js";
 import { movieCredits, similarMovies } from "../io/meta.js";
-import { castSection, stickyBar, watchTitle, skel } from "./show-parts.js";
+import { castSection, stickyBar, watchTitle, skel, imdbChip } from "./show-parts.js";
 import { shelfScroller } from "./dom.js";
 import { shelfCard } from "./shelf.js";
 import { ratingSection } from "./rating.js";
@@ -92,7 +92,7 @@ export function renderMovie(root, key, { go, back, top, repaint }) {
           m.posterSm || m.poster
             ? keepMedia(`poster:${key}`, "img", { src: m.posterSm || m.poster, class: "show-poster" })
             : h("div.show-poster", [posterFallback(name, "md")]),
-          h("div.row-gap.show-links"),
+          h("div.row-gap.show-links", [imdbChip(imdb)]),
         ]),
         h("div", { style: { minWidth: 0 } }, [
           h("h1.t-display.show-name", { text: name }),
