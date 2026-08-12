@@ -240,6 +240,26 @@ export function renderSettings(root, { go, repaint }) {
       ]),
     ]),
 
+    /* The other two, for anybody who likes this one.
+     *
+     * Named honestly as things the same person built rather than dressed up as recommendations:
+     * there is no network here, nothing is being measured, and a link out costs nothing until it
+     * is pressed. Bottom of the screen on purpose — somebody who came here to export their
+     * library should reach that first. */
+    h("div.sect", [h("h2.t-label", { text: "Also by me" })]),
+    h("div.set-group", ELSEWHERE.map((a) => h("div.set-row", [
+      h("div.set-text", [
+        h("div.set-name", { text: a.name }),
+        h("div.set-hint", { text: a.line }),
+      ]),
+      h("a.btn.btn-sm", {
+        href: a.href,
+        target: "_blank",
+        rel: "noreferrer noopener",
+        text: "Open",
+      }),
+    ]))),
+
     /* The build this device is actually running. Android shows "Version 1" for an installed
        PWA — that is the wrapper Chrome mints around it, versioned by Chrome, with no manifest
        field to set — so this is the only place the real one can appear. Worth a line: two
@@ -258,6 +278,21 @@ export function renderSettings(root, { go, repaint }) {
    tracking a daily programme with twenty thousand episodes, and the promise explains what
    happens when the device runs short — storage that has not been made persistent is the first
    thing a browser discards. */
+/* The sibling apps, same hand, same bargain: encrypted on the device, no account, no tracking.
+   Kept as data rather than markup so the row is written once and the list is one line to edit. */
+const ELSEWHERE = [
+  {
+    name: "nextly.page",
+    line: "The same idea for books — what you're reading, what's next, and your year in reading.",
+    href: "https://nextly.page",
+  },
+  {
+    name: "nestegg.money",
+    line: "Net worth and salary, encrypted the same way. Built to get out of a spreadsheet.",
+    href: "https://nestegg.money",
+  },
+];
+
 function storageRow() {
   const line = h("div.set-hint", { text: "Checking…" });
 
