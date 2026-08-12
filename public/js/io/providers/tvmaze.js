@@ -51,8 +51,21 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let pausedUntil = 0;
 let strikes = 0;
 
-const gate = async () => {
-  while (Date.now() < pausedUntil) await sleep(pausedUntil - Date.now() + 10);
+/* Deliberately shared — except by what somebody is watching happen.
+ *
+ * A search is one request with a person waiting on it; a sweep is hundreds with nobody waiting.
+ * Holding both behind the same gate meant that opening the app after a while — which runs the
+ * sweep, which gets refused, which shuts the gate — made the search box stop answering for as
+ * long as the sweep took. The gate was doing its job and the app looked broken.
+ *
+ * So an urgent request waits, but not indefinitely: long enough to be polite about a refusal
+ * that has just happened, not long enough for somebody to conclude the app is dead. It is one
+ * request against a burst of hundreds, so it cannot be what gets us refused. */
+const URGENT_MAX_WAIT = 1200;
+
+const gate = async ({ urgent = false } = {}) => {
+  const until = urgent ? Math.min(pausedUntil, Date.now() + URGENT_MAX_WAIT) : pausedUntil;
+  while (Date.now() < until) await sleep(until - Date.now() + 10);
 };
 
 // Half a second, doubling to eight, whichever is further away — a refusal arriving during a
@@ -65,8 +78,8 @@ function refused() {
 // Answered, so the next refusal starts from a shorter wait than the last one ended on.
 const allowed = () => { if (strikes) strikes--; };
 
-async function get(path, attempt = 0) {
-  await gate();
+async function get(path, attempt = 0, { urgent = false } = {}) {
+  await gate({ urgent });
   let r;
   try {
     r = await fetch(API + path, { headers: { accept: "application/json" } });
@@ -76,12 +89,12 @@ async function get(path, attempt = 0) {
        rejects. Indistinguishable from being offline, and treated the same: back off and try
        again, then give up honestly. */
     refused();
-    if (attempt < RETRIES) return get(path, attempt + 1);
+    if (attempt < RETRIES) return get(path, attempt + 1, { urgent });
     throw new Error("Couldn't reach TVmaze.");
   }
   if (r.status === 429 || r.status >= 500) {
     refused();
-    if (attempt < RETRIES) return get(path, attempt + 1);
+    if (attempt < RETRIES) return get(path, attempt + 1, { urgent });
     if (r.status === 429) throw new Error("TVmaze rate limit hit. Try again in a few seconds.");
   }
   allowed();
@@ -122,10 +135,12 @@ const withoutStub = (query) =>
   String(query || "").trim().split(/\s+/).filter(Boolean).slice(0, -1).join(" ");
 
 export async function search(query) {
-  let rows = await get("/search/shows?q=" + encodeURIComponent(query));
+  // Urgent: somebody typed this and is looking at the screen.
+  let rows = await get("/search/shows?q=" + encodeURIComponent(query), 0, { urgent: true });
   if (!(rows || []).length && looksIncomplete(query)) {
     // The stub is what emptied it: ask for the words that were finished.
-    rows = await get("/search/shows?q=" + encodeURIComponent(withoutStub(query))).catch(() => []);
+    rows = await get("/search/shows?q=" + encodeURIComponent(withoutStub(query)), 0, { urgent: true })
+      .catch(() => []);
   }
   return (rows || []).map(({ show }) => ({
     key: showKey(id, show.id),

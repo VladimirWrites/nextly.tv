@@ -5,7 +5,7 @@ import { findShow } from "../domain/schema.js";
 import { markEpisode, markUpTo, markAllAired, markSeason, addShow, setWatchDates, removeShow, setStatus, startRewatch, cancelRewatch, markMovie, setRating } from "../domain/model.js";
 import { nextUp, passOf, completion, newlyFinished, showProgress } from "../domain/progress.js";
 import { epCode, parseEpKey, ordinal, parseShowKey, fmtDuration, isMovie } from "../domain/constants.js";
-import { scheduleSync } from "../io/storage.js";
+import { scheduleSync, readView, writeView } from "../io/storage.js";
 import * as cache from "../io/cache.js";
 import * as meta from "../io/meta.js";
 import * as discover from "../io/discover.js";
@@ -101,7 +101,17 @@ async function pool(items, worker, size = 4) {
  *
  * Views repaint as each result lands, so this never blocks the UI.
  */
-let lastSweep = 0;
+/* Written down rather than held in a variable.
+ *
+ * In memory it only ever measured one session, and an installed app is killed the moment it
+ * leaves the screen — so every cold start began with nothing swept and asked every catalogue
+ * what had changed, which is exactly the burst this interval exists to avoid. "Opening it after
+ * a while and watching it load" was that: not a stale library, just a forgotten timestamp.
+ *
+ * On the device rather than in the vault: it describes what this copy has already asked for,
+ * and another device has its own answer. */
+const sweptAt = () => +(readView().sweptAt || 0);
+const noteSweep = () => writeView({ sweptAt: Date.now() });
 const SWEEP_EVERY = 30 * 60 * 1000;
 
 /* Whichever kind the record is.
@@ -130,9 +140,9 @@ export async function hydrateLibrary() {
   // after boot too — from a sync, or a merge with another device. Asking the catalogue what
   // changed upstream is a different question, costs a request per catalogue, and only needs
   // answering occasionally.
-  const due = Date.now() - lastSweep > SWEEP_EVERY;
+  const due = Date.now() - sweptAt() > SWEEP_EVERY;
   const changed = due ? await staleFromCatalogue(cached) : [];
-  if (due) lastSweep = Date.now();
+  if (due) noteSweep();
 
   const total = byNeed.length + changed.length;
   let done = 0;
