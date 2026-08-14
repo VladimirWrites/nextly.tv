@@ -80,6 +80,62 @@
       </div>
     </section>
 
+    <div class="rule seen-9" aria-hidden="true"></div>
+
+    <!-- What it actually looks like, straight after the claim so the claim can be checked, and
+         before the reasons, which nobody reads first. -->
+    <section class="sec shots" aria-labelledby="shots-h">
+      <div class="shots-head">
+        <h2 class="t-display sec-h2" id="shots-h">What it looks like</h2>
+        <div class="shots-nav">
+          <button class="shots-arrow" type="button" data-scroll="-1" aria-label="Previous screenshot">&#8249;</button>
+          <button class="shots-arrow" type="button" data-scroll="1" aria-label="Next screenshot">&#8250;</button>
+        </div>
+      </div>
+
+      <div class="shots-rail" role="region" aria-label="Screenshots" tabindex="0">
+        <figure class="shot">
+          <div class="frame frame-phone">
+            <img src="/assets/screenshots/up-next.png" width="824" height="1830" loading="lazy" decoding="async"
+                 alt="Up next: the episode to watch, with the show's progress under it.">
+          </div>
+          <figcaption>What to watch tonight</figcaption>
+        </figure>
+
+        <figure class="shot">
+          <div class="frame frame-phone">
+            <img src="/assets/screenshots/library.png" width="824" height="1830" loading="lazy" decoding="async"
+                 alt="The library: posters with how far through each show you are.">
+          </div>
+          <figcaption>Your whole library</figcaption>
+        </figure>
+
+        <figure class="shot">
+          <div class="frame frame-tablet">
+            <img src="/assets/screenshots/library-wide.png" width="1280" height="800" loading="lazy" decoding="async"
+                 alt="The library on a wider screen, posters laid out in columns.">
+          </div>
+          <figcaption>On a tablet</figcaption>
+        </figure>
+
+        <figure class="shot">
+          <div class="frame frame-phone">
+            <img src="/assets/screenshots/stats.png" width="824" height="1830" loading="lazy" decoding="async"
+                 alt="Your year: episodes watched, hours, and the shows behind them.">
+          </div>
+          <figcaption>Your year in television</figcaption>
+        </figure>
+
+        <figure class="shot">
+          <div class="frame frame-tablet">
+            <img src="/assets/screenshots/up-next-wide.png" width="1280" height="800" loading="lazy" decoding="async"
+                 alt="Up next on a wider screen.">
+          </div>
+          <figcaption>Up next, with room</figcaption>
+        </figure>
+      </div>
+    </section>
+
     <div class="rule seen-24" aria-hidden="true"></div>
 
     <section class="sec">
@@ -282,6 +338,86 @@
 
   </div>
 </main>
+<script>
+/* The rail already scrolls with a finger, a trackpad and a scrollbar. This adds the two things a
+   mouse needs and neither of those does: arrows, and the ability to pull the row.
+ *
+ * Everything here is an addition to something that already works, so if it never runs the rail is
+ * still a rail. */
+(function () {
+  var rail = document.querySelector(".shots-rail");
+  if (!rail) return;
+
+  var card = function () {
+    var c = rail.querySelector(".shot");
+    return c ? c.getBoundingClientRect().width + 20 : rail.clientWidth * 0.8;
+  };
+
+  var still = matchMedia("(prefers-reduced-motion: reduce)");
+  document.querySelectorAll(".shots-arrow").forEach(function (b) {
+    b.addEventListener("click", function () {
+      rail.scrollBy({ left: card() * Number(b.dataset.scroll), behavior: still.matches ? "auto" : "smooth" });
+    });
+  });
+
+  /* Pulling the row, the way the app's own rows are pulled.
+   *
+   * Mouse only: a finger already scrolls it, and taking over touch would break that. The drag
+   * does not begin until the pointer has actually moved, so a plain click still reaches whatever
+   * is under it — and the click that ends a drag is swallowed, or letting go over a frame would
+   * count as pressing it.
+   *
+   */
+  var SLOP = 6;
+  var startX = 0, startLeft = 0, pressed = false, dragged = false;
+
+  rail.addEventListener("pointerdown", function (e) {
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    pressed = true;
+    dragged = false;
+    startX = e.clientX;
+    startLeft = rail.scrollLeft;
+  });
+
+  rail.addEventListener("pointermove", function (e) {
+    if (!pressed) return;
+    var dx = e.clientX - startX;
+    if (!dragged && Math.abs(dx) < SLOP) return;
+    if (!dragged) {
+      dragged = true;
+      rail.classList.add("is-dragging");
+      // Capture keeps the drag alive past the edge of the rail. Guarded because it throws on a
+      // pointer the browser no longer considers active, and losing the drag is better than
+      // losing the rest of this handler — which is the part that actually scrolls.
+      try { rail.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    rail.scrollLeft = startLeft - dx;
+    e.preventDefault();
+  });
+
+  var release = function (e) {
+    if (!pressed) return;
+    pressed = false;
+    rail.classList.remove("is-dragging");
+    if (e && e.pointerId != null) {
+      try { rail.releasePointerCapture(e.pointerId); } catch (err) {}
+    }
+  };
+  rail.addEventListener("pointerup", release);
+  rail.addEventListener("pointercancel", release);
+
+  // In the capture phase, so it is stopped before anything inside the rail sees it.
+  rail.addEventListener("click", function (e) {
+    if (!dragged) return;
+    dragged = false;
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
+
+  // A dragged image is the browser's own gesture and would cancel ours.
+  rail.addEventListener("dragstart", function (e) { e.preventDefault(); });
+})();
+</script>
 
 <footer class="site-foot">
   <div class="wrap">
