@@ -10,6 +10,7 @@ import * as cache from "../io/cache.js";
 import * as meta from "../io/meta.js";
 import * as discover from "../io/discover.js";
 import { toast, setProgress } from "./dom.js";
+import { makePaintQueue } from "./paint-queue.js";
 import { celebrate } from "./celebrate.js";
 
 /* A record already cached may predate the second opinion — it was fetched before a TMDB key
@@ -26,7 +27,7 @@ function topUpScores(id, m) {
     .then(async (next) => {
       if (next === m || (next.ratings || []).length === (m.ratings || []).length) return;
       await cache.putMeta(next);
-      repaint();
+      repaintSoon();
     })
     .catch(() => {})
     .finally(() => topping.delete(id));
@@ -35,6 +36,19 @@ function topUpScores(id, m) {
 // The UI registers how to repaint after state changes.
 let repaint = () => {};
 export function setRepaint(fn) { repaint = fn; }
+
+/* Redraws nobody asked for go through a queue: coalesced, and never while a pointer is down.
+   The reasoning, and the fault it fixes, are in ui/paint-queue.js. Direct repaint() stays for
+   anything somebody just did — that redraw is the answer to their own action. */
+const paints = makePaintQueue(() => repaint());
+
+if (typeof addEventListener === "function") {
+  addEventListener("pointerdown", () => paints.press(), true);
+  addEventListener("pointerup", () => paints.release(), true);
+  addEventListener("pointercancel", () => paints.release(), true);
+}
+
+const repaintSoon = () => paints.soon();
 
 export const opts = () => ({ specials: !!(state.settings && state.settings.specials) });
 
@@ -66,7 +80,7 @@ export async function ensureMeta(id, { force = false, scores = false } = {}) {
     // Writing to the cache is the whole point of the fetch: every view reads metadata from
     // the cache, never from here. Without this the request succeeds, the repaint runs, and
     // the views still find nothing — which looks exactly like a load that never finishes.
-    .then(async (m) => { await cache.putMeta(m); repaint(); return m; })
+    .then(async (m) => { await cache.putMeta(m); repaintSoon(); return m; })
     .catch((e) => {
       if (!have) toast(e.message);       // a background refresh fails quietly; a first load doesn't
       return have;
@@ -337,7 +351,7 @@ export function ensureMovie(key, { force = false } = {}) {
   // The vault's own portable id, so a movie survives its catalogue's key being taken away.
   const held = findShow(state, key);
   return meta.fetchMovie(key, { imdb: (held && held.imdb) || null })
-    .then(async (m) => { await cache.putMeta(m); repaint(); return m; })
+    .then(async (m) => { await cache.putMeta(m); repaintSoon(); return m; })
     .catch(() => null);
 }
 
