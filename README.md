@@ -12,6 +12,8 @@ takes the database. Self-host it, or export a plain JSON file and walk away.
 Built the same way as [nestegg.money](https://github.com/VladimirWrites/nestegg.money):
 a Cloudflare Worker, D1, and native ES modules with no bundler.
 
+![nextly — track what you watch, and see where your year went](./nextly-demo.gif)
+
 ## Why it exists
 
 Tracking services shut down and take watch histories with them. Four design decisions
