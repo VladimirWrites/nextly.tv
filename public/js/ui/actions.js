@@ -40,12 +40,23 @@ export function setRepaint(fn) { repaint = fn; }
 /* Redraws nobody asked for go through a queue: coalesced, and never while a pointer is down.
    The reasoning, and the fault it fixes, are in ui/paint-queue.js. Direct repaint() stays for
    anything somebody just did — that redraw is the answer to their own action. */
-const paints = makePaintQueue(() => repaint());
+/* What counts as somebody being in the middle of something: a caret in a field. Read here rather
+   than in the queue, which has no business knowing about the DOM. */
+const typing = () => {
+  const el = typeof document !== "undefined" && document.activeElement;
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable === true;
+};
+
+const paints = makePaintQueue(() => repaint(), { busy: typing });
 
 if (typeof addEventListener === "function") {
   addEventListener("pointerdown", () => paints.press(), true);
   addEventListener("pointerup", () => paints.release(), true);
   addEventListener("pointercancel", () => paints.release(), true);
+  // The caret leaving is the other way a hold ends, and nothing else would notice it.
+  addEventListener("focusout", () => paints.resume(), true);
 }
 
 const repaintSoon = () => paints.soon();

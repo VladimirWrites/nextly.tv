@@ -97,3 +97,61 @@ test("it goes back to normal after a press", () => {
   q.soon(); tick();
   assert.equal(painted, 2);
 });
+
+/* Typing is the other way somebody is in the middle of something. The search box does put focus
+   and the caret back after a redraw, which is why one redraw was survivable — but a hydrate
+   redraws every tenth of a second, so the field was destroyed and restored over and over, and
+   keystrokes typed in the gap went nowhere. */
+test("nothing is drawn while somebody is typing", () => {
+  let painted = 0;
+  let caret = true;
+  const { timer, tick } = fake();
+  const q = makePaintQueue(() => painted++, { timer, busy: () => caret });
+  q.soon();
+  tick();
+  assert.equal(painted, 0);
+});
+
+test("the redraw arrives when the caret leaves", () => {
+  let painted = 0;
+  let caret = true;
+  const { timer, tick } = fake();
+  const q = makePaintQueue(() => painted++, { timer, busy: () => caret });
+  q.soon();
+  tick();
+  caret = false;
+  q.resume();                        // what focusout calls
+  assert.equal(painted, 1);
+});
+
+test("a whole burst of records typed through is still one redraw", () => {
+  let painted = 0;
+  let caret = true;
+  const { timer, tick } = fake();
+  const q = makePaintQueue(() => painted++, { timer, busy: () => caret });
+  for (let i = 0; i < 30; i++) { q.soon(); tick(); }
+  caret = false;
+  q.resume();
+  assert.equal(painted, 1);
+});
+
+test("leaving a field with nothing owed draws nothing", () => {
+  let painted = 0;
+  const { timer } = fake();
+  const q = makePaintQueue(() => painted++, { timer, busy: () => false });
+  q.resume();
+  assert.equal(painted, 0);
+});
+
+/* Both holds are real and independent: letting go of a button while still typing must not let
+   the screen rebuild under the caret. */
+test("a press ending does not override a caret still in a field", () => {
+  let painted = 0;
+  const { timer, tick } = fake();
+  const q = makePaintQueue(() => painted++, { timer, busy: () => true });
+  q.press();
+  q.soon();
+  tick();
+  q.release();
+  assert.equal(painted, 0);
+});

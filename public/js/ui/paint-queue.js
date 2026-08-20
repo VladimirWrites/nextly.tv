@@ -19,12 +19,24 @@
  *
  * Anything somebody just did is not routed through here: that redraw is the answer to their own
  * action and has to be immediate. */
-export function makePaintQueue(paint, { wait = 120, timer = setTimeout } = {}) {
+export function makePaintQueue(paint, { wait = 120, timer = setTimeout, busy = () => false } = {}) {
   let queued = false;
   let holding = false;
 
+  /* Held for a press, and held for a caret.
+   *
+   * Rebuilding the screen while somebody is typing replaces the field under their hands. The
+   * search box does put focus and caret back afterwards, which is why this was survivable at one
+   * redraw — but a hydrate redraws every tenth of a second, so the field was being destroyed and
+   * restored over and over: keystrokes typed in the gap went nowhere, the caret jumped to the
+   * end of what was already there, and on a phone the keyboard flickered.
+   *
+   * `busy` is asked rather than assumed, so what counts as typing lives with the DOM and this
+   * file stays testable without one. */
+  const held = () => holding || busy();
+
   const flush = () => {
-    if (holding || !queued) return;
+    if (held() || !queued) return;
     queued = false;
     paint();
   };
@@ -49,7 +61,14 @@ export function makePaintQueue(paint, { wait = 120, timer = setTimeout } = {}) {
       flush();
     },
 
+    /* Whatever was waiting, now that the caret has gone. Called on blur — the queue cannot see
+       focus leave by itself, and a redraw owed from ten seconds ago should not wait for the next
+       record to land. */
+    resume() {
+      flush();
+    },
+
     pending: () => queued,
-    holding: () => holding,
+    holding: () => held(),
   };
 }
