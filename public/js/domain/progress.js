@@ -144,6 +144,20 @@ export const lastWatchedAt = (show) =>
 // Ordered by your own most recent activity, so whatever you're currently bingeing sits at
 // the top and a weekly show rises again each time you watch it. Shows you've never started
 // sort last, newest-added first, so a fresh addition doesn't get buried under an old one.
+/* Whether Up next is waiting on this show's record.
+ *
+ * The same two conditions the list below applies, kept beside it so the two cannot drift: a movie
+ * has no next episode, and a show that is not being watched is not being waited on.
+ *
+ * It exists because a background refresh has to choose. Asking the catalogue again for every show
+ * that changed upstream means dozens of full records — show plus every episode — fetched on the
+ * chance that one of them matters, and TVmaze marks a record changed for any edit at all. The
+ * shows somebody is actually watching are a small fraction of a library, and they are the only
+ * ones whose staleness is visible on the screen the app opens on. The rest refresh when opened,
+ * which is what cache.isStale already arranges. */
+export const upNextNeeds = (show) =>
+  !!show && show.kind !== "movie" && show.st === "active";
+
 export function upNextList(shows, metaOf, { specials = false, now = Date.now() } = {}) {
   const rows = [];
   for (const show of shows || []) {

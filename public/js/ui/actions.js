@@ -3,7 +3,7 @@
 import { state } from "../domain/store.js";
 import { findShow } from "../domain/schema.js";
 import { markEpisode, markUpTo, markAllAired, markSeason, addShow, setWatchDates, removeShow, setStatus, startRewatch, cancelRewatch, markMovie, setRating } from "../domain/model.js";
-import { nextUp, passOf, completion, newlyFinished, showProgress } from "../domain/progress.js";
+import { nextUp, passOf, completion, newlyFinished, showProgress, upNextNeeds } from "../domain/progress.js";
 import { epCode, parseEpKey, ordinal, parseShowKey, fmtDuration, isMovie } from "../domain/constants.js";
 import { scheduleSync, readView, writeView } from "../io/storage.js";
 import * as cache from "../io/cache.js";
@@ -11,6 +11,7 @@ import * as meta from "../io/meta.js";
 import * as discover from "../io/discover.js";
 import { toast, setProgress } from "./dom.js";
 import { makePaintQueue } from "./paint-queue.js";
+import { oneAtATime } from "./one-at-a-time.js";
 import { celebrate } from "./celebrate.js";
 
 /* A record already cached may predate the second opinion — it was fetched before a TMDB key
@@ -151,7 +152,13 @@ const SWEEP_EVERY = 30 * 60 * 1000;
  * blank card. */
 const ensureRecord = (sh, opts) => (isMovie(sh) ? ensureMovie(sh.id, opts) : ensureMeta(sh.id, opts));
 
-export async function hydrateLibrary() {
+/* Bringing the library's metadata up to date, one run at a time.
+ *
+ * The work itself is below; this is the part that stops five callers starting five of them. See
+ * ui/one-at-a-time.js for what that was costing. */
+export const hydrateLibrary = oneAtATime(hydrateOnce);
+
+async function hydrateOnce() {
   const shows = state.shows || [];
   if (!shows.length) return;
 
@@ -165,8 +172,17 @@ export async function hydrateLibrary() {
   // after boot too — from a sync, or a merge with another device. Asking the catalogue what
   // changed upstream is a different question, costs a request per catalogue, and only needs
   // answering occasionally.
+  /* What changed upstream, narrowed to what is actually being waited on.
+   *
+   * TVmaze marks a record changed for any edit, so after a day or two away dozens of shows
+   * qualify, and each one costs a full record: the show and every episode of it. Fetching all of
+   * them on open is what made opening the app a wait.
+   *
+   * Only the shows Up next is drawing are refreshed here. The rest are not forgotten: their
+   * records are already stale by the cache's own reckoning, so opening one refetches it then,
+   * which is the moment it matters and the moment somebody is prepared to wait a beat. */
   const due = Date.now() - sweptAt() > SWEEP_EVERY;
-  const changed = due ? await staleFromCatalogue(cached) : [];
+  const changed = due ? (await staleFromCatalogue(cached)).filter(upNextNeeds) : [];
   if (due) noteSweep();
 
   const total = byNeed.length + changed.length;
