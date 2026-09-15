@@ -2393,8 +2393,20 @@ a.score:hover .score-src {
 }
 
 /* Visible at rest, not just on hover — an action nobody can find is an action that does not
- * exist, and half the devices this runs on have no hover at all. */
+ * exist, and half the devices this runs on have no hover at all. Brought up to full strength when
+ * the row is under the pointer, or the button itself is.
+ *
+ * This selector used to be grouped with the empty column below it, which meant hovering a row
+ * hid its catch-up button and took its pointer events away: it was visible until you moved onto
+ * it to press it, and then it was neither there nor clickable. The button worked; nothing could
+ * reach it. */
 .ep-row:hover .ep-catchup,
+.ep-catchup:hover,
+.ep-catchup:focus-visible {
+  opacity: 1;
+  color: var(--text);
+}
+
 /* The held-open column on rows with nothing to catch up to. Present for its width alone. */
 .ep-catchup.is-empty {
   visibility: hidden;
