@@ -10,7 +10,7 @@
  * /api/* is NEVER cached. The vault must always be live — a stale blob merged as if it were
  * current is exactly how you lose data.
  */
-const VERSION = "v1.10.17";
+const VERSION = "v1.10.18";
 const SHELL = "nextly-shell-" + VERSION;
 const ART = "nextly-art-v1";          // catalogue posters, kept across shell upgrades
 const ART_MAX = 400;
@@ -49,6 +49,7 @@ const FILES = [
   "/js/domain/merge.js",
   "/js/domain/model.js",
   "/js/domain/progress.js",
+  "/js/domain/relevance.js",
   "/js/domain/routes.js",
   "/js/domain/schedule.js",
   "/js/domain/schema.js",

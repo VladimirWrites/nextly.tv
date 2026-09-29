@@ -4,6 +4,7 @@ import { state } from "../domain/store.js";
 import * as cache from "../io/cache.js";
 import { findShow, findLikeShow } from "../domain/schema.js";
 import { fmtScore, isMovie } from "../domain/constants.js";
+import { rankResults } from "../domain/relevance.js";
 import * as meta from "../io/meta.js";
 import { trackShow, trackMovie, markMovieNow } from "./actions.js";
 import { empty } from "./upnext.js";
@@ -267,13 +268,17 @@ async function run(root, go, top) {
          and settled together, so the list does not arrive in two jumps.
 
          Movies after shows rather than interleaved. This is a television tracker with movies in
-         it, and a search for a title that is both should offer the series first. */
+         it, and a search for a title that is both should offer the series first.
+
+         Then ranked across both, because that order only holds up between answers that are
+         equally good answers. Neither catalogue can see the other's, so a title the television
+         one merely resembled used to bury an exact movie match underneath it. */
       const wantMovies = !!(state.settings || {}).movies;
       const [shows, movies] = await Promise.all([
         meta.search(q),
         wantMovies ? meta.searchMovies(q).catch(() => []) : Promise.resolve([]),
       ]);
-      results = [...shows, ...movies];
+      results = rankResults([...shows, ...movies], q);
       status = "done";
     } catch (e) {
       error = e.message;
