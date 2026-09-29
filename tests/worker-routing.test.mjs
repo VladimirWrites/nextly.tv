@@ -151,6 +151,8 @@ test("the app's policy names the catalogues it talks to and nothing else", async
     "Cinemeta's catalogue answers 307 to another host, and a policy names where a redirect lands");
   assert.match(csp, /img-src 'self' data: [^;]*images\.metahub\.space[^;]*m\.media-amazon\.com/,
     "Cinemeta's posters come from hosts it does not serve itself, and a host not named here is a poster that never loads");
+  assert.match(csp, /live\.metahub\.space/,
+    "search rows point at metahub's resizing host, and leaving it out blanked every movie poster in a result");
   assert.match(csp, /img-src 'self' data: https:\/\/image\.tmdb\.org https:\/\/static\.tvmaze\.com/);
 });
 

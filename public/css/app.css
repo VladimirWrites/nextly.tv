@@ -2997,6 +2997,63 @@ button.score {
   font-size: 15px;
 }
 
+/* ---- a result that has not arrived ----
+ * Built from the row itself, so the geometry cannot drift apart from it: same padding, same
+ * border, same poster width, same gap. Only what would hold words is replaced.
+ *
+ * Nothing here is interactive, and none of it takes a press. */
+.result-skel {
+  pointer-events: none;
+}
+
+.result-skel .result-text {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 3px;
+}
+
+/* Four lines, in the proportions a real row has: a title, a score under it, and two lines of
+ * summary. The heights are the text's, not guesses, so the row is the height it will be. */
+.result-skel .result-poster {
+  border-radius: var(--r-sm);
+}
+
+.result-skel .skel-line {
+  display: block;
+  height: 13px;
+  border-radius: 5px;
+}
+
+.result-skel .skel-line:nth-child(2) { height: 10px; width: 34%; }
+.result-skel .skel-line:nth-child(3) { height: 9px; width: 100%; }
+.result-skel .skel-line:nth-child(4) { height: 9px; width: 71%; }
+
+/* Titles are not all one length, and five rows of identical bars read as a table rather than as
+ * a list waiting to be filled. Varied on a cycle of three, which is long enough not to look
+ * like a pattern over five rows. */
+.result-skel .skel-line:first-child { width: 47%; }
+.result-skel:nth-child(3n + 2) .skel-line:first-child { width: 63%; }
+.result-skel:nth-child(3n) .skel-line:first-child { width: 38%; }
+.result-skel:nth-child(3n + 2) .skel-line:nth-child(4) { width: 84%; }
+.result-skel:nth-child(3n) .skel-line:nth-child(4) { width: 56%; }
+
+/* Where the Track button goes: a fingertip's worth, the same as the button it stands in for. */
+.result-skel .skel-act {
+  flex: none;
+  width: 86px;
+  height: 34px;
+}
+
+/* The shimmer is decoration on a wait, and a wait is exactly when somebody who asked for less
+ * motion should get less of it. The shapes stay; only the travelling highlight stops. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: var(--panel-2);
+  }
+}
+
 .result-overview {
   max-width: 78ch;
   font-size: 12.5px;

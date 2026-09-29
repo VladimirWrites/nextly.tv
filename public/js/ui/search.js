@@ -18,6 +18,17 @@ let error = "";
 let timer;
 let inFlight = false;
 
+/* Which search the rows on screen belong to.
+ *
+ * Every keystroke can start a request, and requests do not come back in the order they went
+ * out: a catalogue answers "anora" in two seconds and "asdf" in two hundred milliseconds, so
+ * the empty answer lands first and the old one lands on top of it. What you were left looking
+ * at was the previous search's rows under the query you had just typed — and since the rows
+ * were right for a question nobody could see, it read as the search ignoring you.
+ *
+ * So each run takes a number, and only the newest one is allowed to put anything on screen. */
+let seq = 0;
+
 /* Set from outside when a share arrives carrying a name and nothing else: the screen opens with
    the box already filled and the request already going. */
 export function presetSearch(q) {
@@ -108,7 +119,7 @@ function body(root, go) {
 
      So a search in flight keeps whatever is on screen, and only a search with nothing behind
      it shows nothing. */
-  if (status === "loading" && !results.length) return h("div");
+  if (status === "loading" && !results.length) return waiting();
   if (status === "error" && !results.length) return h("div.empty", [h("div.empty-title.t-title", { text: "Search failed" }), h("p", { text: error })]);
   if (status === "idle") {
     // An empty search box is a dead end. Offer something to look at instead.
@@ -121,6 +132,35 @@ function body(root, go) {
   }
   return resultList(results, go);
 }
+
+/* The shape of the answer, while the answer is on its way.
+ *
+ * A search with nothing behind it used to show an empty screen, and then rows appeared in it.
+ * Between those two states there was nothing to look at and no reason to believe anything was
+ * happening — on a slow answer it read as a search that had failed quietly.
+ *
+ * So the wait is drawn as what is being waited for: the same row, the same poster, the same
+ * lines of text, in the same places. Nothing moves when the real rows replace these, because
+ * they are the same size.
+ *
+ * `.pending` holds them back by a fifth of a second. Most answers are quicker than that, and a
+ * skeleton that flashes for two frames reads as a fault rather than as patience.
+ *
+ * Hidden from a screen reader, which has no use for the shape of a thing: the container says
+ * the one word that matters instead. */
+const HOW_MANY = 5;
+
+const waiting = () => h("div", { role: "status", "aria-label": "Searching" },
+  Array.from({ length: HOW_MANY }, () => h("div.result.result-skel.pending", { "aria-hidden": "true" }, [
+    h("div.result-poster.skeleton"),
+    h("div.result-text", [
+      h("span.skel-line.skeleton"),
+      h("span.skel-line.skeleton"),
+      h("span.skel-line.skeleton"),
+      h("span.skel-line.skeleton"),
+    ]),
+    h("span.skel-act.skeleton"),
+  ])));
 
 /* The rows themselves, kept between one answer and the next.
 
@@ -242,6 +282,8 @@ function movieActions(r, go) {
    request that returned by that path used to leave the flag set, and nothing could start a
    search again for the rest of the session. */
 async function run(root, go, top) {
+  const mine = ++seq;
+  const mineStill = () => mine === seq;
   inFlight = true;
   try {
     const q = query.trim();
@@ -278,16 +320,24 @@ async function run(root, go, top) {
         meta.search(q),
         wantMovies ? meta.searchMovies(q).catch(() => []) : Promise.resolve([]),
       ]);
+      // Somebody typed while this was out: these rows answer a question that is no longer
+      // being asked, and the run that replaced this one will bring the ones that do.
+      if (!mineStill()) return;
       results = rankResults([...shows, ...movies], q);
       status = "done";
     } catch (e) {
+      if (!mineStill()) return;
       error = e.message;
       status = "error";
       // The rows on screen are kept, so the failure has to say itself somewhere.
       if (results.length) toast(error);
     }
   } finally {
-    inFlight = false;
-    renderSearch(root, { go, top });
+    // Only the newest run owns the flag; an overtaken one clearing it would let a second
+    // request start beside the one still out.
+    if (mineStill()) {
+      inFlight = false;
+      renderSearch(root, { go, top });
+    }
   }
 }
