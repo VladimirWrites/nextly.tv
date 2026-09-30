@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Privacy — nextly.tv</title>
+<title>Privacy: nextly.tv</title>
 <meta name="description" content="What nextly.tv stores, what it can't read, and what rights you have over it.">
 <link rel="canonical" href="https://nextly.tv/privacy">
 <meta name="theme-color" content="#12141b">
@@ -43,7 +43,7 @@
         decrypt anything.
       </li>
       <li>
-        <strong>An encrypted blob.</strong> Your library — shows, watch marks, settings —
+        <strong>An encrypted blob.</strong> Your library, meaning shows, watch marks and settings,
         encrypted in your browser with AES-GCM before it is sent. The key is derived from
         your account number and never leaves your device. Nobody operating this service can
         read the contents, and neither can anyone who obtains a copy of the database.
@@ -75,15 +75,24 @@
       are never transmitted in readable form.
     </p>
 
-    <h2>Show data comes from elsewhere</h2>
+    <h2>Show and movie data comes from elsewhere</h2>
     <p>
       Episode lists, artwork and air dates come from
       <a href="https://www.tvmaze.com" rel="noreferrer noopener">TVmaze</a>, or from
       <a href="https://www.themoviedb.org" rel="noreferrer noopener">TMDB</a> if you supply
-      your own API key. Your browser contacts them directly, so those requests never pass
-      through nextly.tv's server — which means nextly.tv does not know which shows you look up.
-      It also means those services see your IP address and the titles you request, under
-      their own privacy policies.
+      your own API key.
+    </p>
+    <p>
+      Movies come from whichever of those you are using for shows, except on TVmaze, which is
+      a television database and carries none. There, movie titles, artwork and details come
+      from <a href="https://www.stremio.com" rel="noreferrer noopener">Cinemeta</a>, an open
+      catalogue run by Stremio. If you have movies switched off, it is never contacted.
+    </p>
+    <p>
+      Your browser contacts all of these directly, so those requests never pass through
+      nextly.tv's server, which means nextly.tv does not know what you look up. It also means
+      those services see your IP address and the titles you request, under their own privacy
+      policies.
     </p>
 
     <h2>Hosting</h2>
@@ -95,7 +104,7 @@
     </p>
     <p>
       That connection data does not say what you were looking at. The pages that name
-      something specific — a show, a person, a season, an episode — carry that name in the
+      something specific (a show, a person, a season, an episode) carry that name in the
       part of the address after the <code>#</code>, which browsers never send to a server. So
       a request for a show page arrives here as a request for <code>/show</code>, and there is
       no record anywhere, ours or Cloudflare's, connecting an address to a programme.
@@ -116,11 +125,11 @@
     </p>
     <ul>
       <li>
-        <strong>Access and portability</strong> are built in — the export button in Settings
+        <strong>Access and portability</strong> are built in. The export button in Settings
         produces your complete data as readable JSON, immediately, without asking anyone.
       </li>
       <li>
-        <strong>Erasure</strong> is built in — "Delete everything" in Settings removes the
+        <strong>Erasure</strong> is built in. "Delete everything" in Settings removes the
         stored blob permanently.
       </li>
       <li>

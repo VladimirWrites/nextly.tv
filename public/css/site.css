@@ -72,9 +72,15 @@
   padding: 72px 0 56px;
 }
 
+/* Two lines, not three. At 76px the headline was wider than the column could hold and broke
+ * into three short stacks, which is a font-size error rather than a copy-length one. Archivo
+ * carries a width axis and it is free: drawn a little narrower, the same words fit the same
+ * column at a size that still reads as a headline. */
 .hero-h1 {
-  font-size: clamp(38px, 8.4vw, 76px);
-  max-width: 15ch;
+  font-size: clamp(38px, 6.6vw, 62px);
+  font-variation-settings: "wdth" 92;
+  line-height: 1.04;
+  max-width: 17ch;
 }
 
 .hero-sub {
@@ -99,9 +105,18 @@
   font-size: 16px;
 }
 
+/* Beside the button where there is room, on its own line where there is not. Left to wrap it
+ * took whatever width was left over next to the button and broke mid-sentence around it. */
 .cta-note {
   font-size: 13px;
   color: var(--dimmer);
+  flex: 1 1 100%;
+}
+
+@media (min-width: 560px) {
+  .cta-note {
+    flex: 0 1 auto;
+  }
 }
 
 /* ---------- the barcode as a rule ----------
@@ -163,8 +178,17 @@
 
 /* ---------- sections ---------- */
 
+/* Sections used to carry 8px and let the dividers do the spacing, which is why the page read
+ * as one long column with stripes across it rather than as a set of sections. The space is
+ * theirs now, so a section still stands apart where there is no divider. */
 .sec {
-  padding: 8px 0;
+  padding: 64px 0;
+}
+
+@media (max-width: 640px) {
+  .sec {
+    padding: 48px 0;
+  }
 }
 
 .sec-h2 {
@@ -207,6 +231,18 @@
   .grid-2 {
     grid-template-columns: 1fr 1fr;
     gap: 22px;
+  }
+
+  .grid-2 > .feat:first-child,
+  .grid-2 > .feat:nth-child(2) {
+    grid-column: span 2;
+    background: var(--panel-2);
+  }
+
+  .grid-2 > .feat:first-child .feat-p,
+  .grid-2 > .feat:nth-child(2) .feat-p {
+    font-size: 15.5px;
+    max-width: 68ch;
   }
 }
 
@@ -326,9 +362,15 @@
 
 /* ---------- closing call ---------- */
 
+/* Centred text in the same open field as eight left-aligned sections reads as a section that
+ * lost its alignment. On a ground of its own it reads as an ending. */
 .closing {
   text-align: center;
-  padding: 64px 0 24px;
+  margin: 24px 0 0;
+  padding: 60px 26px 56px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--panel);
 }
 
 .closing .hero-cta {
