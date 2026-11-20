@@ -40,7 +40,11 @@ export function cardLine(meta, progress, back) {
   const left = fmtDuration(progress.minutesLeft);
   if (left) return `${counts} · ${left} left`;
   if (back) return `${counts} · back in ${back.inDays}d`;
-  return counts + (progress.completed ? ` · ${progress.completed}× through` : "");
+  /* "1x" rather than "1x through". The line is one line — it has to be, or a grid row loses
+     its baseline — and on a phone card "through" was the word that pushed it into an
+     ellipsis, so the count it qualified got cut instead. The multiplication sign carries the
+     meaning on its own next to a figure. */
+  return counts + (progress.completed ? ` · ${progress.completed}×` : "");
 }
 
 /* An episode's synopsis, cut to something a card can hold. Catalogues write these to no

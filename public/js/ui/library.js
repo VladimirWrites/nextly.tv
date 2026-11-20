@@ -439,13 +439,20 @@ function card(row, go) {
       src
         ? poster("card-poster", src)
         : posterFallback(show.name, "md"),
+      /* Only the count stays on the artwork, because it is the one thing worth seeing
+         without reading the card — and it is a small dot in a corner rather than a word.
+         The life pill moved off: "ENDED" and "FINISHED" were the same grey pill in the same
+         slot meaning two different things, one about the show and one about you, and both
+         sat across whatever the cover had written there. */
       progress.remaining > 0 ? h("span.card-badge", { text: progress.remaining > 99 ? "99+" : String(progress.remaining) }) : null,
       progress.pass > 1 ? h("span.card-pass", { text: ordinal(progress.pass) }) : null,
-      pill ? h("span.card-life", { class: pill.tone, text: pill.label }) : null,
     ]),
     h("div.card-title.t-title", { text: show.name }),
     meta ? miniBarcode(show, meta, next && next.key, opts()) : null,
-    h("div.card-sub", { text: cardLine(meta, progress, back) }),
+    h("div.card-sub", [
+      pill ? h("span.card-state", { class: pill.tone, text: pill.label }) : null,
+      h("span", { text: cardLine(meta, progress, back) }),
+    ]),
   ]);
 }
 

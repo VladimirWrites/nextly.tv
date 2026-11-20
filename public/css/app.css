@@ -338,8 +338,8 @@
   height: 16px;
   padding: 0 4px;
   border-radius: 8px;
-  background: var(--phosphor);
-  color: var(--phosphor-ink);
+  background: var(--signal-fill);
+  color: var(--signal-ink);
   font-family: var(--mono);
   font-size: 10px;
   font-weight: 700;
@@ -500,7 +500,13 @@
 .stat-hero-n {
   font-size: clamp(30px, 8vw, 52px);
   line-height: 1.05;
-  color: var(--signal);
+  /* Ink, not amber.
+     *
+     * --signal in light is a deep amber tuned to be legible as small text; at display size
+     * it stops reading as amber and starts reading as brown, so the biggest number on the
+     * screen was also its muddiest. Amber stays on the fills, where --signal-fill keeps it
+     * bright in both themes. */
+  color: var(--text);
 }
 
 .stat-hero-l {
@@ -563,9 +569,9 @@
   background: var(--tick-faint);
 }
 
-.hm-cell.is-1 { background: color-mix(in srgb, var(--signal) 35%, var(--tick-faint)); }
-.hm-cell.is-2 { background: color-mix(in srgb, var(--signal) 65%, var(--tick-faint)); }
-.hm-cell.is-3 { background: var(--signal); }
+.hm-cell.is-1 { background: color-mix(in srgb, var(--signal-fill) 32%, var(--tick-faint)); }
+.hm-cell.is-2 { background: color-mix(in srgb, var(--signal-fill) 66%, var(--tick-faint)); }
+.hm-cell.is-3 { background: var(--signal-fill); }
 .hm-cell.is-void { background: none; }
 
 .hm-key {
@@ -636,12 +642,12 @@
 /* Scaled by area — a count four times another looks four times as big, which scaling the
  * radius would have made sixteen. */
 .pc-cell.is-on {
-  background: color-mix(in srgb, var(--signal) calc(var(--fill) * 100%), var(--tick-faint));
+  background: color-mix(in srgb, var(--signal-fill) calc(var(--fill) * 100%), var(--tick-faint));
   transform: scale(calc(0.55 + var(--fill) * 0.45));
 }
 
 .pc-cell.is-peak {
-  background: var(--phosphor);
+  background: var(--signal-fill);
 }
 
 /* The clock along the bottom, positioned rather than laid out: four labels over twenty-four
@@ -703,11 +709,11 @@ div.bar-row {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: var(--signal);
+  background: var(--signal-fill);
 }
 
 .bar-fill.is-cool {
-  background: var(--phosphor);
+  background: color-mix(in srgb, var(--text) 55%, transparent);
 }
 
 .bar-val {
@@ -733,7 +739,9 @@ div.bar-row {
 .rec-v {
   font-size: 22px;
   font-weight: 700;
-  color: var(--signal);
+  /* Ink, like every other figure at this size. --signal is tuned to be legible as small
+     text in light; at display size it stops reading as amber and reads as brown. */
+  color: var(--text);
 }
 
 .rec-k {
@@ -893,10 +901,16 @@ div.bar-row {
   white-space: nowrap;
 }
 
+/* The same recipe as a selected segment, so one page cannot show two vocabularies for one
+   idea. */
+/* The ring is drawn in the painted amber, not the read one. --signal is tuned to be legible
+   as small text in light, which makes it a deep brown at 1px; --signal-fill is the value
+   that still looks amber when it is a line rather than a word. */
 .chip.is-on {
-  border-color: var(--signal);
-  background: var(--signal-soft);
-  color: var(--signal);
+  border-color: var(--signal-fill);
+  background: var(--sunk);
+  color: var(--text);
+  box-shadow: inset 0 0 0 0.5px var(--signal-fill);
 }
 
 .row-gap {
@@ -952,10 +966,32 @@ div.bar-row {
   text-transform: uppercase;
 }
 
+/* The same fact, in the meta line rather than on the picture. A caption, not a pill: a pill
+   in a card's corner says "state you have set", and whether a show has ended is the
+   catalogue's fact about the show, not yours about your watching. */
+/* One line, so a grid row shares a baseline. "1x through" wrapping under a neighbour that
+   did not was enough to put two cards' meta nineteen pixels apart. */
+.card-sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-state {
+  margin-right: 6px;
+  color: var(--dim);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.card-state.is-done { color: var(--signal); }
+
 /* Finished is an achievement, not a status, so it reads as one. */
 .card-life.is-done {
-  border-color: color-mix(in srgb, var(--phosphor) 55%, transparent);
-  color: var(--phosphor);
+  border-color: var(--line);
+  color: var(--dim);
 }
 
 /* ---------- library tools ---------- */
@@ -1020,7 +1056,15 @@ div.bar-row {
  * index stepped aside for the search. */
 .lib-results {
   margin-top: 18px;
-  padding-right: 24px;
+}
+
+/* The index lane is reserved whether or not the index is showing, and it used to be taken
+   from the right side alone — invisible while the grid was auto-fill, plainly lopsided once
+   the phone count is fixed. The index floats over the page gutter instead. */
+@media (min-width: 460px) {
+  .lib-results {
+    padding-right: 24px;
+  }
 }
 
 /* ---------- A to Z index ----------
@@ -1297,12 +1341,66 @@ div.bar-row {
   flex-wrap: wrap;
 }
 
+/* The card's strip is one row as wide as the card.
+ *
+ * It wrapped, so a long show took three rows, its card grew taller than its neighbours and
+ * the grid lost its rhythm — and a wrapped strip cannot be compared with anything anyway.
+ * The show page's own strip (.bc-full) is a different thing: it scrolls, and every episode
+ * there is a button. */
+.bc:not(.bc-full) {
+  flex-wrap: nowrap;
+  width: 100%;
+  /* The gaps are part of the width, so without this the seasons' shares add up to 100% and
+     the gaps push the last sliver past the card's edge. */
+  min-width: 0;
+  box-sizing: border-box;
+  gap: 3px;
+}
+
+.bc:not(.bc-full) .bc-season {
+  /* Wide enough to be a mark rather than a sliver. A two-episode season at 3px reads as a
+     rendering fault floating past the end of the strip. */
+  min-width: 9px;
+  gap: 1px;
+}
+
+/* An outline is right at show-page scale and wrong at card scale: a 1px edge around a 9px
+   box is mostly edge. In the card strip "not aired" is a quiet fill instead. */
+.bc:not(.bc-full) .bc-tick.is-x,
+.bc:not(.bc-full) .bc-lump.is-x {
+  background: color-mix(in srgb, var(--tick) 55%, transparent);
+  box-shadow: none;
+}
+
+.bc:not(.bc-full) .bc-tick {
+  flex: 1 1 0;
+  min-width: 2px;
+  width: auto;
+}
+
+.bc:not(.bc-full) .bc-lump {
+  flex: 1 1 auto;
+  width: auto;
+}
+
+/* The one mark that has to survive being squeezed. */
+.bc:not(.bc-full) .bc-tick.is-next {
+  flex: 0 0 4px;
+  min-width: 4px;
+}
+
 .bc-season {
   display: flex;
   gap: 2px;
   align-items: flex-end;
 }
 
+/* Every mark is the same height.
+ *
+ * State was encoded twice over, in colour and in height: watched stood 12px, seen-on-a-
+ * previous-pass 6px, skipped 7px, and a whole quiet season was a 14px block. A row of marks
+ * at four different heights reads as a chart with something wrong with it rather than as one
+ * run of episodes. Colour carries the state; height carries nothing. */
 .bc-tick {
   width: 3px;
   height: 12px;
@@ -1312,20 +1410,19 @@ div.bar-row {
 }
 
 .bc-tick.is-w {
-  background: var(--signal);
+  background: var(--signal-fill);
 }
 
 .bc-tick.is-x {
-  background: var(--tick-faint);
-  height: 7px;
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--tick);
 }
 
 /* Seen on an earlier pass, not yet on this one: same amber, half the bar. Reads as the
  * previous run showing through under the current one. */
 .bc-tick.is-s {
-  background: var(--signal);
+  background: var(--signal-fill);
   opacity: 0.42;
-  height: 6px;
 }
 
 /* A whole season in one mark, for the seasons that have nothing to say bar by bar. Wider
@@ -1339,24 +1436,36 @@ div.bar-row {
 }
 
 .bc-lump.is-w {
-  background: var(--signal);
+  background: var(--signal-fill);
 }
 
 .bc-lump.is-s {
-  background: var(--signal);
+  background: var(--signal-fill);
   opacity: 0.42;
-  height: 6px;
 }
 
+/* An outline rather than a fill. Not-aired means "nothing here yet", and a fill pale enough
+   to say that is a fill nobody can see — it was --tick-faint, about 1.1:1 on a white card.
+   An empty box with an edge reads as absence and is visible in both themes. */
 .bc-lump.is-x {
-  background: var(--tick-faint);
-  height: 7px;
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--tick);
 }
 
 /* Exactly one tick per show is cyan: the episode you'd play next. That scarcity is what
  * makes it findable across a whole grid of shows. */
+/* Cyan, and this is the only kind of thing that gets it.
+ *
+ * It had eleven jobs: genre bars, the finished pill, count badges, premiere tags, the
+ * waiting figure, links, the updating strip and the busiest hour of the week. A colour whose
+ * whole value is scarcity cannot mark "the next thing" while also marking eight others. The
+ * next-episode tick and its legend swatch keep it; everything else is neutral, or amber
+ * where it was really showing progress. */
 .bc-tick.is-next {
   background: var(--phosphor);
+  /* Wider than an episode tick, because it is not one: it is the answer to "what do I put on
+     now", and at 3px it was the thinnest mark in a row of them. */
+  width: 6px;
   box-shadow: 0 0 0 1.5px var(--phosphor-soft);
 }
 
@@ -1451,7 +1560,7 @@ div.bar-row {
 }
 
 .bc-swatch.is-w {
-  background: var(--signal);
+  background: var(--signal-fill);
 }
 
 .bc-swatch.is-next {
@@ -1464,7 +1573,7 @@ div.bar-row {
 }
 
 .bc-swatch.is-s {
-  background: var(--signal);
+  background: var(--signal-fill);
   opacity: 0.42;
   height: 6px;
 }
@@ -1475,6 +1584,24 @@ div.bar-row {
  * stretched across a wide window, and holds the blurb to a readable measure. */
 .stack {
   max-width: 880px;
+  /* Centred. With the rail taking its width out of the left, an uncentred 880px column on a
+     1440px window leaves a few hundred pixels of void down the right, which is what reads as
+     unfinished rather than as generous. */
+  margin-inline: auto;
+}
+
+/* A row is read across, and a row a metre wide is read twice. The queue, the episode list and
+   the detail rows cap at a measure so the tick stays near the title it belongs to instead of
+   drifting to the window's edge. */
+/* One measure, not two.
+ *
+ * Capping the rows at 720px while the hero above them stayed 880 left the two with ragged
+ * right edges and the section count hanging past them. Everything in the column lines up on
+ * the same edge now. */
+@media (min-width: 900px) {
+  .stack {
+    max-width: 760px;
+  }
 }
 
 /* The hero: one show, one episode, one action. This is the question the app exists to
@@ -1635,13 +1762,48 @@ div.bar-row {
   }
 }
 
+/* The hero earns its place, it does not take the screen.
+ *
+ * It ran to roughly three quarters of a 844px phone — a 78px poster, a two-line synopsis and
+ * two full-width buttons stacked — so the queue underneath, which is the rest of the answer,
+ * started below the fold. Every round of this council has said so.
+ *
+ * The synopsis goes: this card exists to say which episode is next, and the episode's own
+ * page is one tap away for anybody who wants to know what happens in it. The buttons share a
+ * row, with the primary one taking the space. The poster stays large enough to recognise. */
 @media (max-width: 559px) {
   .hero-poster {
-    width: 78px;
+    width: 64px;
   }
+
+  .hero-blurb {
+    display: none;
+  }
+
+  /* One row, inside the card.
+   *
+   * nowrap without a floor of zero means neither button may shrink below its text, so the
+   * pair overflowed and the second was cut off by the card edge — worse than the stacking it
+   * replaced. Both may shrink now; the primary keeps the room, the secondary gives it up and
+   * ellipsises before it ever reaches the edge. */
   .hero-actions {
-    flex-direction: column;
-    align-items: stretch;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .hero-actions > .btn {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .hero-actions > .btn:first-child {
+    flex: 1 1 auto;
+  }
+
+  .hero-actions > .btn:not(:first-child) {
+    flex: 0 1 auto;
   }
 }
 
@@ -1653,6 +1815,18 @@ div.bar-row {
   .hero-poster {
     width: 132px;
   }
+}
+
+/* The row's own strip: the card grammar, two thirds the height, under the meta line. */
+.qrow-text .bc {
+  margin-top: 6px;
+  height: 6px;
+  align-items: stretch;
+}
+
+.qrow-text .bc-tick,
+.qrow-text .bc-lump {
+  height: 6px;
 }
 
 /* Queue rows: everything else waiting. Compact, uniform, scannable — the opposite of the
@@ -1677,13 +1851,20 @@ div.bar-row {
  *
  * Every row stays in the document, so the count in the section head and what the expander
  * offers cannot disagree, and expanding is a class coming off rather than a render. */
-.queue.is-clamped .qrow:nth-child(n + 3) {
+/* Six rows before anything is folded away, not two.
+ *
+ * The queue is the answer to the question this screen asks, and it was clamped at two on a
+ * phone — so somebody tracking eight shows saw two of them and a button telling them there
+ * were more, with the real count already printed in the section head beside it. A row is
+ * about 74px; six of them fit under the hero on a 844px screen once the hero is the size it
+ * should be. The fold is for a genuinely long list, not for an ordinary one. */
+.queue.is-clamped .qrow:nth-child(n + 7) {
   display: none;
 }
 
 @media (min-width: 900px) {
-  .queue.is-clamped .qrow:nth-child(n + 3) { display: flex; }
-  .queue.is-clamped .qrow:nth-child(n + 6) { display: none; }
+  .queue.is-clamped .qrow:nth-child(n + 7) { display: flex; }
+  .queue.is-clamped .qrow:nth-child(n + 10) { display: none; }
 }
 
 /* Offered by how long the queue is, never by whether it is clamped: the button takes that class
@@ -1696,11 +1877,11 @@ div.bar-row {
   margin-top: 10px;
 }
 
-.queue:has(.qrow:nth-child(3)) + .queue-more { display: inline-flex; }
+.queue:has(.qrow:nth-child(7)) + .queue-more { display: inline-flex; }
 
 @media (min-width: 900px) {
-  .queue:has(.qrow:nth-child(3)) + .queue-more { display: none; }
-  .queue:has(.qrow:nth-child(6)) + .queue-more { display: inline-flex; }
+  .queue:has(.qrow:nth-child(7)) + .queue-more { display: none; }
+  .queue:has(.qrow:nth-child(10)) + .queue-more { display: inline-flex; }
 }
 
 .qrow {
@@ -1793,9 +1974,9 @@ div.bar-row {
   flex: none;
   padding: 3px 9px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--phosphor) 45%, transparent);
-  background: var(--phosphor-soft);
-  color: var(--phosphor);
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--dim);
   font-family: var(--mono);
   font-size: 10.5px;
   font-weight: 700;
@@ -1803,10 +1984,21 @@ div.bar-row {
 
 /* ---------- library ---------- */
 
+/* Two across on a phone, with equal gutters.
+ *
+ * auto-fill with a 132px floor gave two columns anyway, but tracks wider than the cards in
+ * them, so the grid sat visibly off-centre: a 32px gutter on the left against about 80 on
+ * the right. A fixed count fills the row it is given. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+@media (min-width: 460px) {
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  }
 }
 
 @media (min-width: 700px) {
@@ -1871,16 +2063,22 @@ div.bar-row {
 
 /* Count of aired-but-unwatched episodes. Cyan, like the next-up tick — same meaning, so
  * the same colour. */
+/* Bottom right, not top right.
+ *
+ * A poster puts its title across the top far more often than across the foot — "POKER FACE",
+ * "SLOW HORSES", "SUCCESSION" all do — so a badge in the top corner lands on the lettering
+ * of most covers in the grid. The foot usually carries a logo or empty art, which this can
+ * sit on without hiding what the picture is. */
 .card-badge {
   position: absolute;
-  top: 7px;
+  bottom: 7px;
   right: 7px;
   min-width: 22px;
   height: 22px;
   padding: 0 6px;
   border-radius: 11px;
-  background: var(--phosphor);
-  color: var(--phosphor-ink);
+  background: rgb(10 12 18 / 0.72);
+  color: #fff;
   font-family: var(--mono);
   font-size: 11.5px;
   font-weight: 700;
@@ -1944,6 +2142,82 @@ div.bar-row {
   max-width: var(--wrap);
   margin: 0 auto;
   padding: 0 16px;
+}
+
+/* Two columns, once there is room for two.
+ *
+ * Every round has said this page is the phone stretched: episode rows running the full
+ * 1056px with the tick some 800px from the title it belongs to, beside a stats card four
+ * fifths empty and a history strip filling a quarter of its own. One column is right on a
+ * phone and wrong at 1100px.
+ *
+ * The episode list keeps the left, at a width a row can be read across. Everything that is
+ * about the show rather than about tonight — the stats, your rating, the catalogue's score,
+ * the history, the settings — goes into a rail on the right, which is also roughly the
+ * reading order somebody uses: where am I, which episode, then everything else. */
+@media (min-width: 1100px) {
+  .show-rest {
+    display: grid;
+    grid-template-columns: minmax(0, 640px) minmax(300px, 360px);
+    gap: 28px;
+    align-items: start;
+  }
+
+  /* The episode list and the heading above it hold the left column. */
+  .show-rest > .sect:has(+ div .season),
+  .show-rest > div:has(.season) {
+    grid-column: 1;
+  }
+
+  /* Everything on the left except the rail, which is one element and holds the right.
+   *
+   * Placing the rail's parts individually let the grid give each the next free row, so the
+   * column began level with Season 1 — a long way under the summary it belongs beside — and
+   * the two columns ran out at different depths. */
+  .show-rest > *:not(.show-rail) {
+    grid-column: 1;
+    min-width: 0;
+  }
+
+  /* A horizontal rail clipped to its own column: the cast escaped the grid's gutter and a
+     sliver of the fifth face touched the rail's HISTORY label. */
+  .show-rest > *:not(.show-rail) .shelf {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .show-rail {
+    grid-column: 2;
+    grid-row: 1 / span 99;
+    display: flex;
+    flex-direction: column;
+    /* One gap for every section in the rail, rather than each card bringing its own. */
+    gap: 24px;
+    align-self: start;
+  }
+
+  /* Sticky only when the whole rail fits.
+   *
+   * It was sticky unconditionally, and this rail is taller than a 900px viewport once a show
+   * has a few passes recorded — so everything past its first screen, the watch dates and
+   * Remove among them, could not be scrolled to at all. A pinned column that hides its own
+   * contents is worse than one that scrolls with the page.
+   *
+   * At a tall window it fits and pinning is a courtesy; shorter than that it simply scrolls.
+   * The height is a judgement about this rail's own content, not a measurement — which is
+   * why it is stated here rather than inferred. */
+  @media (min-height: 1000px) {
+    .show-rail {
+      position: sticky;
+      top: calc(var(--bar-h) + 12px);
+    }
+  }
+
+  /* The rail's own headings sit tighter than the page's: it is a column of small cards, not
+     a run of sections. */
+  .show-rail > .sect {
+    margin-top: 4px;
+  }
 }
 
 .show-bar {
@@ -2221,7 +2495,7 @@ div.bar-row {
 }
 
 .stat-n.is-next {
-  color: var(--phosphor);
+  color: var(--text);
 }
 
 .stat-l {
@@ -2251,7 +2525,8 @@ div.bar-row {
   font-size: 26px;
   font-weight: 700;
   line-height: 1.1;
-  color: var(--signal);
+  /* Display size: ink, like .stat-hero-n. */
+  color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2315,14 +2590,47 @@ a.score:hover .score-src {
 
 .season-name {
   font-size: 15px;
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 auto;
+  /* Its own width, not the remainder. Stopping the mid-word break traded hyphenation for an
+     ellipsis — "Seaso…" — which is no better on a label two words long. The button beside it
+     is the thing with slack. */
+  min-width: max-content;
+  /* Never broken mid-word. Giving the action and the count fixed columns left the label the
+     remainder, and on a phone the remainder was narrow enough to hyphenate "Season 1" across
+     two lines. It is one line, shortened at the end if it must be. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+/* A fixed column, so seasons line up with each other.
+ *
+ * The count sat wherever the button beside it ended, and the button's label changes with the
+ * season — "Mark season" against "Clear season" — so "9/9" and "4/10" landed at different x
+ * down a list of seasons that are otherwise identical rows. Right-aligned in a column of its
+ * own, every season's progress reads down a single edge. */
 .season-prog {
   font-family: var(--mono);
   font-size: 12px;
   color: var(--dim);
+  flex: none;
+  min-width: 52px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Same reason: the action is the only thing between the name and the count, and its label
+   changes per season. A floor on its width stops it moving everything after it — but only
+   where there is width to spare. On a phone the floor is what squeezed the label, so the
+   column gives way there and the count alone holds the right edge. */
+.season-head .btn {
+  flex: none;
+}
+
+@media (min-width: 560px) {
+  .season-head .btn {
+    min-width: 124px;
+  }
 }
 
 .season-caret {
@@ -2469,7 +2777,7 @@ a.score:hover .score-src {
 }
 
 .ep.is-w .ep-box {
-  background: var(--signal);
+  background: var(--signal-fill);
   border-color: var(--signal);
 }
 
@@ -2625,7 +2933,8 @@ a.score:hover .score-src {
 }
 
 .detail-score {
-  color: var(--signal);
+  /* Display size: ink, like .stat-hero-n. */
+  color: var(--text);
 }
 
 /* The best episode is a link to itself, so its box is a button and has to stop looking like
@@ -2715,8 +3024,8 @@ button.score {
 /* The season's best episode, marked the way next-up is marked on the barcode: one tick of a
  * second colour, and only one. */
 .chart-spot.is-best .chart-dot {
-  fill: var(--phosphor);
-  stroke: var(--phosphor);
+  fill: var(--signal-fill);
+  stroke: var(--signal-fill);
 }
 
 /* Snapping suits a thumb, which throws a row and wants it to settle somewhere sensible. A wheel
@@ -2788,8 +3097,11 @@ button.score {
 
 .shelf.has-start,
 .filter-bar.has-start { --fade-l: 9px; }
+/* 24px, not 12. A fade is a signal that the row keeps going, and at twelve pixels against a
+   face or a poster it reads as an artefact rather than as more to come — a reviewer saw a
+   cast member sliced at the edge and took it for a clipping bug. */
 .shelf.has-end,
-.filter-bar.has-end { --fade-r: 12px; }
+.filter-bar.has-end { --fade-r: 24px; }
 
 .shelf-card {
   flex: none;
@@ -2848,7 +3160,7 @@ button.score {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  background: var(--signal);
+  background: var(--signal-fill);
   border: 2px solid var(--ink);
   display: grid;
   place-items: center;
@@ -3192,7 +3504,7 @@ button.score {
 }
 
 .set-check input {
-  accent-color: var(--signal);
+  accent-color: var(--signal-fill);
   width: 16px;
   height: 16px;
   flex: none;
@@ -3209,6 +3521,32 @@ button.score {
   gap: 14px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+/* Stacked on a phone.
+ *
+ * Text and control side by side is a desktop row. At 390px the fixed control column left the
+ * explanation about 13 lines tall in a narrow column beside it, which is the opposite of the
+ * density this app is supposed to have. Full width for the words, control beneath them. */
+@media (max-width: 599px) {
+  .set-row {
+    flex-direction: column;
+    /* Stretch, so a short row's text block still fills the width and starts at the card's
+       own left edge. Shrink-wrapped, each row began wherever its own text ended. */
+    align-items: stretch;
+    text-align: left;
+    gap: 10px;
+  }
+
+  .set-text { min-width: 0; }
+
+  .set-row > .btn,
+  .set-row > .seg,
+  .set-row > .row-gap,
+  .set-row > .set-act {
+    align-self: flex-end;
+    margin-left: 0;
+  }
 }
 
 .set-row:first-child {
@@ -3231,21 +3569,29 @@ button.score {
   margin-top: 3px;
 }
 
+/* One segmented shape: separate pills, no enclosing track.
+ *
+ * The track butted its buttons together and clipped them, so a selected button came out
+ * square-cornered with a partial amber hairline inside a rounded frame — it read as a
+ * rendering fault rather than a choice. Pills say "three options" without a frame doing it,
+ * and the selected one can carry its edge the whole way round. */
 .seg {
   display: inline-flex;
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  overflow: hidden;
+  gap: 6px;
 }
 
 .seg-btn {
   padding: 8px 14px;
-  border: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
   background: var(--panel-2);
-  color: var(--dim);
+  /* An unselected option still has to be read before it can be chosen, so it takes the body
+     tone and steps back by weight instead of by fading the words. */
+  color: var(--text);
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
+  opacity: 0.86;
 }
 
 .seg-btn:disabled {
@@ -3253,10 +3599,20 @@ button.score {
   cursor: not-allowed;
 }
 
+/* Chosen, not shouting.
+ *
+ * A painted amber segment is the loudest thing on whatever screen it appears on, and amber
+ * already has jobs: progress, the primary action, the nav item. Spending it on "this one is
+ * selected" as well — including on neutral defaults like Auto — leaves nothing quiet on the
+ * page. Selected reads as selected: the raised surface, full-strength ink, an amber edge. */
 .seg-btn.is-on {
-  background: var(--signal);
-  color: var(--signal-ink);
+  background: var(--sunk);
+  color: var(--text);
+  border-color: var(--signal-fill);
+  box-shadow: inset 0 0 0 0.5px var(--signal-fill);
 }
+
+.seg-btn.is-on { font-weight: 700; opacity: 1; }
 
 /* Whether a stored credential actually works. Stated rather than implied — the colour is
  * support for the sentence, not a substitute for it. */
@@ -3278,7 +3634,7 @@ button.score {
 }
 
 .key-status.is-good .key-dot {
-  background: var(--signal);
+  background: var(--signal-fill);
   box-shadow: 0 0 0 3px var(--signal-soft);
 }
 
@@ -3750,7 +4106,7 @@ button.score {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--phosphor);
+  color: var(--text);
   font: inherit;
   font-size: 13px;
   cursor: pointer;
@@ -3956,7 +4312,7 @@ button.score {
   z-index: 80;
   height: 2px;
   width: 0;
-  background: var(--signal);
+  background: var(--signal-fill);
   opacity: 0;
   transition: width 0.25s ease, opacity 0.2s ease;
   pointer-events: none;
@@ -4026,7 +4382,7 @@ button.score {
   bottom: 0;
   left: 0;
   width: var(--tick-w);
-  background: var(--phosphor);
+  background: var(--signal-fill);
   animation: updating-next 2.6s steps(var(--ticks)) infinite;
 }
 
@@ -4184,19 +4540,22 @@ button.score {
   border: 0;
   padding: 0;
   min-width: 0;
-  background: var(--tick-faint);
+  /* --tick-faint is about 1.1:1 on a white card, so an unrated row read as ten empty
+     rectangles that might not be controls at all. --tick says the same "nothing here yet"
+     and can be seen. */
+  background: var(--tick);
   border-radius: 3px;
   cursor: pointer;
   transition: background 0.1s ease;
 }
 
-.rate-bar.is-on { background: var(--signal); }
+.rate-bar.is-on { background: var(--signal-fill); }
 
 /* Three or less is the half of the scale that means "I did not like this", and saying so in
  * the colour costs nothing and is readable before the number is. */
 .rate-bar.is-on.is-low { background: var(--danger); }
 
-.rate-bar:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 2px; }
+.rate-bar:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 
 /* Beside an episode number, where 46px of bars would own the row. */
 .rate.is-sm .rate-head { margin-bottom: 6px; }
@@ -4226,13 +4585,11 @@ button.score {
    sentence saying what it does and its own control on the right — rather than as headings
    with loose rows of buttons under them, where nothing says what a button will do. */
 
-.set-group{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);overflow:hidden}
-.set-group+.set-group{margin-top:14px}
-.set-row{padding:15px;border-top:1px solid var(--line-soft);display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-.set-row:first-child{border-top:0}
-.set-text{flex:1;min-width:190px}
-.set-name{font-size:14.5px;font-weight:600}
-.set-hint{font-size:12.5px;color:var(--dim);margin-top:3px}
+/* The group, row, text, name and hint rules that used to sit here were a second copy of the
+   ones declared above, left behind by the port. Being later in the file they won, so this
+   round's phone stacking was overridden and did nothing — a rule can be correct and still be
+   dead. Only the two that exist nowhere else are kept. */
+
 /* A row whose sentence is long enough that a control centred against it looks adrift. */
 .set-row.top{align-items:flex-start}
 .set-ctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -4272,3 +4629,47 @@ button.score {
 .gone-title { font-size: 17px; }
 .gone-text { margin: 6px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--dim); max-width: 62ch; }
 .gone-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+
+
+/* ---- reaching a finger ----
+ *
+ * A 44px floor on the phone, by width rather than by pointer. `@media (pointer: coarse)` is
+ * the right question and the wrong dependency: a phone-width window with a mouse attached, a
+ * desktop browser in responsive mode and anything reporting a fine pointer all fall through
+ * it to a 34px control. At 390px this is a phone being used as one, whatever it claims.
+ *
+ * `min-height` sits on the element that actually draws the control, so the box you can see
+ * and the box you can hit are the same box. The alternative — a transparent border padding
+ * the hit area out — breaks the moment anything gives that element a visible edge. */
+@media (max-width: 599px) {
+  .btn,
+  .btn-sm,
+  .chip,
+  .seg-btn {
+    min-height: 44px;
+  }
+}
+
+@media (pointer: coarse) {
+  .btn,
+  .btn-sm,
+  .chip,
+  .seg-btn {
+    min-height: 44px;
+  }
+}
+
+/* ---- posters fill their slot, from the top ----
+ *
+ * A poster cropped from its centre loses the top, and the top of a poster is where the title
+ * is. Anchored to the top instead: the slot is always full and what a mis-proportioned image
+ * loses is its lower edge, which carries the billing block and the laurels. */
+.poster,
+.card-poster,
+.shelf-poster,
+.result-poster,
+.qrow-poster,
+.show-poster,
+.hero-poster {
+  object-position: top center;
+}

@@ -140,21 +140,36 @@ export function renderShow(root, id, { go, back }) {
           ]),
     ]),
 
-    /* Yours, then theirs. A score with no source is folklore, and the reader's own number is
-       the one source they can be sure of — so it sits above the crowd's rather than under it. */
-    ratingSection(show, show.id),
-
-    ratings(meta, fill),
-
-    ...historySection(show, meta, next, o, fill),
-
+    /* Episodes first.
+     *
+     * This page used to open with an empty rating card, then a card holding one number from
+     * a catalogue, then a chart of when the show was watched — and the episode list, which is
+     * what somebody came here to tick, began about two and a half screens down on a phone.
+     * The order now matches the reason for the visit: where am I, then the episodes, then
+     * what I and everyone else thought of it. */
     h("div.sect", [h("h2.t-label", { text: "Episodes" }), h("span.sect-count", { text: `${meta.seasons.length} seasons` })]),
     h("div", { class: fill }, meta.seasons.map((se) => season(show, se, next, go))),
 
-    h("div.sect", [h("h2.t-label", { text: "This show" })]),
-    controls(show, go),
+    /* The cast and what else to watch stay under the episodes: they are wide, horizontal
+       things, and a 360px rail cuts the third face in half. */
     castSection(meta, go),
     similarSection(show, go),
+
+    /* Everything about the show rather than about tonight, in one column.
+     *
+     * These used to be siblings of the episode list, which on a desktop grid meant each one
+     * took the next free row — so the rail began level with Season 1, a long way below the
+     * summary it should sit beside, and the left column ran out two screens before the right
+     * did. One element, one column, one top edge. */
+    h("div.show-rail", [
+      /* Yours, then theirs. A score with no source is folklore, and the reader's own number
+         is the one source they can be sure of — so it sits above the crowd's. */
+      ratingSection(show, show.id),
+      ratings(meta, fill),
+      ...historySection(show, meta, next, o, fill),
+      h("div.sect", [h("h2.t-label", { text: "This show" })]),
+      controls(show, go),
+    ]),
     ]),
   );
   watchTitle(bar, root.querySelector(".show-name"));

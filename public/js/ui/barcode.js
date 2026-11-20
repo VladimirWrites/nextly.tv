@@ -35,12 +35,23 @@ export function miniBarcode(show, meta, nextKey, opts = {}) {
   const seasons = barcode(show, meta, opts);
   if (!fitsStrip(seasons, STRIP_MAX.mini)) return null;
 
+  /* One row, the width of the card, divided by episodes.
+   *
+   * Two goes at this. A uniform season collapses to a single mark — that is the point, the
+   * strip is a picture of a show's shape rather than a census — but the mark was a fixed
+   * 14px however many episodes it stood for, so no two cards were on the same scale. Sizing
+   * it from the episode count fixed the scale and broke the rhythm instead: strips grew past
+   * the card and wrapped, Breaking Bad took three rows, and the grid went ragged.
+   *
+   * The answer is to stop measuring in pixels. Every strip is exactly as wide as its cover
+   * and every season takes the share of it that its episodes deserve, so one show's run is
+   * readable on its own and comparable with the card beside it. */
   return h("div.bc", { "aria-hidden": "true" }, seasons.map((se) =>
-    isBlock(se, nextKey)
-      ? h("div.bc-season", [h("i.bc-lump", { class: "is-" + se.block })])
-      : h("div.bc-season", se.episodes.map((ep) =>
-          h("i.bc-tick", { class: tickClass(ep, nextKey) })
-        ))
+    h("div.bc-season", { style: { flex: `${se.episodes.length} 1 0` } },
+      isBlock(se, nextKey)
+        ? [h("i.bc-lump", { class: "is-" + se.block })]
+        : se.episodes.map((ep) => h("i.bc-tick", { class: tickClass(ep, nextKey) }))
+    )
   ));
 }
 
