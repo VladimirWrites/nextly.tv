@@ -2152,92 +2152,33 @@ div.bar-row {
   padding: 0 16px;
 }
 
-/* Two columns, once there is room for two.
+/* One column, at every width.
  *
- * Every round has said this page is the phone stretched: episode rows running the full
- * 1056px with the tick some 800px from the title it belongs to, beside a stats card four
- * fifths empty and a history strip filling a quarter of its own. One column is right on a
- * phone and wrong at 1100px.
+ * The two-column arrangement that used to live here was dropped on the unanimous advice of
+ * the design council, and on the measurement that decided it: the episode list came out
+ * narrower at 1440px than at 1040px, because the rail took its width. A layout in which
+ * widening the window shrinks the content is not denser, it is just two columns.
  *
- * The episode list keeps the left, at a width a row can be read across. Everything that is
- * about the show rather than about tonight — the stats, your rating, the catalogue's score,
- * the history, the settings — goes into a rail on the right, which is also roughly the
- * reading order somebody uses: where am I, which episode, then everything else. */
-@media (min-width: 1100px) {
-  .show-rest {
-    display: grid;
-    grid-template-columns: minmax(0, 640px) minmax(300px, 360px);
-    gap: 28px;
+ * Dropping it also removes the faults that came with having two — a seam where the columns
+ * started at different heights, and headings that changed form at a breakpoint. The page is
+ * capped at the measure Up next already uses, so the two screens agree with each other. */
+@media (min-width: 900px) {
+  .show-rest,
+  .show-wide {
+    max-width: 760px;
+  }
+}
+
+/* Your rating and the catalogue's, side by side wherever there is room for both. */
+.rate-pair {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 560px) {
+  .rate-pair {
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
     align-items: start;
-  }
-
-  /* The episode list and the heading above it hold the left column. */
-  .show-rest > .sect:has(+ div .season),
-  .show-rest > div:has(.season) {
-    grid-column: 1;
-  }
-
-  /* Two children, two columns, one row. Nothing is placed by hand and no rows are guessed:
-     a row gap applies between every row a grid has, so a rail spanning a guessed ninety-nine
-     of them added about two and a half thousand pixels of blank page underneath. */
-  .show-main {
-    min-width: 0;
-  }
-
-  .show-rail {
-    display: flex;
-    flex-direction: column;
-    /* One gap for every section in the rail, rather than each card bringing its own. */
-    gap: 24px;
-    align-self: start;
-  }
-
-  /* Sticky only when the whole rail fits.
-   *
-   * It was sticky unconditionally, and this rail is taller than a 900px viewport once a show
-   * has a few passes recorded — so everything past its first screen, the watch dates and
-   * Remove among them, could not be scrolled to at all. A pinned column that hides its own
-   * contents is worse than one that scrolls with the page.
-   *
-   * At a tall window it fits and pinning is a courtesy; shorter than that it simply scrolls.
-   * The height is a judgement about this rail's own content, not a measurement — which is
-   * why it is stated here rather than inferred. */
-  @media (min-height: 1000px) {
-    .show-rail {
-      position: sticky;
-      top: calc(var(--bar-h) + 12px);
-    }
-  }
-
-  /* The rail's headings belong to their cards.
-   *
-   * The summary on the left has no heading — it does not need one, it is the answer to the
-   * question the hero just asked — while the rail's cards each carried a label floating
-   * above them. Two columns starting at the same y, one with a word over it and one
-   * without, read as a misalignment rather than as a choice.
-   *
-   * The label becomes the card's own top edge: same surface, same border, the card's
-   * corners, and no seam between the two. Both columns then start with a card. */
-  .show-rail .sect {
-    margin: 0;
-    padding: 13px 16px 0;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-bottom: 0;
-    border-radius: var(--r-lg) var(--r-lg) 0 0;
-  }
-
-  .show-rail .sect + .panel {
-    margin-top: 0;
-    border-top: 0;
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
-  }
-
-  /* A heading and its card are one object, so the rail's gap goes between objects rather
-     than between a label and the thing it names. */
-  .show-rail > * {
-    margin-top: 0;
   }
 }
 
@@ -2390,6 +2331,11 @@ div.bar-row {
 @media (min-width: 900px) {
   .show-body {
     padding: 44px 32px 0;
+    /* The same measure as the content below it, so the poster, the title and every card
+       share one left edge. Stated here rather than with the other single-column rules
+       because .show-body sets its own max-width further up and would otherwise win: a
+       media query carries no extra specificity, only later source order does. */
+    max-width: 760px;
   }
 }
 

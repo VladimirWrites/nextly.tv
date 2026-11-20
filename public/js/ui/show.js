@@ -102,15 +102,21 @@ export function renderShow(root, id, { go, back }) {
     root,
     bar,
     header(show, meta, go, null),
-    h("div.show-rest", [
-    /* One element per column, so the grid has exactly two children.
+    /* One column, at every width.
      *
-     * Placing each section individually meant the rail had to span a guessed number of rows
-     * — and a row gap applies between every row a grid has, empty or not, so ninety-nine of
-     * them added about two and a half thousand pixels of blank page under the content. */
-    h("div.show-main", [
+     * Three members of the design council were asked whether the two-column arrangement was
+     * right for this screen and all three said to drop it, for a reason worth recording: the
+     * episode list — the thing the page exists for — was NARROWER at 1440px, about 640px,
+     * than at 1040px, about 744px, because the rail took its width. Widening the window
+     * shrank the content. The rail also squeezed what it held: the rating's ten bars fell to
+     * about 33px, under the 44px floor, and the settings copy wrapped to three lines.
+     *
+     * One column has no breakpoint, so there is nothing for two columns to start level with,
+     * and a heading has one form at every width. All three faults the author reported were
+     * consequences of running two layouts rather than of either layout. */
+    h("div.show-rest", [
 
-    h("div.panel", { class: fill, style: { marginTop: "18px" } }, [
+    h("div.panel", { class: fill }, [
       h("div.stat-row", [
         stat(progress.watched, progress.rewatching ? passLabel(progress.pass) : "Watched"),
         stat(progress.aired, "Aired"),
@@ -156,42 +162,27 @@ export function renderShow(root, id, { go, back }) {
     h("div.sect", [h("h2.t-label", { text: "Episodes" }), h("span.sect-count", { text: `${meta.seasons.length} seasons` })]),
     h("div", { class: fill }, meta.seasons.map((se) => season(show, se, next, go))),
 
-    ]),
+    /* Where you have been, under the list of where you are going. A picture of the same data
+       the seasons above spell out, so it reads as their summary rather than as a new topic. */
+    ...historySection(show, meta, next, o, fill),
 
-    /* Everything about the show rather than about tonight, in one column.
-     *
-     * These used to be siblings of the episode list, which on a desktop grid meant each one
-     * took the next free row — so the rail began level with Season 1, a long way below the
-     * summary it should sit beside, and the left column ran out two screens before the right
-     * did. One element, one column, one top edge. */
-    h("div.show-rail", [
-      /* Yours, then theirs. A score with no source is folklore, and the reader's own number
-         is the one source they can be sure of — so it sits above the crowd's. */
-      ratingSection(show, show.id),
+    /* Both numbers about this show in one place. They were a card each — a control in one, a
+       single figure in the other — split across a rail for no reason beyond which column had
+       room. Side by side, the ten bars also get their 44px back. */
+    h("div.sect", [h("h2.t-label", { text: "Ratings" })]),
+    h("div.rate-pair", [
+      ratingSection(show, show.id, undefined, "Yours"),
       ratings(meta, fill),
-      /* Each heading travels with the card it names.
-       *
-       * The rail is a flex column with one gap between its children. Rating and Score keep
-       * their label and card inside a single wrapper, so the gap falls between cards — but
-       * History and This show were spread in as separate children, so the gap fell between
-       * a label and the thing it was labelling, and the two drifted apart. */
-      h("div", historySection(show, meta, next, o, fill)),
-      h("div", [
-        h("div.sect", [h("h2.t-label", { text: "This show" })]),
-        controls(show, go),
-      ]),
-    ]),
     ]),
 
-    /* Outside the two-column grid, because they are neither column.
-     *
-     * A row of faces and a row of posters are read across, and both were confined to the
-     * left column — so the fifth face and the fifth poster were cut by the grid gutter with
-     * nothing to say the row continued. They run the full content width instead, under both
-     * columns, which is also where a horizontal rail belongs on a page that has one. */
-    h("div.show-wide", [
-      castSection(meta, go),
-      similarSection(show, go),
+    castSection(meta, go),
+    similarSection(show, go),
+
+    /* Last, because it is settings and one of them cannot be undone. Nothing here is part of
+       ticking an episode off, and a destructive control does not belong beside the thing you
+       press every night. */
+    h("div.sect", [h("h2.t-label", { text: "This show" })]),
+    controls(show, go),
     ]),
   );
   watchTitle(bar, root.querySelector(".show-name"));
