@@ -103,6 +103,12 @@ export function renderShow(root, id, { go, back }) {
     bar,
     header(show, meta, go, null),
     h("div.show-rest", [
+    /* One element per column, so the grid has exactly two children.
+     *
+     * Placing each section individually meant the rail had to span a guessed number of rows
+     * — and a row gap applies between every row a grid has, empty or not, so ninety-nine of
+     * them added about two and a half thousand pixels of blank page under the content. */
+    h("div.show-main", [
 
     h("div.panel", { class: fill, style: { marginTop: "18px" } }, [
       h("div.stat-row", [
@@ -150,10 +156,7 @@ export function renderShow(root, id, { go, back }) {
     h("div.sect", [h("h2.t-label", { text: "Episodes" }), h("span.sect-count", { text: `${meta.seasons.length} seasons` })]),
     h("div", { class: fill }, meta.seasons.map((se) => season(show, se, next, go))),
 
-    /* The cast and what else to watch stay under the episodes: they are wide, horizontal
-       things, and a 360px rail cuts the third face in half. */
-    castSection(meta, go),
-    similarSection(show, go),
+    ]),
 
     /* Everything about the show rather than about tonight, in one column.
      *
@@ -166,10 +169,29 @@ export function renderShow(root, id, { go, back }) {
          is the one source they can be sure of — so it sits above the crowd's. */
       ratingSection(show, show.id),
       ratings(meta, fill),
-      ...historySection(show, meta, next, o, fill),
-      h("div.sect", [h("h2.t-label", { text: "This show" })]),
-      controls(show, go),
+      /* Each heading travels with the card it names.
+       *
+       * The rail is a flex column with one gap between its children. Rating and Score keep
+       * their label and card inside a single wrapper, so the gap falls between cards — but
+       * History and This show were spread in as separate children, so the gap fell between
+       * a label and the thing it was labelling, and the two drifted apart. */
+      h("div", historySection(show, meta, next, o, fill)),
+      h("div", [
+        h("div.sect", [h("h2.t-label", { text: "This show" })]),
+        controls(show, go),
+      ]),
     ]),
+    ]),
+
+    /* Outside the two-column grid, because they are neither column.
+     *
+     * A row of faces and a row of posters are read across, and both were confined to the
+     * left column — so the fifth face and the fifth poster were cut by the grid gutter with
+     * nothing to say the row continued. They run the full content width instead, under both
+     * columns, which is also where a horizontal rail belongs on a page that has one. */
+    h("div.show-wide", [
+      castSection(meta, go),
+      similarSection(show, go),
     ]),
   );
   watchTitle(bar, root.querySelector(".show-name"));

@@ -2144,6 +2144,14 @@ div.bar-row {
   padding: 0 16px;
 }
 
+/* The full-width rails under the grid: cast, and what else to watch. Same measure and the
+   same gutter as everything above them, so their first card lines up with the column. */
+.show-wide {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
 /* Two columns, once there is room for two.
  *
  * Every round has said this page is the phone stretched: episode rows running the full
@@ -2169,26 +2177,14 @@ div.bar-row {
     grid-column: 1;
   }
 
-  /* Everything on the left except the rail, which is one element and holds the right.
-   *
-   * Placing the rail's parts individually let the grid give each the next free row, so the
-   * column began level with Season 1 — a long way under the summary it belongs beside — and
-   * the two columns ran out at different depths. */
-  .show-rest > *:not(.show-rail) {
-    grid-column: 1;
+  /* Two children, two columns, one row. Nothing is placed by hand and no rows are guessed:
+     a row gap applies between every row a grid has, so a rail spanning a guessed ninety-nine
+     of them added about two and a half thousand pixels of blank page underneath. */
+  .show-main {
     min-width: 0;
   }
 
-  /* A horizontal rail clipped to its own column: the cast escaped the grid's gutter and a
-     sliver of the fifth face touched the rail's HISTORY label. */
-  .show-rest > *:not(.show-rail) .shelf {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-  }
-
   .show-rail {
-    grid-column: 2;
-    grid-row: 1 / span 99;
     display: flex;
     flex-direction: column;
     /* One gap for every section in the rail, rather than each card bringing its own. */
@@ -2213,10 +2209,35 @@ div.bar-row {
     }
   }
 
-  /* The rail's own headings sit tighter than the page's: it is a column of small cards, not
-     a run of sections. */
-  .show-rail > .sect {
-    margin-top: 4px;
+  /* The rail's headings belong to their cards.
+   *
+   * The summary on the left has no heading — it does not need one, it is the answer to the
+   * question the hero just asked — while the rail's cards each carried a label floating
+   * above them. Two columns starting at the same y, one with a word over it and one
+   * without, read as a misalignment rather than as a choice.
+   *
+   * The label becomes the card's own top edge: same surface, same border, the card's
+   * corners, and no seam between the two. Both columns then start with a card. */
+  .show-rail .sect {
+    margin: 0;
+    padding: 13px 16px 0;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-bottom: 0;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+  }
+
+  .show-rail .sect + .panel {
+    margin-top: 0;
+    border-top: 0;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  /* A heading and its card are one object, so the rail's gap goes between objects rather
+     than between a label and the thing it names. */
+  .show-rail > * {
+    margin-top: 0;
   }
 }
 
