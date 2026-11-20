@@ -1383,10 +1383,16 @@ div.bar-row {
   width: auto;
 }
 
-/* The one mark that has to survive being squeezed. */
+/* The one mark that has to survive being squeezed — a floor, not a size.
+ *
+ * This was `flex: 0 0 4px`, which pins it to four pixels instead of guaranteeing four. Every
+ * other tick takes an equal share of its season, so in a ten-episode season across 200px the
+ * ordinary ticks are about 20px and the next-episode tick was a fifth of its neighbours: the
+ * one mark meant to be findable was the smallest thing in the strip. It takes its share like
+ * any other episode now, and 6px is the floor it cannot fall below. */
 .bc:not(.bc-full) .bc-tick.is-next {
-  flex: 0 0 4px;
-  min-width: 4px;
+  flex: 1 1 0;
+  min-width: 6px;
 }
 
 .bc-season {
