@@ -89,11 +89,31 @@ export function watchTitle(bar, heading) {
   if (!heading) return;
 
   let queued = false;
+
+  /* The fade spans the distance that actually exists, not a fixed 90px.
+   *
+   * `t` was `1 - gap / FADE`, which assumes the heading starts at least FADE below the bar.
+   * On a phone it does not: the gap at rest is about 81px against a 90px window, so t was
+   * 0.102 before a finger touched the screen — the bar was a tenth arrived and its title
+   * faintly painted on a page nobody had scrolled. Two reviewers reported that as a ghost
+   * title bleeding through the header.
+   *
+   * Measured once, from where the heading sits at rest, and never longer than FADE. The bar
+   * is therefore exactly absent at the top and exactly arrived when the heading goes under,
+   * whatever the screen. */
+  let span = FADE;
+  const measureSpan = () => {
+    const rest = heading.getBoundingClientRect().bottom
+      + (document.scrollingElement ? document.scrollingElement.scrollTop : 0)
+      - bar.getBoundingClientRect().height;
+    span = Math.max(1, Math.min(FADE, rest));
+  };
+
   const update = () => {
     queued = false;
     // How far the heading's underside has travelled past the bar's lower edge.
     const gap = heading.getBoundingClientRect().bottom - bar.getBoundingClientRect().height;
-    const t = Math.min(1, Math.max(0, 1 - gap / FADE));
+    const t = Math.min(1, Math.max(0, 1 - gap / span));
     bar.style.setProperty("--t", t.toFixed(3));
   };
   const onScroll = () => {
@@ -102,12 +122,17 @@ export function watchTitle(bar, heading) {
     requestAnimationFrame(update);
   };
 
+  // A resize moves the heading, so the span measured from its old place no longer holds.
+  // Named, because the teardown below removes it by reference.
+  const onResize = () => { measureSpan(); onScroll(); };
+
+  measureSpan();
   update();
   addEventListener("scroll", onScroll, { passive: true });
-  addEventListener("resize", onScroll, { passive: true });
+  addEventListener("resize", onResize, { passive: true });
   detachBar = () => {
     removeEventListener("scroll", onScroll);
-    removeEventListener("resize", onScroll);
+    removeEventListener("resize", onResize);
   };
 }
 
