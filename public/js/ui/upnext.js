@@ -55,8 +55,10 @@ export function renderUpNext(root, { go }) {
 
 /* How much of the queue stands between the hero and what is coming.
  *
- * Two rows on a phone, five where the rail has moved to the side; the numbers are in the
- * stylesheet, beside the breakpoint they belong to. This is the smaller of them, and all this
+ * Six rows on a phone, nine where the rail has moved to the side; the numbers are in the
+ * stylesheet, beside the breakpoint they belong to. It was two and five, which showed a
+ * person tracking eight shows two of them and a button saying there were more — next to a
+ * section head already printing the real number. This is the smaller of them, and all this
  * file needs to know — below it nothing can be hidden, so there is nothing to offer.
  *
  * It measured the space under the hero once, and re-measured on resize. On a phone that is an
@@ -65,7 +67,7 @@ export function renderUpNext(root, { go }) {
  *
  * Every row is still in the document. The section head goes on saying seven while two are
  * shown, and nothing is hidden from the reader except the rows themselves. */
-const CLAMP = 2;
+const CLAMP = 6;
 
 /* Open for this visit only, like every other thing a screen has unfolded. Persisting it would
    turn one tap into a permanent setting nobody asked to change, which is the opposite of what
@@ -148,10 +150,15 @@ function heroCard(row, go) {
   const isPoster = !meta.backdrop;
   const blurb = episodeBlurb(meta, ep);
 
+  /* Two facts, so the line does not wrap.
+   *
+   * It carried three, and the third pushed it onto a second line — which left the separator
+   * stranded at the end of the first, because the dots are trailing. "Last watched" is also
+   * the least of the three here: this card is about what to play next, not about when you
+   * last played something, and the show's own page still says it. */
   const facts = [
     progress.remaining > 1 ? `${progress.remaining} waiting` : null,
     ep.air ? `aired ${fmtDate(ep.air)}` : null,
-    row.last ? `last watched ${relTime(row.last)}` : null,
   ].filter(Boolean);
 
   return h("section.hero.vt", { style: { "--vt": "up-hero" } }, [
@@ -201,6 +208,13 @@ function queueRow(row, go) {
         ep.name ? " · " + ep.name : "",
         progress.remaining > 1 ? ` · ${progress.remaining} waiting` : "",
       ]),
+      /* The same strip the hero and the library cards carry.
+       *
+       * Every round of this council asked for it and it is the right ask: the hero shows how
+       * far in you are, and the rows underneath — the other things you are watching — made
+       * you read "15 waiting" and work it out, or tap through to find out. One glance now
+       * ranks them, which is the whole job of this screen. */
+      meta ? miniBarcode(show, meta, ep && ep.key, opts()) : null,
     ]),
     h("button.btn.btn-sm.qrow-mark", {
       type: "button",

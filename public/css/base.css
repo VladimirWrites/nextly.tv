@@ -40,14 +40,30 @@
   --panel: #191c26;
   --panel-2: #202432;
   --line: #2b3040;
-  --line-soft: #22263250;
+  /* A field that has to look like a field. On a white card in light, a white input with a
+     hairline border is a box you have to be told is editable. The sunk surface and the firmer
+     border are what make an input read as somewhere to type rather than somewhere to read. */
+  --sunk: #141720;
+  --sunk-line: #394054;
+  /* A divider at 50% alpha over a dark panel is not a divider: rows run together. */
+  --line-soft: #2b3040;
   --text: #e9ebf2;
   --dim: #939aae;
-  --dimmer: #666d80;
+  /* Lifted to AA. The tertiary tone carries placeholders, mono years and counts, and at
+     #666d80 it was about 3.6:1 on the panel — a tone chosen for how it sat beside the text
+     rather than for whether it could be read. */
+  --dimmer: #858ca0;
 
   --signal: #ffb020;
   --signal-ink: #1a1200;
   --signal-soft: #ffb0201f;
+  /* --signal is tuned to be READ. In light it is a deep amber chosen to clear AA as text on
+     the page, and filling a button with that value gives a brown slab wherever a primary
+     action, a progress bar or a selected control appears: the brand reads rust rather than
+     amber. --signal-fill is the painted version, carrying --signal-ink on top, so a filled
+     surface is the same brightness in both themes. In dark the two are the same colour,
+     which is why this went unnoticed. */
+  --signal-fill: #ffb020;
   --phosphor: #3fd3e6;
   --phosphor-soft: #3fd3e61f;
   --phosphor-ink: #06232a;   /* text on a phosphor fill — flips with the theme */
@@ -94,11 +110,15 @@ html[data-theme="light"] {
     --line-soft: #dde0e980;
     --text: #171a22;
     --dim: #5b6274;
-    --dimmer: #838a9c;
+    --sunk: #eceef4;
+    --sunk-line: #c3c8d6;
+    --dimmer: #5f6679;
 
-    --signal: #9a5b00;
-    --signal-ink: #fff8ec;
-    --signal-soft: #9a5b0014;
+    /* #9a5b00 measured 4.48:1 on its own tint at 13px, under AA. */
+    --signal: #8a5100;
+    --signal-ink: #2a1a00;
+    --signal-soft: #9a5b0021;
+    --signal-fill: #f0a12a;
     --phosphor: #00707f;
     --phosphor-soft: #00707f14;
     --phosphor-ink: #ffffff;
@@ -120,11 +140,15 @@ html[data-theme="light"] {
   --line-soft: #dde0e980;
   --text: #171a22;
   --dim: #5b6274;
-  --dimmer: #838a9c;
+  --sunk: #eceef4;
+  --sunk-line: #c3c8d6;
+  --dimmer: #5f6679;
 
-  --signal: #9a5b00;
-  --signal-ink: #fff8ec;
-  --signal-soft: #9a5b0014;
+  /* #9a5b00 measured 4.48:1 on its own tint at 13px, under AA. */
+  --signal: #8a5100;
+  --signal-ink: #2a1a00;
+  --signal-soft: #9a5b0021;
+  --signal-fill: #f0a12a;
   --phosphor: #00707f;
   --phosphor-soft: #00707f14;
   --phosphor-ink: #ffffff;
@@ -288,7 +312,7 @@ img {
 }
 
 ::selection {
-  background: var(--signal);
+  background: var(--signal-fill);
   color: var(--signal-ink);
 }
 
@@ -332,7 +356,7 @@ img {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--signal);
+  background: var(--signal-fill);
   box-shadow: 0 0 0 3px var(--signal-soft);
   flex: none;
 }
@@ -383,8 +407,8 @@ img {
 }
 
 .btn-primary {
-  background: var(--signal);
-  border-color: var(--signal);
+  background: var(--signal-fill);
+  border-color: var(--signal-fill);
   color: var(--signal-ink);
 }
 
@@ -393,8 +417,11 @@ img {
   border-color: var(--signal);
 }
 
+/* Transparent, but not edgeless: on a white card the --line hairline alone left a button
+   reading as a label somebody had boxed. */
 .btn-ghost {
   background: transparent;
+  border-color: var(--sunk-line);
 }
 
 .btn-danger {
@@ -440,9 +467,12 @@ img {
    * which leaves the app permanently scaled up after the very first tap on the sign-in
    * field. 16px is the threshold, not a preference. */
   font-size: 16px;
-  border: 1px solid var(--line);
+  /* A field that reads as a field. On a white card in light, --panel on --panel with a
+     --line hairline is about 1.2:1 against its own surround: a box you have to be told is
+     editable. */
+  border: 1.5px solid var(--sunk-line);
   border-radius: var(--r);
-  background: var(--panel);
+  background: var(--sunk);
   color: var(--text);
 }
 

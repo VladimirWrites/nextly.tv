@@ -66,7 +66,7 @@ test("with nothing left and nothing coming it falls back to the counts", () => {
   assert.equal(cardLine(metaFixture(), prog({ watched: 10, aired: 10, minutesLeft: 0 }), null), "10/10");
   assert.equal(
     cardLine(metaFixture(), prog({ watched: 10, aired: 10, minutesLeft: 0, completed: 3 }), null),
-    "10/10 · 3× through");
+    "10/10 · 3×");
 });
 
 test("a card with no metadata says so rather than showing 0/0", () => {

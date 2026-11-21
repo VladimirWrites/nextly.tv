@@ -45,24 +45,24 @@ const inside = (cond) => {
   return out;
 };
 
-test("two rows with the rail along the bottom, five with it at the side", () => {
-  const narrow = rules(css).find((r) => r.sel === ".queue.is-clamped .qrow:nth-child(n + 3)"
+test("six rows with the rail along the bottom, nine with it at the side", () => {
+  const narrow = rules(css).find((r) => r.sel === ".queue.is-clamped .qrow:nth-child(n + 7)"
     && /display:\s*none/.test(r.body));
-  assert.ok(narrow, "the third row and beyond are hidden by default");
+  assert.ok(narrow, "the seventh row and beyond are hidden by default");
 
   const wide = rules(inside("min-width: 900px")).filter((r) => r.sel.startsWith(".queue.is-clamped"));
   assert.deepEqual(wide.map((r) => r.body.replace(/\s+/g, " ")),
     ["display: flex;", "display: none;"],
-    "the wide window puts rows three to five back and hides from the sixth");
-  assert.match(wide[0].sel, /nth-child\(n \+ 3\)/);
-  assert.match(wide[1].sel, /nth-child\(n \+ 6\)/);
+    "the wide window puts rows seven to nine back and hides from the tenth");
+  assert.match(wide[0].sel, /nth-child\(n \+ 7\)/);
+  assert.match(wide[1].sel, /nth-child\(n \+ 10\)/);
 });
 
 /* Hiding is not something a later rule undoes by hiding less — nth-child(n+6) does not bring
    back the third row that nth-child(n+3) took away, so the wide block has to say so itself. */
 test("the wide window restores the rows the narrow one hid", () => {
   const wide = rules(inside("min-width: 900px"))
-    .find((r) => r.sel === ".queue.is-clamped .qrow:nth-child(n + 3)");
+    .find((r) => r.sel === ".queue.is-clamped .qrow:nth-child(n + 7)");
   assert.ok(wide, "there is a rule putting them back");
   assert.match(wide.body, /display:\s*flex/, "and it restores the layout they had, not inline");
 });
@@ -84,7 +84,7 @@ test("the expander is offered by how many rows there are, not by whether they ar
   assert.ok(offers.length >= 1);
   for (const r of offers) {
     assert.ok(!r.sel.includes("is-clamped"), `"${r.sel}" must not depend on the class it removes`);
-    assert.match(r.sel, /:has\(\.qrow:nth-child\(\d\)\)/, "it asks how long the queue is");
+    assert.match(r.sel, /:has\(\.qrow:nth-child\(\d+\)\)/, "it asks how long the queue is");
   }
 });
 
@@ -94,7 +94,7 @@ test("the expander is offered by how many rows there are, not by whether they ar
 test("without :has the rows are still reachable", () => {
   assert.match(rules(css).find((r) => r.sel === ".queue-more").body, /display:\s*none/);
   assert.match(js, /rest\.length > CLAMP \? queueMore\(/);
-  assert.match(js, /const CLAMP = 2;/, "and the render uses the smaller of the two limits");
+  assert.match(js, /const CLAMP = 6;/, "and the render uses the smaller of the two limits");
 });
 
 /* Nothing reads a height. That is the whole of the fix for rows appearing mid-scroll: a phone
