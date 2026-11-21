@@ -1768,18 +1768,23 @@ div.bar-row {
   background: color-mix(in srgb, var(--panel) 82%, transparent);
 }
 
+/* Every mark in the hero strip is the same height, for the reason the card strip gives: a
+ * row of marks at four different heights reads as a chart with something wrong with it.
+ *
+ * The card strip was levelled and the hero was missed, so here state was still encoded twice
+ * over — a tick stood 17px, an unaired one 10px, a seen-on-an-earlier-pass one 9px, and a
+ * collapsed season 12px. The visible effect was that whichever season was drawn episode by
+ * episode stood taller than the lumped seasons either side of it, which reads as the current
+ * season being singled out. It is not; it is the only one not collapsed. Colour carries the
+ * state, and the one cyan tick carries which episode is next. */
+.hero-strip .bc-tick,
+.hero-strip .bc-lump {
+  height: 17px;
+}
+
 .hero-strip .bc-tick {
   width: 5px;
-  height: 17px;
   border-radius: 1.5px;
-}
-
-.hero-strip .bc-tick.is-x {
-  height: 10px;
-}
-
-.hero-strip .bc-tick.is-s {
-  height: 9px;
 }
 
 .hero-strip .bc-season {
