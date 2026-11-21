@@ -1367,6 +1367,14 @@ div.bar-row {
 .bc:not(.bc-full) {
   flex-wrap: nowrap;
   width: 100%;
+  /* A card may never be wider than its track.
+   *
+   * The marks below are floored so they stay legible, and a floor on a flex item is a size
+   * the row cannot go under: a show with more marks than the card has pixels made the strip
+   * overflow, the grid track grew to fit it, and the page scrolled sideways. STRIP_MAX.mini
+   * keeps that from arising; this makes it impossible. `clip` rather than `hidden` so the
+   * strip does not become a scroll container. */
+  overflow: clip;
   /* The gaps are part of the width, so without this the seasons' shares add up to 100% and
      the gaps push the last sliver past the card's edge. */
   min-width: 0;

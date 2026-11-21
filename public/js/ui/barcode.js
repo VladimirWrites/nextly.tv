@@ -12,7 +12,7 @@
 // on this one draws as a half-height amber bar. The previous run stays visible underneath
 // the current one, which is what stops a rewatch from looking like starting from nothing.
 import { h, svg, ICON, dragScroll } from "./dom.js";
-import { barcode, TICK, passOf, isBlock, fitsStrip, tickState, STRIP_MAX } from "../domain/progress.js";
+import { barcode, TICK, passOf, isBlock, fitsStrip, fitsMini, tickState, STRIP_MAX } from "../domain/progress.js";
 import { epCode } from "../domain/constants.js";
 import { fmtDate } from "../domain/dates.js";
 
@@ -33,7 +33,7 @@ const tickClass = (ep, nextKey) => CLASS[tickState(ep, nextKey)];
 // Returns null for a show too long to draw, and callers simply leave it out.
 export function miniBarcode(show, meta, nextKey, opts = {}) {
   const seasons = barcode(show, meta, opts);
-  if (!fitsStrip(seasons, STRIP_MAX.mini)) return null;
+  if (!fitsMini(seasons, nextKey)) return null;
 
   /* One row, the width of the card, divided by episodes.
    *

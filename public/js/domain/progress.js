@@ -231,15 +231,38 @@ export const holdsNext = (se, nextKey) => !!nextKey && se.episodes.some((ep) => 
 
 export const isBlock = (se, nextKey) => se.block !== null && !holdsNext(se, nextKey);
 
+/* How many marks a strip actually draws.
+   A collapsed season is one mark however many episodes it stands for, so the drawn length of
+   a strip is not its episode count: ten uniform seasons of twenty draw ten marks, and the
+   same two hundred episodes half-watched draw two hundred. The mini strip has to be measured
+   in marks, because marks are what need room. */
+export const markCount = (seasons, nextKey) =>
+  seasons.reduce((n, se) => n + (isBlock(se, nextKey) ? 1 : se.episodes.length), 0);
+
 /* A barcode is a picture of a show's shape, and past a certain length there is no shape to
    see: Tagesschau is 21,349 episodes across 75 seasons, and any honest drawing of that is a
    solid smear. Past the limit the strip is left out and the counts beside it carry the answer.
 
-   Two limits because the two strips have different room — a library card is 130px and a
-   glance, the show page has the width and the attention. */
-export const STRIP_MAX = { mini: 320, full: 900 };
+   Two limits because the two strips have different room — and they count different things.
+
+   The card strip is a single row as wide as its cover, and the narrowest cover is 169px on a
+   two-up phone grid. A mark is floored at 2px so it stays a mark rather than a hairline, and
+   the ticks inside a season are separated by 1px, so about 56 marks is all that will fit. The
+   limit used to be 320 episodes, which no card has ever had room for: a show past the real
+   budget could not shrink, its strip grew wider than the card, and because a grid track is
+   sized to its contents the whole page ended up wider than the screen. On Android a document
+   that overflows sideways gets a layout viewport wider than the visible one, and the tab bar
+   is pinned to the bottom of the wider one — so a strip that was a few pixels too long for
+   its card pushed the navigation off the bottom of the screen.
+
+   The show page's strip scrolls and every tick there is a button, so it is still measured in
+   episodes: it is allowed to be longer than the screen. */
+export const STRIP_MAX = { mini: 56, full: 900 };
 
 export const fitsStrip = (seasons, limit) => episodeCount(seasons) <= limit;
+
+// The card strip, measured in what it draws rather than what the show contains.
+export const fitsMini = (seasons, nextKey) => markCount(seasons, nextKey) <= STRIP_MAX.mini;
 
 /* What one tick means. Named rather than styled: the state is a fact about the episode, and
    which colour says so is the stylesheet's business. */
