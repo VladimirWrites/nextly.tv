@@ -971,7 +971,24 @@ div.bar-row {
    catalogue's fact about the show, not yours about your watching. */
 /* One line, so a grid row shares a baseline. "1x through" wrapping under a neighbour that
    did not was enough to put two cards' meta nineteen pixels apart. */
+/* One line, and allowed to be shortened.
+ *
+ * `nowrap` alone is not enough on a grid item. A grid item's automatic minimum size is its
+ * content, so a line that refuses to wrap makes the card refuse to shrink, the track grows
+ * to fit it and the whole grid ends up wider than the screen. That is a sideways scroll of
+ * a few pixels — and on Android it also drops the fixed tab bar, because a document that
+ * scrolls horizontally gets a layout viewport wider than the visual one and a bar pinned to
+ * `bottom: 0` is placed against the wider of the two.
+ *
+ * `min-width: 0` on the card lets it shrink to its track, and the ellipsis below does the
+ * shortening. Which cards overflowed depended on their titles, which is why it came and went
+ * with the sort order. */
+.card {
+  min-width: 0;
+}
+
 .card-sub {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

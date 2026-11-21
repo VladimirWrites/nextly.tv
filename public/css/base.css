@@ -179,6 +179,18 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   overscroll-behavior-y: none;
+  /* Nothing here scrolls sideways.
+   *
+   * A page a few pixels wider than the screen is its own small nuisance, but on Android it
+   * is also why the tab bar sat low on the library screen: a document that can scroll
+   * horizontally gets a layout viewport wider than the visual one, and a `position: fixed;
+   * bottom: 0` bar is placed against the layout viewport — so the bar drops by roughly the
+   * difference. The library was the screen that overflowed, which is why it was the only
+   * screen that moved.
+   *
+   * `clip` rather than `hidden`: `hidden` would make <html> a scroll container and break
+   * every `position: sticky` in the app. `clip` refuses the scroll without creating one. */
+  overflow-x: clip;
   /* The scrollbar's room is kept whether or not there is a scrollbar in it. Where scrollbars
    * take space — Windows, and a Mac told to show them always — a page that grew long enough to
    * need one took fifteen pixels off the viewport, and everything measured against it moved:
