@@ -1073,13 +1073,23 @@ div.bar-row {
  * index stepped aside for the search. */
 .lib-results {
   margin-top: 18px;
+  /* The index is 24px of fixed furniture pinned two pixels from the window edge, and the
+     page gutter on a phone is 16px, so an index left to float in that gutter lies across the
+     right-hand covers — letters over poster art. The lane is carved out of the row instead:
+     the row reaches into the right gutter and gives 28px back, which puts the grid's edge two
+     pixels clear of the first letter and leaves the left gutter where it was.
+
+     Reserved whether or not the index is showing, because the alternative is every card
+     changing width the moment the index steps aside for a different sort. */
+  margin-right: calc(-1 * var(--edge-r));
+  padding-right: 28px;
 }
 
-/* The index lane is reserved whether or not the index is showing, and it used to be taken
-   from the right side alone — invisible while the grid was auto-fill, plainly lopsided once
-   the phone count is fixed. The index floats over the page gutter instead. */
+/* Past the phone widths the gutter is wide enough to hold the index on its own, so the row
+   keeps its own box and only reserves the lane. */
 @media (min-width: 460px) {
   .lib-results {
+    margin-right: 0;
     padding-right: 24px;
   }
 }
