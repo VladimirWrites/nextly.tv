@@ -1073,14 +1073,19 @@ div.bar-row {
  * index stepped aside for the search. */
 .lib-results {
   margin-top: 18px;
-  /* The index is 24px of fixed furniture pinned two pixels from the window edge, and the
-     page gutter on a phone is 16px, so an index left to float in that gutter lies across the
-     right-hand covers — letters over poster art. The lane is carved out of the row instead:
-     the row reaches into the right gutter and gives 28px back, which puts the grid's edge two
-     pixels clear of the first letter and leaves the left gutter where it was.
+}
 
-     Reserved whether or not the index is showing, because the alternative is every card
-     changing width the moment the index steps aside for a different sort. */
+/* The index is 24px of fixed furniture pinned two pixels from the window edge, and the page
+   gutter on a phone is 16px, so an index left to float in that gutter lies across the
+   right-hand covers — letters over poster art. The lane is carved out of the row instead:
+   the row reaches into the right gutter and gives 28px back, which puts the grid's edge two
+   pixels clear of the first letter and leaves the left gutter where it was.
+
+   Only while the index is actually there. Held open under every sort, the lane is just a
+   right margin half as wide again as the left one, on a screen that is otherwise a centred
+   grid of covers. A card going from 169px to 163px when you sort by name is the smaller
+   price. */
+.lib-results.has-az {
   margin-right: calc(-1 * var(--edge-r));
   padding-right: 28px;
 }
@@ -1088,10 +1093,18 @@ div.bar-row {
 /* Past the phone widths the gutter is wide enough to hold the index on its own, so the row
    keeps its own box and only reserves the lane. */
 @media (min-width: 460px) {
-  .lib-results {
+  .lib-results.has-az {
     margin-right: 0;
     padding-right: 24px;
   }
+}
+
+/* The chip row runs to the screen edge, which puts its chips under the index on the way
+   past. While the index is up the row stops short of it instead. */
+.filter-bar.has-az {
+  margin-right: 12px;
+  padding-right: 4px;
+  scroll-padding-right: 4px;
 }
 
 /* ---------- A to Z index ----------

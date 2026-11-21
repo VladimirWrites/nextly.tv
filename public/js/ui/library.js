@@ -252,7 +252,14 @@ export function renderLibrary(root, { go, top }) {
     // never disagree about which letters exist or what order they come in.
     const anchors = [];
     const cards = grid(list, go, anchors);
-    results.replaceChildren(cards, ...(showIndex() ? [azRail(anchors)] : []));
+    const index = showIndex();
+    /* The index is fixed furniture over the right-hand gutter, so the grid has to give it a
+       lane or the letters lie across the covers. The lane is only reserved while the index
+       is there: held open under every sort it reads as a page with a wider margin on one
+       side than the other. */
+    results.classList.toggle("has-az", index);
+    bar.classList.toggle("has-az", index);
+    results.replaceChildren(cards, ...(index ? [azRail(anchors)] : []));
   }
 
   fill();
